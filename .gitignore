@@ -8,3 +8,11 @@
 
 # Dependencies (only if a plugin uses them)
 node_modules/
+
+# Secrets — NEVER commit real API keys
+.env
+.env.*
+!.env.example
+
+# Local server logs
+*.log
