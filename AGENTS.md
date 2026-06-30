@@ -9,9 +9,13 @@ A single git repo that catalogs installable `gjc` plugins. One `marketplace.json
 lists every plugin; each plugin is one directory under `plugins/`. The format is
 compatible with the Claude Code / Codex plugin spec.
 
-Plugins are installed **only from inside a `gjc` session** via the `/plugin` slash
-command. A shell `gjc plugin install …` does NOT install marketplace plugins (gjc
-treats it as a chat message). Do not document or rely on a shell install path.
+Plugins install from the **shell CLI** — `gjc plugin install <name>@<marketplace> …`
+(TARGETS is plural: install several in one command; `--scope user` is the default,
+`--scope project` pins to a repo; `gjc plugin marketplace add <ref>` registers a
+catalog; `gjc plugin list` shows installed). Inside a running `gjc` **chat session**,
+use the `/plugin` slash command instead — there, a typed shell `gjc plugin …` line is
+just a message. Both routes hit the same marketplace manager / install registry
+(`~/.gjc/plugins/installed_plugins.json`).
 
 ## Setup / Environment
 
@@ -82,7 +86,7 @@ Content is discovered by **convention directories** above; explicit paths in
 - **Never commit secrets.** `.env`/`.env.*` are gitignored (`!.env.example` is the
   only tracked one and MUST contain placeholders, never real keys). Runtime state
   under `.gjc/` is gitignored.
-- **Don't invent a shell install command** for marketplace plugins.
+- **Document the real install paths** (verified): shell `gjc plugin install <name>@<marketplace> …` (batch-capable) and the in-chat `/plugin` slash command. Don't claim the shell CLI is unavailable.
 
 ## Per-plugin notes
 
@@ -119,12 +123,11 @@ Content is discovered by **convention directories** above; explicit paths in
 - Non-Goals: codex/lazycodex auto-login, App/CDP (→ `codex-app-control`), read-only Q&A (→ `codex-cli-control`), opencode (Ultimate) edition.
 
 ### `codex-app-control` (live-verified)
-- Skill `codex-app-cdp` + command `/codex-app-control:ask`. gjc attaches its
-  `browser` tool to a running Codex desktop App via an explicit `cdp_url`, sends one
-  prompt, and reads the latest completed response (hybrid turn-completion detection).
-- v1 is **attach-only**: requires an already-running, CDP-enabled Codex App and an
-  explicit `cdp_url` (no launch/build, no port auto-discovery). DOM selectors /
-  completion signals are **provisional** until confirmed by a live attach spike.
+- Two skills: `codex-app-launch` (command `/codex-app-control:launch`) and `codex-app-cdp` (command `/codex-app-control:ask`).
+- `codex-app-launch`: starts an **already-built** Linux Codex App wrapper headlessly (xvfb) with `--remote-debugging-port` (CDP) enabled, idempotently reuses a live endpoint, polls `/json/version` until ready, returns `cdp_url`; also `status`/`stop`. Does **not** build the wrapper from the DMG.
+- `codex-app-cdp`: attaches gjc's `browser` tool to a running Codex App via an explicit `cdp_url`, sends one prompt, reads the latest completed response (hybrid turn-completion detection). Attach-only; pair it with `launch` (or an app you started yourself).
+- **Live-verified:** wrapper built from OpenAI DMG → headless launch (CDP `:9222`, webview `:5175`, Codex `26.623.70822`) → attach → `.ProseMirror` input → Enter → completion detect → read `[data-local-conversation-final-assistant]`. Confirmed selectors/recipe live in `skills/*/SKILL.md`.
+- Injection-safe arg contract (launch): `action` enum, integer port range, `screen` regex, existing-file check, reject unknown args, no auto-derived Electron flags.
 - Same privileged-action safety stance as above.
 
 ### `my-workflows`

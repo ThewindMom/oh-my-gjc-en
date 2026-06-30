@@ -8,11 +8,23 @@ Compatible with the Claude Code / Codex plugin spec, so the same repo works for
 
 ## Install
 
-Manage plugins **inside a `gjc` session** with `/plugin` (a shell `gjc plugin install`
-does not work for marketplace plugins):
+Plugins install from the **shell CLI** (`gjc plugin …`) or, inside a running `gjc`
+chat, the **`/plugin`** slash command. Installs are **user-scoped by default →
+available in every project on this machine** (`--scope project` pins to one repo).
+
+Add the marketplace once, then install — several plugins in **one command**:
+
+```sh
+gjc plugin marketplace add devswha/oh-my-gjc    # or a local checkout: gjc plugin marketplace add ./
+gjc plugin install codex-cli-control@oh-my-gjc codex-deepwork@oh-my-gjc codex-app-control@oh-my-gjc lazycodex@oh-my-gjc my-workflows@oh-my-gjc
+gjc plugin list                                 # verify
+```
+
+Inside a gjc **chat session**, use the slash-command equivalent (typing a shell
+command in chat is just a message — use `/plugin` there):
 
 ```
-/plugin marketplace add devswha/oh-my-gjc      # or local checkout: /plugin marketplace add ./
+/plugin marketplace add devswha/oh-my-gjc
 /plugin install <plugin>@oh-my-gjc
 ```
 
@@ -26,7 +38,7 @@ does not work for marketplace plugins):
 | `codex-cli-control` | gjc drives the local **Codex CLI** (`codex exec`): one prompt → final answer. No App/CDP needed. Sandbox defaults to `read-only`. |
 | `codex-deepwork` | gjc delegates an **autonomous, file-writing** task to Codex (`codex exec`, write sandbox). Auto-uses the **LazyCodex** harness when installed. |
 | `lazycodex` | Install/manage the **LazyCodex** deep-work harness in Codex (`npx lazycodex-ai`) + run `ultrawork` (plan→work→verify) tasks through it |
-| `codex-app-control` | gjc controls the **Codex desktop App** over CDP (attaches to an already-running app) |
+| `codex-app-control` | gjc controls the **Codex desktop App GUI** over CDP — `launch` starts the headless app (xvfb) with remote debugging, then `ask` attaches and drives it (one prompt → latest response) |
 | `example-plugin` | Starter template — copy it to build your own |
 
 Quick start after installing:

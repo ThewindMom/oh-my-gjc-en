@@ -27,8 +27,8 @@
     {
       "name": "codex-app-control",
       "source": "./plugins/codex-app-control",
-      "description": "Skill-first plugin that attaches gjc's browser tool to a running Codex App via an explicit CDP URL, sends one prompt, and returns the latest completed response. v1 attach-only.",
-      "version": "0.1.0",
+      "description": "Control the Codex desktop App GUI: codex-app-launch starts an already-built Linux wrapper headlessly (xvfb) with remote debugging (CDP) and waits until ready; codex-app-cdp attaches gjc's browser via an explicit cdp_url, sends one prompt, and returns the latest completed response.",
+      "version": "0.2.0",
       "category": "automation"
     },
     {
