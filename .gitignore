@@ -16,3 +16,8 @@ node_modules/
 
 # Local server logs
 *.log
+
+# insane-review engine runtime output + python cache
+.insane-review/
+__pycache__/
+*.pyc

@@ -51,6 +51,13 @@
       "description": "Set up and drive the LazyCodex (OmO Codex Light) deep-work harness: install/update/check it in ~/.codex via npx, then run plan->work->verify (ultrawork) coding tasks through Codex with its skills/hooks/verification engaged.",
       "version": "0.1.0",
       "category": "automation"
+    },
+    {
+      "name": "insane-review",
+      "source": "./plugins/insane-review",
+      "description": "Use GPT-5.5 Pro (web-only, no API) from inside gjc: gjc scopes the complete relevant file set, repomix-packs it (full code, line numbers, secretlint), drives your logged-in ChatGPT web session over CDP, verifies the model fail-closed, and harvests the review to .insane-review/. Zero API cost. Also works as a web-only agent-council member. Faithful port of fivetaku/insane-review with the engine kept intact.",
+      "version": "0.5.3",
+      "category": "automation"
     }
   ]
 }
