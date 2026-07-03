@@ -28,6 +28,7 @@ description: gjc를 쓰다 놓친 gjc 자체 버그를 배치 스캔해 upstream
 ## 절대 규칙 (약화 금지)
 
 - **초안만.** `gh issue/pr create`·`git push`·커밋·외부 제출 금지. 사람이 검토 후 제출.
+- **⛔ 제출 지시 시 upstream PR은 `dev` 브랜치로만 (`main` 금지).** push 권한 없음 → fork(`devswha/gajae-code`) 브랜치 푸시 후 `gh pr create --repo Yeachan-Heo/gajae-code --base dev --head devswha:<branch>`. 브랜치는 `origin/dev` 기준.
 - **read-only.** gjc 로그/세션/소스는 읽기만. `~/.gjc` 원본 수정 금지.
 - **레닥션 유지.** 초안에 비밀(이메일/토큰/계정ID) 금지.
 - **중복 금지.** 같은 fingerprint 초안이 있으면 재생성 안 함.

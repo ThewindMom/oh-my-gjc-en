@@ -90,6 +90,7 @@ ls -d /tmp/gajae-code* 2>/dev/null | head -1 \
 ## 절대 규칙 (약화 금지)
 
 - **초안만.** `gh issue/pr create`, `git push`, 커밋, 외부 제출 **금지**. 사람이 검토 후 직접 낸다.
+- **⛔ 사람이 제출을 명시적으로 지시한 경우(초안-only override): upstream PR은 반드시 `dev` 브랜치로 — `main` 금지.** upstream(`Yeachan-Heo/gajae-code`)엔 push 권한 없으니 fork(`devswha/gajae-code`)에 브랜치 푸시 후 `gh pr create --repo Yeachan-Heo/gajae-code --base dev --head devswha:<branch>`. 브랜치는 `origin/dev` 기준으로 만든다(`main` 아님). 이슈는 base 없음 — 그냥 낸다.
 - **read-only 대상.** gjc 로그/세션/소스는 읽기만. `~/.gjc` 원본을 수정하지 않는다.
 - **레닥션 유지.** 초안에 이메일/토큰/계정ID 등 비밀이 들어가면 안 된다(collector가 1차 스크럽; 추가로 눈으로 확인).
 - **중복 금지.** 같은 fingerprint 초안이 있으면 새로 만들지 않는다.
