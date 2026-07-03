@@ -39,8 +39,15 @@
  *   bun run collect.ts --all           # include env/credential noise
  *   bun run collect.ts --json          # machine-readable candidates to stdout
  *   bun run collect.ts --out FILE      # spool JSONL candidates (default .gjc/bugwatch/candidates.jsonl)
+ *   bun run collect.ts --fresh-days 2  # candidates not seen within N days are marked ⏳stale (likely already fixed)
+ *   bun run collect.ts --fresh-only    # drop stale candidates entirely (only recently-recurring bugs)
+ *
+ * Scans both live `*.log` and rotated `*.log.gz` so history is covered — and marks
+ * candidates whose last occurrence predates the freshness window as ⏳stale, so
+ * already-fixed historical bugs sink to the bottom instead of being chased.
  */
 import { readdirSync, readFileSync, statSync, mkdirSync, writeFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -62,6 +69,10 @@ export interface GroupedCandidate extends Candidate {
 	firstSeen?: string;
 	lastSeen?: string;
 	sample: Record<string, unknown>;
+	/** true when lastSeen is older than the freshness window — likely already fixed upstream. */
+	stale?: boolean;
+	/** whole days since lastSeen (undefined when no timestamp). */
+	lastSeenDaysAgo?: number;
 }
 
 // ── noise: environmental / credential, not a code bug ────────────────────────
@@ -193,7 +204,9 @@ export function extractSessionSignals(entry: unknown, includeNoise = false): Can
 
 function parseJsonl(path: string): Record<string, unknown>[] {
 	const rows: Record<string, unknown>[] = [];
-	for (const line of readFileSync(path, "utf8").split("\n")) {
+	// Rotated logs are gzipped (`gjc.<date>.log.gz`) — decompress so history is scanned too.
+	const raw = path.endsWith(".gz") ? gunzipSync(readFileSync(path)).toString("utf8") : readFileSync(path, "utf8");
+	for (const line of raw.split("\n")) {
 		const t = line.trim();
 		if (!t) continue;
 		try {
@@ -251,6 +264,22 @@ export function mergeGroups(groups: GroupedCandidate[]): GroupedCandidate[] {
 	return [...by.values()].sort((a, b) => rank[a.severity] - rank[b.severity] || b.count - a.count);
 }
 
+/**
+ * Flag candidates whose most recent occurrence is older than `freshDays` — they're
+ * likely already fixed upstream, so we don't chase dead bugs. Mutates + returns.
+ */
+export function applyStaleFlags(groups: GroupedCandidate[], nowMs: number, freshDays: number): GroupedCandidate[] {
+	const freshMs = freshDays * 86_400_000;
+	for (const g of groups) {
+		if (!g.lastSeen) continue;
+		const t = Date.parse(g.lastSeen);
+		if (Number.isNaN(t)) continue;
+		g.lastSeenDaysAgo = Math.floor((nowMs - t) / 86_400_000);
+		g.stale = nowMs - t > freshMs;
+	}
+	return groups;
+}
+
 // ── file discovery ───────────────────────────────────────────────────────────
 function recentFiles(dir: string, match: (f: string) => boolean, sinceMs: number): string[] {
 	let entries: string[];
@@ -272,7 +301,8 @@ function recentFiles(dir: string, match: (f: string) => boolean, sinceMs: number
 }
 
 export function discoverLogFiles(root = join(homedir(), ".gjc", "logs"), sinceMs = 0): string[] {
-	return recentFiles(root, f => f.endsWith(".log"), sinceMs);
+	// Include rotated/compressed logs so history (not just today) is scanned.
+	return recentFiles(root, f => f.endsWith(".log") || f.endsWith(".log.gz"), sinceMs);
 }
 
 export function discoverSessionFiles(root = join(homedir(), ".gjc", "agent", "sessions"), sinceMs = 0): string[] {
@@ -298,6 +328,8 @@ function main(): void {
 	const includeNoise = has("--all");
 	const includeSessions = has("--include-sessions");
 	const days = Number(arg("--days", "7"));
+	const freshDays = Number(arg("--fresh-days", "2"));
+	const freshOnly = has("--fresh-only");
 	const maxSessions = Number(arg("--session-limit", arg("--sessions", "40")));
 	const sinceMs = Date.now() - days * 86_400_000;
 
@@ -311,10 +343,17 @@ function main(): void {
 				.slice(0, maxSessions)
 		: [];
 
-	const groups = mergeGroups([
-		...logFiles.flatMap(f => scanLogFile(f, includeNoise)),
-		...sessionFiles.flatMap(f => scanSessionFile(f, includeNoise)),
-	]);
+	let groups = applyStaleFlags(
+		mergeGroups([
+			...logFiles.flatMap(f => scanLogFile(f, includeNoise)),
+			...sessionFiles.flatMap(f => scanSessionFile(f, includeNoise)),
+		]),
+		Date.now(),
+		freshDays,
+	);
+	// Fresh (recently-seen) first so likely-already-fixed candidates sink to the bottom.
+	groups.sort((a, b) => Number(a.stale ?? false) - Number(b.stale ?? false));
+	if (freshOnly) groups = groups.filter(g => !g.stale);
 
 	if (has("--json")) {
 		process.stdout.write(JSON.stringify(groups, null, 2) + "\n");
@@ -325,9 +364,12 @@ function main(): void {
 				`${includeSessions ? `, ${sessionFiles.length} session(s)` : " (sessions off; --include-sessions to add)"}, last ${days}d\n` +
 				`${groups.length} candidate(s)${includeNoise ? "" : " (env/credential noise hidden; --all to show)"}\n\n`,
 		);
+		const staleN = groups.filter(g => g.stale).length;
+		if (staleN && !freshOnly) process.stdout.write(`  (${staleN} marked ⏳stale = no hit in ${freshDays}d, likely already fixed; --fresh-only to hide)\n\n`);
 		for (const g of groups) {
+			const staleTag = g.stale ? ` ⏳stale(${g.lastSeenDaysAgo}d)` : "";
 			process.stdout.write(
-				`${icon[g.severity]} [${g.category}] ×${g.count}  (${g.source})\n  ${g.message}\n` +
+				`${icon[g.severity]} [${g.category}] ×${g.count}  (${g.source})${staleTag}\n  ${g.message}\n` +
 					(g.sampleStackTop ? `  ${g.sampleStackTop}\n` : "") +
 					(g.lastSeen ? `  last: ${g.lastSeen}\n` : "") +
 					"\n",

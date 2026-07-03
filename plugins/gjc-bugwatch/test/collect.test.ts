@@ -1,11 +1,18 @@
 import { describe, expect, it } from "bun:test";
+import { gzipSync } from "node:zlib";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
+	applyStaleFlags,
 	classifyLogEntry,
 	extractSessionSignals,
 	fingerprint,
+	type GroupedCandidate,
 	isNoise,
 	mergeGroups,
 	redact,
+	scanLogFile,
 } from "../bin/collect";
 
 const gjcErr = {
@@ -121,5 +128,46 @@ describe("gjc-bugwatch session extraction", () => {
 
 	it("ignores ordinary content", () => {
 		expect(extractSessionSignals({ type: "message", content: [{ type: "text", text: "all good, tests pass" }] })).toEqual([]);
+	});
+});
+
+describe("gjc-bugwatch gzip + stale", () => {
+	it("scanLogFile reads a rotated .log.gz the same as a plain .log", () => {
+		const dir = mkdtempSync(join(tmpdir(), "bw-gz-"));
+		const jsonl =
+			JSON.stringify({ level: "error", pid: 1, message: "Cleanup invoked recursively", stack: "at runCleanup (/$bunfs/root/gjc-x:1:1)" }) +
+			"\n";
+		const gzPath = join(dir, "gjc.2026-06-01.log.gz");
+		writeFileSync(gzPath, gzipSync(Buffer.from(jsonl)));
+		const groups = scanLogFile(gzPath);
+		expect(groups.length).toBe(1);
+		expect(groups[0].category).toBe("gjc-internal");
+		expect(groups[0].message).toBe("Cleanup invoked recursively");
+	});
+
+	it("applyStaleFlags marks candidates older than freshDays and computes age", () => {
+		const now = Date.parse("2026-07-04T00:00:00Z");
+		const mk = (lastSeen: string): GroupedCandidate => ({
+			fingerprint: lastSeen,
+			category: "error",
+			severity: "medium",
+			message: "x",
+			source: "log",
+			count: 1,
+			lastSeen,
+			sample: {},
+		});
+		const fresh = mk("2026-07-03T12:00:00Z"); // ~12h ago
+		const old = mk("2026-07-01T00:00:00Z"); // 3d ago
+		applyStaleFlags([fresh, old], now, 2);
+		expect(fresh.stale).toBe(false);
+		expect(old.stale).toBe(true);
+		expect(old.lastSeenDaysAgo).toBe(3);
+	});
+
+	it("applyStaleFlags leaves candidates without a timestamp unflagged", () => {
+		const g: GroupedCandidate = { fingerprint: "n", category: "warn", severity: "low", message: "x", source: "log", count: 1, sample: {} };
+		applyStaleFlags([g], Date.now(), 2);
+		expect(g.stale).toBeUndefined();
 	});
 });
