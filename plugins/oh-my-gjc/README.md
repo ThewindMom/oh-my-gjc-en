@@ -28,6 +28,7 @@ bash ~/.gjc/plugins/cache/plugins/*oh-my-gjc*/bin/install-skill.sh all
 | `easy-answer` | 최종 답변을 전문용어 없이 쉬운 말로 (정확성 우선) | "쉽게 말해줘", "이게 무슨 뜻이야" |
 | `gate-briefing` | 승인 게이트를 도메인 지식 없이 판정할 4부 브리핑: 비전문가 번역 → 승인 경계 → 체크리스트(원문 근거) → 판정 | "승인해도 돼?", "pending 어떻게 해" |
 | `multivendor-presets` | 멀티벤더 모델 프리셋을 models.yml에 안전 병합 | "멀티벤더 프리셋 깔아줘" |
+| `branch-flow` | 이 레포의 git 브랜치·머지·릴리즈를 dev통합/main릴리즈 모델로 진행 | "브랜치 파줘", "dev에 머지", "릴리즈하자" |
 
 ### 커맨드
 
@@ -40,6 +41,7 @@ bash ~/.gjc/plugins/cache/plugins/*oh-my-gjc*/bin/install-skill.sh all
 | `/oh-my-gjc:gate-always [on\|off\|status]` | 게이트 브리핑 — 전 세션 상시 |
 | `/oh-my-gjc:presets [이름\|all]` | 모델 프리셋 병합 (`ideal` / `escalate-surgical` / `monorepo`) |
 | `/oh-my-gjc:fable [대상 힌트]` | **Fable 5 적대적 안전 감사** — 돈·데이터가 걸린 코드의 불변식 깨기 (읽기 전용, 심각도+파일:라인, 스팟체크 검증, gate-briefing 브리핑). 실증: 3벤더 합의가 놓친 CRITICAL 발견 |
+| `/oh-my-gjc:branchflow-always [on\|off\|status]` | 브랜치 규율 — 이 레포에 상시 (레포 `AGENTS.md` + `docs/WORKFLOW.md`, 커밋 대상) |
 
 ### 모델 프리셋 3종 (2026-07 증거 리서치 기반)
 

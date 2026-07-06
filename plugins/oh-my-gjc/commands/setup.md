@@ -31,11 +31,11 @@ import하지 않아 등록조차 안 됨 — gjc 0.8.2 `main`/`dev` 실측, ACP 
 bash "${OMG_ROOT}bin/install-skill.sh" all
 ```
 
-- 스킬 3종 → `~/.gjc/agent/skills/<name>/SKILL.md` (트리거 자동활성화):
-  `easy-answer`, `gate-briefing`, `multivendor-presets`.
-- 커맨드 7종 → `~/.gjc/agent/commands/oh-my-gjc:<name>.md` (파일명이 곧 커맨드명이라
+- 스킬 4종 → `~/.gjc/agent/skills/<name>/SKILL.md` (트리거 자동활성화):
+  `easy-answer`, `gate-briefing`, `multivendor-presets`, `branch-flow`.
+- 커맨드 8종 → `~/.gjc/agent/commands/oh-my-gjc:<name>.md` (파일명이 곧 커맨드명이라
   `/oh-my-gjc:<name>` UX 유지): `setup`, `easy`, `gate`, `easy-always`, `gate-always`,
-  `presets`, `fable`.
+  `presets`, `fable`, `branchflow-always`.
 
 ⚠ **최초 부트스트랩은 셸에서** 돌려야 한다 — `/oh-my-gjc:setup` 자체가 설치 전엔 안 뜨는
 커맨드라 (닭-달걀): `bash ~/.gjc/plugins/cache/plugins/*oh-my-gjc*/bin/install-skill.sh all`.
@@ -74,8 +74,9 @@ bash "${OMG_ROOT}bin/install-skill.sh" all
 마지막으로 세마포어 토글을 소개한다 (실행은 사용자 몫):
 
 ```
-/oh-my-gjc:easy-always on    # 모든 세션에서 최종 답변을 쉬운 말로
-/oh-my-gjc:gate-always on    # 모든 승인 게이트에 비전문가 브리핑 자동 첨부
+/oh-my-gjc:easy-always on          # 모든 세션에서 최종 답변을 쉬운 말로
+/oh-my-gjc:gate-always on          # 모든 승인 게이트에 비전문가 브리핑 자동 첨부
+/oh-my-gjc:branchflow-always on    # 이 레포에 dev통합/main릴리즈 브랜치 규율 (레포별, 커밋 대상)
 ```
 
 ## 출력 형식
