@@ -37,10 +37,9 @@ model presets, and detects your environment to recommend the optional plugins be
 | Surface | What you get |
 |---|---|
 | `easy-answer` skill | Final answers in plain language (accuracy first — keeps the technical term when simplifying would distort) |
-| `gate-briefing` skill | Domain-blind approval-gate briefings for pending-approval moments: layman translation → approval boundary → evidence-backed checklist → verdict |
 | `multivendor-presets` skill | Evidence-based model presets merged into `~/.gjc/agent/models.yml`: `ideal` (daily default), `escalate-surgical` (Fable 5 relief pitcher), `monorepo` (every role ≥1M ctx) |
 | `branch-flow` skill | Per-repo git branch discipline (patina's dev-integration / main-release model): work branches off `dev` → PR into `dev` → explicit release `dev`→`main`; parallel via worktrees; ships as the repo's committed `AGENTS.md` block + `docs/WORKFLOW.md` |
-| Toggles | `/oh-my-gjc:easy`·`gate` (this session) / `easy-always`·`gate-always [on\|off\|status]` (every session — user-global `~/.gjc/agent/SYSTEM.md` marker block, the only injected user-global surface on gjc 0.8.2) / `branchflow-always [on\|off\|status]` (per-repo — committed repo `AGENTS.md` block) |
+| Toggles | `/oh-my-gjc:easy` (this session) / `easy-always [on\|off\|status]` (every session — user-global `~/.gjc/agent/SYSTEM.md` marker block, the only injected user-global surface on gjc 0.8.2) / `branchflow-always [on\|off\|status]` (per-repo — committed repo `AGENTS.md` block) |
 | `/oh-my-gjc:fable` | **Fable 5 adversarial safety audit** of money/data-critical code — invariant-breaking, read-only, severity-rated findings with spot-check verification. Proven to catch CRITICALs a 3-vendor consensus plan missed |
 | `/oh-my-gjc:setup` | Idempotent setup + environment detection → recommends optional plugins |
 
@@ -103,6 +102,33 @@ by name, without touching your other profiles.
   `gjc --mpreset ideal` (add `--default` to pin it). Each preset needs the matching
   vendor logins — gjc hard-blocks activation if credentials are missing.
 - Source: [`plugins/oh-my-gjc/skills/multivendor-presets/SKILL.md`](./plugins/oh-my-gjc/skills/multivendor-presets/SKILL.md)
+
+#### `branch-flow` — per-repo git branch discipline
+
+A **dev-integration / main-release** branch policy for a repo (patina's model). It
+doesn't tell gjc to commit — it defines *which branch and how* when you do commit,
+merge, or release. Work happens on short-lived branches off `dev`, merges into `dev`
+via PR, and only an explicit release moves `dev` → `main`. Unlike the other toggles
+(which live in your user-global `SYSTEM.md`), this one is **per-repo and committed**,
+so the policy ships with the repo.
+
+- **The model:** `feat|fix|chore|docs/<slug>` → PR into `dev` → explicit release PR
+  `dev` → `main`. `main` is release history (**never committed directly**); `dev` is
+  always at or ahead of `main`.
+- **Absolute rules:** never commit/push/merge without your say-so; no direct `main`
+  commit/push; releases (`dev`→`main`) only on your explicit instruction (no
+  auto-release); shared-branch pushes are fast-forward-only after `git fetch` (no
+  force-push, no touching others' changes).
+- **Parallel work:** two sessions never share a folder+branch — use `git worktree`
+  (one worktree + one branch per session), resolve conflicts once at the `dev` merge.
+- **Ships with the repo:** `/oh-my-gjc:branchflow-always on` writes a marker block
+  into the repo's own `AGENTS.md` and copies the full guide to the repo's
+  `docs/WORKFLOW.md` (with a "Repo specifics" box for default/integration branch and
+  version files). Enforcement is soft (agent-followed) by default; optional GitHub
+  server-side branch protection on request (no local git hooks).
+- **Turn it on:** `/oh-my-gjc:branchflow-always on` (per-repo, committed) — `off` /
+  `status` to check.
+- Source: [`plugins/oh-my-gjc/skills/branch-flow/SKILL.md`](./plugins/oh-my-gjc/skills/branch-flow/SKILL.md)
 
 ## Optional plugins
 
