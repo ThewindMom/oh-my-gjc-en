@@ -73,6 +73,37 @@ parentheses.
   (every session — writes a marker block into `~/.gjc/agent/SYSTEM.md`).
 - Source: [`plugins/oh-my-gjc/skills/easy-answer/SKILL.md`](./plugins/oh-my-gjc/skills/easy-answer/SKILL.md)
 
+#### `multivendor-presets` — evidence-based model profiles
+
+Installs ready-made **multi-vendor model profiles** into your
+`~/.gjc/agent/models.yml` — one profile spreads gjc's five roles
+(default/executor/planner/architect/critic) across different vendors on purpose
+(e.g. one vendor writes code, another reviews it, a third is the independent gate).
+gjc plugin manifests can't inject profiles, so this skill merges them in for you,
+by name, without touching your other profiles.
+
+- **The three presets:**
+  - `ideal` (daily default) — default=Opus:xhigh, executor=Opus:max,
+    planner/architect=GPT-5.5:xhigh (cross-vendor code-lane review), critic=Grok
+    4.3:high (third-vendor independent gate).
+  - `escalate-surgical` (relief pitcher, not always-on) — executor=Fable 5:xhigh
+    only, for high-exploration hard debugging; return to `ideal` when done. ⚠ must
+    be `:xhigh`, not `:max` (Fable silently clamps `:max`).
+  - `monorepo` (huge codebases) — every role ≥1M context (excludes gpt-5.5's 272K);
+    critic=glm-5.2 (see the distillation-correlation caveat).
+- **Merge safety (never weakened):** name-scoped merge only — replace the same-named
+  block, else append under `profiles:`; never delete/modify other profiles or
+  top-level keys; back up to `.bak-<ts>` first; result must be valid YAML with the
+  target present or it rolls back (no partial save); preserves 2/6-space indentation,
+  `required_providers`/`model_mapping` structure, and original comments. Legacy
+  `ultimate`/`ultimate-f5` removal is the sole exception and needs your consent.
+- **Canonical source of truth:** the presets are defined in
+  [`plugins/oh-my-gjc/references/presets.yml`](./plugins/oh-my-gjc/references/presets.yml).
+- **Use it:** `/oh-my-gjc:presets` to merge, then activate a profile with
+  `gjc --mpreset ideal` (add `--default` to pin it). Each preset needs the matching
+  vendor logins — gjc hard-blocks activation if credentials are missing.
+- Source: [`plugins/oh-my-gjc/skills/multivendor-presets/SKILL.md`](./plugins/oh-my-gjc/skills/multivendor-presets/SKILL.md)
+
 ## Optional plugins
 
 Install on demand — `/oh-my-gjc:setup` recommends the ones your environment supports.
