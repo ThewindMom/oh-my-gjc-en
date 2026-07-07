@@ -111,6 +111,7 @@ gjc 쓰다가 로그에 남은 gjc 자체 버그를 긁어모은다. `~/.gjc/log
 - `codex-app-control` — Codex 데스크톱 앱 GUI를 CDP로 제어
 - `insane-review` — GPT-5.5 Pro 웹 코드 리뷰
 - `gjc-bugwatch` — gjc 자체 버그 수집
+- `tower` — TUI 에이전트 세션 함대를 관제탑 하나로 감시·전파·결정 큐(gjc team과 다름)
 
 ## 라이선스
 
