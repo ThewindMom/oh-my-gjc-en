@@ -14,23 +14,23 @@ curl -fsSL https://raw.githubusercontent.com/devswha/oh-my-gjc/main/install.sh |
 
 **② gjc 세션에서:**
 
-> Install oh-my-gjc by following https://raw.githubusercontent.com/devswha/oh-my-gjc/main/INSTALLATION.md — run the steps, verify, and report.
+```
+Install oh-my-gjc by following https://raw.githubusercontent.com/devswha/oh-my-gjc/main/INSTALLATION.md — run the steps, verify, and report.
+```
 
 새 gjc 세션 열면 끝(또는 `/move .`).
 
 <details>
 <summary>설치가 안되요</summary>
 
-원샷은 본체 + 옵션 플러그인 **전부**를 네이티브 설치까지 한 방에 깐다(oh-my-zsh처럼). 변형:
+본체만 깔거나 특정 옵션만 고르려면:
 
 ```
 curl -fsSL https://raw.githubusercontent.com/devswha/oh-my-gjc/main/install.sh | bash -s -- --core
 curl -fsSL https://raw.githubusercontent.com/devswha/oh-my-gjc/main/install.sh | bash -s -- tower insane-review
 ```
 
-첫 줄은 본체만(미니멀), 둘째 줄은 본체 + 특정 옵션만.
-
-**수동 설치 (원샷이 막힐 때).** gjc는 플러그인 속 스킬·명령을 세션에 안 불러온다 — 그래서 원샷이 대신 해주는 일은 이 셋:
+원샷이 막히면 이 셋을 수동으로 — 원샷이 대신 해주던 것:
 
 ```
 gjc plugin marketplace add devswha/oh-my-gjc
@@ -38,16 +38,14 @@ gjc plugin install oh-my-gjc@oh-my-gjc
 bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install-skill.sh 2>/dev/null | sort -V | tail -1)" all
 ```
 
-**옵션 플러그인 나중에 하나만 더.** 플러그인마다 ① 설치 ② 네이티브 한 줄(마켓플레이스 추가는 한 번 했으면 생략):
+옵션 하나만 더 추가하려면 `tower` 자리에 이름만 바꿔 ① 설치 ② 네이티브:
 
 ```
 gjc plugin install tower@oh-my-gjc
 bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___tower___*/bin/install-skill.sh 2>/dev/null | sort -V | tail -1)" all
 ```
 
-`tower` 자리에 플러그인 이름만 바꾸면 된다(`oh-my-gjc___<플러그인>___*`). 본체·옵션 같이 깔 때 순서 무관 — 각 네이티브 한 줄이 자기 폴더만 정확히 집는다(`*oh-my-gjc*` 같은 막연한 글롭 금지).
-
-**확인·마무리.** `/omg`로 뭐가 깔렸는지 본다. 모델 프리셋 병합·상시 모드는 원할 때만 `/omg:setup`(필수 아님). 커맨드는 `/omg:<name>`(구 `/oh-my-gjc:<name>`는 폐기 예정 별칭). 업그레이드 때마다 원샷 한 줄 다시.
+업그레이드 땐 원샷 한 줄 다시. 원리·글롭 규칙 등 기여자용 상세는 AGENTS.md 참조.
 
 </details>
 
