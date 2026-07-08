@@ -3,20 +3,20 @@
 **Gajae Code(gjc)의 oh-my 코어 플러그인.** 한 번 설치하면 UX 스킬·승인 게이트
 브리핑·멀티벤더 모델 프리셋·세마포어 토글·환경 감지 셋업이 전부 들어온다.
 무겁거나 전제조건이 있는 기능(codex 스위트, insane-review, gjc-bugwatch)은
-옵션 플러그인으로 분리돼 있고, `/oh-my-gjc:setup`이 환경을 보고 추천한다.
+옵션 플러그인으로 분리돼 있고, `/omg:setup`이 환경을 보고 추천한다.
 
 ## Quick Start
 
 ```
-/plugin marketplace add devswha/oh-my-gjc     # 최초 1회
-/plugin install oh-my-gjc@oh-my-gjc
+gjc plugin marketplace add devswha/oh-my-gjc     # 최초 1회
+gjc plugin install oh-my-gjc@oh-my-gjc
 
 # ⚠ gjc는 마켓플레이스 플러그인의 커맨드·스킬을 세션에 로드하지 않는다.
 #    네이티브 설치 1회 (셸에서 — setup 커맨드 자체가 아직 안 뜨므로):
 bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install-skill.sh 2>/dev/null | sort -V | tail -1)" all
 
 # 새 gjc 세션을 연 뒤 (또는 /move .):
-/oh-my-gjc:setup
+/omg:setup
 ```
 
 ## 들어있는 것
@@ -34,14 +34,17 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install
 
 | 커맨드 | 기능 |
 |---|---|
-| `/oh-my-gjc:setup` | 셋업 + 환경 감지 → 옵션 플러그인 추천 (멱등) |
-| `/oh-my-gjc:easy [on\|off]` | 쉬운 답변 — 이번 세션 토글 |
-| `/oh-my-gjc:easy-always [on\|off\|status]` | 쉬운 답변 — 전 세션 상시 (SYSTEM.md 마커 세마포어) |
-| `/oh-my-gjc:gate [on\|off]` | 게이트 브리핑 — 이번 세션 토글 |
-| `/oh-my-gjc:gate-always [on\|off\|status]` | 게이트 브리핑 — 전 세션 상시 |
-| `/oh-my-gjc:presets [이름\|all]` | 모델 프리셋 병합 (`ideal` / `escalate-surgical` / `monorepo`) |
-| `/oh-my-gjc:fable [대상 힌트]` | **Fable 5 적대적 안전 감사** — 돈·데이터가 걸린 코드의 불변식 깨기 (읽기 전용, 심각도+파일:라인, 스팟체크 검증, gate-briefing 브리핑). 실증: 3벤더 합의가 놓친 CRITICAL 발견 |
-| `/oh-my-gjc:branchflow-always [on\|off\|status]` | 브랜치 규율 — 이 레포에 상시 (레포 `AGENTS.md` + `docs/WORKFLOW.md`, 커밋 대상) |
+| `/omg` | 카탈로그 — 설치된 omg 스킬·커맨드·옵션 플러그인 한눈에 |
+| `/omg:setup` | 셋업 + 환경 감지 → 옵션 플러그인 추천 (멱등) |
+| `/omg:easy [on\|off]` | 쉬운 답변 — 이번 세션 토글 |
+| `/omg:easy-always [on\|off\|status]` | 쉬운 답변 — 전 세션 상시 (SYSTEM.md 마커 세마포어) |
+| `/omg:gate [on\|off]` | 게이트 브리핑 — 이번 세션 토글 |
+| `/omg:gate-always [on\|off\|status]` | 게이트 브리핑 — 전 세션 상시 |
+| `/omg:presets [이름\|all]` | 모델 프리셋 병합 (`ideal` / `escalate-surgical` / `monorepo` / `reviewer`) |
+| `/omg:fable [대상 힌트]` | **Fable 5 적대적 안전 감사** — 돈·데이터가 걸린 코드의 불변식 깨기 (읽기 전용, 심각도+파일:라인, 스팟체크 검증, gate-briefing 브리핑). 실증: 3벤더 합의가 놓친 CRITICAL 발견 |
+| `/omg:branchflow-always [on\|off\|status]` | 브랜치 규율 — 이 레포에 상시 (레포 `AGENTS.md` + `docs/WORKFLOW.md`, 커밋 대상) |
+
+> 프리픽스 정본은 `/omg:<name>`. 구 `/oh-my-gjc:<name>`는 마이그레이션 별칭으로 유지되나 폐기 예정.
 
 ### 모델 프리셋 3종 (2026-07 증거 리서치 기반)
 
@@ -67,8 +70,8 @@ AGENTS.md 세대 마커는 자동 마이그레이션. 주의: 프로젝트 `.gjc
 ## 마이그레이션 (my-workflows / multivendor-presets 사용자)
 
 이 플러그인은 구 `my-workflows` v0.3 + `multivendor-presets` v0.2를 흡수했다.
-`/oh-my-gjc:setup`이 구버전 잔재를 감지해 정리를 제안한다:
-`/plugin uninstall my-workflows@oh-my-gjc`, `/plugin uninstall multivendor-presets@oh-my-gjc`.
+`/omg:setup`이 구버전 잔재를 감지해 정리를 제안한다:
+`gjc plugin uninstall my-workflows@oh-my-gjc`, `gjc plugin uninstall multivendor-presets@oh-my-gjc` (셸에서).
 
 ## Non-Goals
 

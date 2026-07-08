@@ -15,7 +15,7 @@ TOWER_ROOT="${P:+$(dirname "$(dirname "$P")")/}"
 [ -z "$TOWER_ROOT" ] && [ -d plugins/tower ] && TOWER_ROOT="plugins/tower/"
 echo "TOWER_ROOT=$TOWER_ROOT"
 ```
-비면 `/plugin install tower@oh-my-gjc`를 안내하고 멈춘다.
+비면 `gjc plugin install tower@oh-my-gjc`(셸)를 안내하고 멈춘다.
 
 ## Step 1 — 네이티브 스킬 + 커맨드 설치 (필수)
 

@@ -18,8 +18,8 @@ gjc가 **로컬에 설치된 Codex CLI**(`codex exec`)를 호출해 Codex에게 
 ## 설치
 
 ```
-/plugin marketplace add devswha/oh-my-gjc
-/plugin install codex-cli-control@oh-my-gjc
+gjc plugin marketplace add devswha/oh-my-gjc
+gjc plugin install codex-cli-control@oh-my-gjc
 ```
 
 ## 사용

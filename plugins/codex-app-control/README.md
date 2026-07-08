@@ -15,11 +15,11 @@ App 내부 엔진은 Codex `app-server`이고, 이 플러그인은 그 위의 **
 
 ## 설치
 
-`gjc` 인터랙티브 세션 안에서 `/plugin`으로 관리한다(셸 `gjc plugin install`은 마켓플레이스 플러그인에 동작하지 않음).
+셸 CLI로 설치한다(플러그인 관리는 gjc 셸 CLI 전용 — `/plugin` 슬래시는 gjc 세션에 없다).
 
 ```
-/plugin marketplace add devswha/oh-my-gjc
-/plugin install codex-app-control@oh-my-gjc
+gjc plugin marketplace add devswha/oh-my-gjc
+gjc plugin install codex-app-control@oh-my-gjc
 ```
 
 ## 사용 (end-to-end)

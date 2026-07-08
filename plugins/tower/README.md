@@ -22,8 +22,8 @@ everything runtime-specific is configurable.
 ## Install
 
 ```
-/plugin marketplace add devswha/oh-my-gjc
-/plugin install tower@oh-my-gjc
+gjc plugin marketplace add devswha/oh-my-gjc
+gjc plugin install tower@oh-my-gjc
 ```
 
 gjc does not load plugin skills/commands into a session, so do a one-time NATIVE

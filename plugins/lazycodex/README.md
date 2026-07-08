@@ -15,8 +15,8 @@ LazyCodex를 설치하면 `~/.codex`에 deep-work 스킬(`ulw-plan`/`start-work`
 ## 설치(플러그인) & 사용
 
 ```
-/plugin marketplace add devswha/oh-my-gjc
-/plugin install lazycodex@oh-my-gjc
+gjc plugin marketplace add devswha/oh-my-gjc
+gjc plugin install lazycodex@oh-my-gjc
 ```
 
 ### 1) LazyCodex 셋업

@@ -19,7 +19,7 @@ OMG_ROOT="${P:+$(dirname "$(dirname "$P")")/}"
 [ -z "$OMG_ROOT" ] && [ -d plugins/oh-my-gjc ] && OMG_ROOT="plugins/oh-my-gjc/"
 echo "OMG_ROOT=$OMG_ROOT"
 ```
-비면 `/plugin install oh-my-gjc@oh-my-gjc`를 안내하고 멈춘다.
+비면 `gjc plugin install oh-my-gjc@oh-my-gjc`(셸)를 안내하고 멈춘다.
 
 ## Step 1 — 네이티브 스킬 + 커맨드 설치 (필수)
 
@@ -48,8 +48,8 @@ bash "${OMG_ROOT}bin/install-skill.sh" all
   `~/.gjc/agent/AGENTS.md`의 `my-workflows:*` 마커와 v0.3.0 세대 `oh-my-gjc:*` 마커는
   둘 다 **죽은 표면**(gjc가 user 레벨 AGENTS.md를 주입하지 않음 — 0.8.2 실증)이라
   `/oh-my-gjc:easy-always`·`gate-always`가 `~/.gjc/agent/SYSTEM.md`로 자동 마이그레이션한다.
-- 구 플러그인이 설치돼 있으면 제거를 제안: `/plugin uninstall my-workflows@oh-my-gjc`,
-  `/plugin uninstall multivendor-presets@oh-my-gjc` (동의 후에만).
+- 구 플러그인이 설치돼 있으면 제거를 제안(셸): `gjc plugin uninstall my-workflows@oh-my-gjc`,
+  `gjc plugin uninstall multivendor-presets@oh-my-gjc` (동의 후에만).
 
 ## Step 3 — 프리셋 병합 제안
 
@@ -59,7 +59,7 @@ bash "${OMG_ROOT}bin/install-skill.sh" all
 
 ## Step 4 — 환경 감지 → 옵션 플러그인 추천
 
-각 항목을 감지해 **해당되는 것만** 추천한다 (설치는 사용자 동의 후 `/plugin install`):
+각 항목을 감지해 **해당되는 것만** 추천한다 (설치는 사용자 동의 후 셸 `gjc plugin install`):
 
 | 감지 | 명령 | 추천 플러그인 |
 |---|---|---|

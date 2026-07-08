@@ -75,20 +75,28 @@ uninstall_skill() { # $1=name $2=scope
 }
 
 install_command() { # $1=name $2=scope
-  local src dir dest
+  local src dir
   src="$PLUGIN_ROOT/commands/$1.md"
   [ -f "$src" ] || { echo "❌ command not found: $src"; return 1; }
   dir="$(commands_dir "$2")"
   mkdir -p "$dir"
-  dest="$dir/${PLUGIN_NAME}:$1.md"
-  cp -f "$src" "$dest"
-  echo "✓ command ($2): $dest  → /${PLUGIN_NAME}:$1"
+  if [ "$1" = "omg" ]; then
+    # catalog command → bare /omg (omz-style single entrypoint)
+    cp -f "$src" "$dir/omg.md"
+    echo "✓ command ($2): $dir/omg.md  → /omg"
+    return 0
+  fi
+  # primary: omg:<name>  ·  deprecated alias: oh-my-gjc:<name> (kept during migration)
+  cp -f "$src" "$dir/omg:$1.md"
+  cp -f "$src" "$dir/${PLUGIN_NAME}:$1.md"
+  echo "✓ command ($2): $dir/omg:$1.md  → /omg:$1  (alias /${PLUGIN_NAME}:$1)"
 }
 uninstall_command() { # $1=name $2=scope
-  local dest
-  dest="$(commands_dir "$2")/${PLUGIN_NAME}:$1.md"
-  rm -f "$dest"
-  echo "✓ removed command: $dest"
+  local dir
+  dir="$(commands_dir "$2")"
+  if [ "$1" = "omg" ]; then rm -f "$dir/omg.md"; echo "✓ removed command: $dir/omg.md"; return 0; fi
+  rm -f "$dir/omg:$1.md" "$dir/${PLUGIN_NAME}:$1.md"
+  echo "✓ removed command: $dir/omg:$1.md (+ alias)"
 }
 
 # First arg may be "all", a skill/command name, or a mode.
@@ -123,7 +131,7 @@ case "$mode" in
       if [ -f "$PLUGIN_ROOT/commands/$target.md" ]; then install_command "$target" "$mode"; fi
     fi
     if [ "$mode" = "user" ]; then
-      echo "  → skills auto-activate by trigger words; commands are /${PLUGIN_NAME}:<name>."
+      echo "  → skills auto-activate by trigger words; commands are /omg:<name> (alias /${PLUGIN_NAME}:<name>). Type /omg for the catalog."
       echo "  → open a NEW gjc session (or run /move .) to load newly installed commands. Re-run after plugin upgrades."
     else
       echo "  → installed for this repo. A new gjc session in this dir will pick them up."

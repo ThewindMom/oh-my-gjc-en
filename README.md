@@ -7,8 +7,8 @@
 ## 1. 설치
 
 ```
-/plugin marketplace add devswha/oh-my-gjc
-/plugin install oh-my-gjc@oh-my-gjc
+gjc plugin marketplace add devswha/oh-my-gjc
+gjc plugin install oh-my-gjc@oh-my-gjc
 ```
 
 gjc는 플러그인 속 스킬·명령을 세션에 안 불러온다. 그러니 아래 한 줄을
@@ -21,17 +21,33 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install
 그다음 gjc 세션 새로 열고(또는 `/move .`) 이거 실행하면 설정 마무리된다.
 
 ```
-/oh-my-gjc:setup
+/omg:setup
 ```
 
 플러그인 업그레이드할 때마다 위 설치 한 줄 다시 박아라.
+
+커맨드는 `/omg:<name>` (예: `/omg:setup`), 카탈로그는 `/omg` 한 방. 구 `/oh-my-gjc:<name>`는
+당분간 **별칭으로 유지되나 폐기 예정**이다.
+
+### 원샷 설치 (한 줄)
+
+위 과정을 한 줄로. 마켓플레이스 추가 + 본체 설치 + 네이티브 설치까지 셸에서 전부:
+
+```
+curl -fsSL https://raw.githubusercontent.com/devswha/oh-my-gjc/main/install.sh | bash
+# 옵션 플러그인도 같이: … | bash -s -- tower insane-review
+```
+
+에이전트한테 시키려면 — 아무 코딩 에이전트에 아래 한 문장만 붙여넣으면 알아서 깐다:
+
+> Install oh-my-gjc by following https://raw.githubusercontent.com/devswha/oh-my-gjc/main/INSTALLATION.md — run the steps, verify, and report.
 
 ### 옵션 플러그인 설치 (tower 등) — 각자 따로
 
 옵션 플러그인은 **플러그인마다** ① 설치 ② 네이티브 한 줄이 따로 필요하다(gjc는 플러그인별로 스킬·명령을 안 불러오므로). 마켓플레이스 추가는 위에서 한 번 했으면 생략. 예: tower.
 
 ```
-/plugin install tower@oh-my-gjc
+gjc plugin install tower@oh-my-gjc
 bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___tower___*/bin/install-skill.sh 2>/dev/null | sort -V | tail -1)" all
 ```
 
@@ -65,7 +81,7 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___tower___*/bin/install-ski
 
 - 형식: ① 한 줄 결론 → ② 쉬운 설명 → ③ (필요할 때만) 자세히 — 명령어·경로는 여기로 던진다.
 - 위험·주의는 절대 안 뺀다. 쉬운 말로 꼭 알려준다.
-- 켜기: `/oh-my-gjc:easy` (이번만) / `/oh-my-gjc:easy-always on` (항상)
+- 켜기: `/omg:easy` (이번만) / `/omg:easy-always on` (항상)
 - 원문: [`plugins/oh-my-gjc/skills/easy-answer/SKILL.md`](./plugins/oh-my-gjc/skills/easy-answer/SKILL.md)
 
 ### `multivendor-presets` — 역할별 모델 묶음 프리셋
@@ -78,7 +94,7 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___tower___*/bin/install-ski
 - `monorepo` — 개큰 코드베이스용. 모든 역할이 넓은 문맥 씹는다.
 - `reviewer` — 리뷰/감사 전용 조합(코드 저작 패밀리와 다른 패밀리가 판정). extragoal 외부 리뷰 게이트에서 씀.
 - 기존 설정은 안 건드린다. 해당 프리셋만 꽂는다(넣기 전 백업한다).
-- 쓰기: `/oh-my-gjc:presets`로 꽂고 → `gjc --mpreset ideal`로 켠다. 프리셋마다 해당 회사 로그인 필요하다.
+- 쓰기: `/omg:presets`로 꽂고 → `gjc --mpreset ideal`로 켠다. 프리셋마다 해당 회사 로그인 필요하다.
 - 원문: [`plugins/oh-my-gjc/skills/multivendor-presets/SKILL.md`](./plugins/oh-my-gjc/skills/multivendor-presets/SKILL.md)
 
 ### `extragoal` — 외부 최종 리뷰 게이트
@@ -87,9 +103,9 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___tower___*/bin/install-ski
 검토하는 게 아니라, 실제 PR 리뷰처럼 무공유·교차패밀리로 판정 → 승인/변경요청 verdict → 발견 정리 →
 (최대 2라운드) 고치고 재서명 → 기계적 머지.
 
-- 리뷰어 레인: 네이티브 교차세션 gjc(기본) / `/oh-my-gjc:fable` / `insane-review`(GPT-5.5 Pro 웹) — AND 게이트로 합침.
+- 리뷰어 레인: 네이티브 교차세션 gjc(기본) / `/omg:fable` / `insane-review`(GPT-5.5 Pro 웹) — AND 게이트로 합침.
 - fail-closed: verdict 누락·malformed·timeout은 절대 승인으로 안 친다. 시크릿 스캔은 번들이 기기 밖 나가는 레인에서 비타협.
-- 켜기: `reviewer` 프리셋 흡수(`/oh-my-gjc:presets`) 후 스킬 트리거로 활성. 원문: [`plugins/oh-my-gjc/skills/extragoal/SKILL.md`](./plugins/oh-my-gjc/skills/extragoal/SKILL.md)
+- 켜기: `reviewer` 프리셋 흡수(`/omg:presets`) 후 스킬 트리거로 활성. 원문: [`plugins/oh-my-gjc/skills/extragoal/SKILL.md`](./plugins/oh-my-gjc/skills/extragoal/SKILL.md)
 
 ### `branch-flow` — 저장소 브랜치 규칙
 
@@ -98,10 +114,10 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___tower___*/bin/install-ski
 
 - 흐름: 작업 브랜치 → `dev`에 합치기 → (명시적 지시 있을 때만) `dev`를 `main`으로 릴리스.
 - 사용자 허락 없이 저장·합치기·릴리스 안 한다. 남의 작업은 안 건드린다.
-- 켜기: `/oh-my-gjc:branchflow-always on` (`off` / `status`로 확인)
+- 켜기: `/omg:branchflow-always on` (`off` / `status`로 확인)
 - 원문: [`plugins/oh-my-gjc/skills/branch-flow/SKILL.md`](./plugins/oh-my-gjc/skills/branch-flow/SKILL.md)
 
-### `/oh-my-gjc:fable` — 안전-크리티컬 코드 적대적 감사
+### `/omg:fable` — 안전-크리티컬 코드 적대적 감사
 
 돈·데이터·보안 걸린 코드를 Fable 5 모델로 적대적 감사한다. 설계 리뷰가 아니라
 "이 안전장치들이 **동시에** 터지는 시나리오가 있나"를 판다. 읽기 전용, 심각도 +
@@ -110,7 +126,7 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___tower___*/bin/install-ski
 - 스코프는 파일 3~6개만. 넘으면 감사가 얕아진다.
 - 보고서 상위 발견은 실코드랑 대조(스팟체크)한 뒤에만 브리핑한다. 억지 결함 안 만든다.
 - `:max` 금지 — Fable은 조용히 `xhigh`로 깎인다. Fable이 거부하면 `opus-4-8`로 대체한다.
-- 쓰기: `/oh-my-gjc:fable "주문 경로와 손절 로직"`
+- 쓰기: `/omg:fable "주문 경로와 손절 로직"`
 - 원문: [`plugins/oh-my-gjc/commands/fable.md`](./plugins/oh-my-gjc/commands/fable.md)
 
 ### `insane-review` — GPT-5.5 Pro 웹 리뷰 (별도 플러그인)
@@ -119,7 +135,7 @@ GPT-5.5 Pro는 웹 구독에서만 되고 API가 없다. 이 스킬이 구독 Ch
 자동화해서 Pro를 gjc 안으로 끌어온다. API 비용 0. 코드를 통째로 넣는 게 아니라
 관련 타겟만 골라 repomix로 묶어 넣고 리뷰를 회수한다.
 
-- 별도 플러그인이다: `/plugin install insane-review@oh-my-gjc` 후 네이티브 설치 필요.
+- 별도 플러그인이다: `gjc plugin install insane-review@oh-my-gjc` (셸에서) 후 네이티브 설치 필요.
 - 크로미움 브라우저를 전용 프로필로 디버그포트(9222)에 띄우고, chatgpt.com 로그인 + GPT-5.5 Pro 선택해야 한다. 로그인은 자동 안 된다.
 - 결과는 프로젝트의 `.insane-review/`에 저장한다.
 - 원문: [`plugins/insane-review/skills/insane-review/SKILL.md`](./plugins/insane-review/skills/insane-review/SKILL.md)
@@ -143,7 +159,7 @@ gjc 쓰다가 로그에 남은 gjc 자체 버그를 긁어모은다. `~/.gjc/log
 감시기가 각 세션의 완료(작업 중→입력 대기)·블록을 잡고, 사람에겐 **결정이 필요한 것만**
 큐로 모아 온다. 관측은 기계가, 판정은 사람이. (하루 7세션 굴리다 나온 도구.)
 
-- 별도 플러그인이다: `/plugin install tower@oh-my-gjc` 후 네이티브 설치 필요.
+- 별도 플러그인이다: `gjc plugin install tower@oh-my-gjc` (셸에서) 후 네이티브 설치 필요.
 - 세션에 메시지를 tmux로 주입할 때 TUI 함정 3종(물결·괄호대문자·실존 경로 토큰)을 방어한다.
 - 감시·순찰은 세션 귀속 — 관제탑 세션 재개 시 재등록한다. 빈 순찰은 무보고.
 - gjc `team`(작업 워커 조율)과 다르다 — team은 일 분배, tower는 상주 관측 + 사람 결정 큐.
