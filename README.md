@@ -4,28 +4,7 @@
 
 📖 **공식 문서: https://gajae-code-docs.vercel.app** (시작하기·가이드·워크플로·레퍼런스)
 
-## 하이라이트 — `tower` (관제탑)
-
-에이전트 세션 여러 개를 띄우는 건 이제 쉽다. 어려운 건 사람 쪽이다. 사람의 주의는
-싱글스레드라, 세션 N개를 동시에 지켜보려는 순간 컨텍스트 스위칭 비용에 무너진다.
-"쟤 끝났나, 쟤 막혔나"를 계속 폴링하는 건 사람이 제일 못하는 일이다.
-
-`tower`는 그 관측을 대신한다. 감시기가 각 세션의 완료(작업 중→입력 대기)와 블록을
-잡고, 사람에게는 **결정이 필요한 것만** 큐로 모아 온다. 관측은 기계가, 판정은 사람이 —
-역할을 이렇게 가른다. 하나의 관제탑 세션이 함대를 지켜보고 방향을 주입하며, 사람이
-처리할 결정만 쌓아 보고한다. 빈 순찰은 아무 말도 하지 않는다(변화 없으면 무보고).
-
-실제로 하루 7세션을 굴리다 나온 도구다. gjc의 `team`(작업 워커 조율)과는 다르다 —
-`team`은 일을 나눠 주고, `tower`는 이미 돌고 있는 세션들을 관측하고 사람 결정을 중개한다.
-
-```
-/plugin marketplace add devswha/oh-my-gjc
-/plugin install tower@oh-my-gjc
-```
-
-자세한 사용법·설정·안전 경계는 [`plugins/tower/README.md`](./plugins/tower/README.md).
-
-## 설치 방법
+## 1. 설치
 
 ```
 /plugin marketplace add devswha/oh-my-gjc
@@ -58,7 +37,25 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___tower___*/bin/install-ski
 
 다른 플러그인은 `tower` 자리에 그 플러그인 이름만 바꾸면 된다(`oh-my-gjc___<플러그인>___*`). 본체와 옵션을 같이 깔 때 **순서는 무관**하다 — 각 네이티브 한 줄이 자기 플러그인 폴더만 정확히 집으므로(마켓플레이스명이 곧 플러그인명이라 `*oh-my-gjc*` 같은 막연한 글롭을 쓰면 안 된다).
 
-## 스킬 하나씩 보기
+## 2. 있는것
+
+**코어 (`oh-my-gjc`)**
+- `easy-answer` — 쉬운 말로 답
+- `gate-briefing` — 승인 게이트 비전문가 브리핑
+- `multivendor-presets` — 역할별 모델 프리셋
+- `branch-flow` — dev 통합 / main 릴리스 브랜치 규칙
+- `extragoal` — 외부 최종 리뷰 게이트(무공유·교차패밀리 리뷰 후 머지)
+
+**옵션 플러그인 (필요할 때 따로 설치)**
+- `codex-cli-control` — 로컬 Codex CLI에 읽기 전용 질문 위임
+- `codex-deepwork` — Codex에 파일 쓰는 자동 작업 위임
+- `lazycodex` — LazyCodex 하네스 설치·관리 + ultrawork 실행
+- `codex-app-control` — Codex 데스크톱 앱 GUI를 CDP로 제어
+- `insane-review` — GPT-5.5 Pro 웹 코드 리뷰
+- `gjc-bugwatch` — gjc 자체 버그 수집
+- `tower` — TUI 에이전트 세션 함대를 관제탑 하나로 감시·전파·결정 큐(gjc team과 다름)
+
+## 3. 자세히
 
 ### `easy-answer` — 쉬운 말로 답한다
 
@@ -88,7 +85,7 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___tower___*/bin/install-ski
 
 완성한 작업을 머지 전에 **작업 과정을 안 본 다른 모델**이 완성 diff만 보고 재심한다. 자기 세션 안에서
 검토하는 게 아니라, 실제 PR 리뷰처럼 무공유·교차패밀리로 판정 → 승인/변경요청 verdict → 발견 정리 →
-(최대 2라운드) 고치고 재서명 → 기계적 머지. g1 브리지 4라운드 리뷰가 바로 이 패턴이다.
+(최대 2라운드) 고치고 재서명 → 기계적 머지.
 
 - 리뷰어 레인: 네이티브 교차세션 gjc(기본) / `/oh-my-gjc:fable` / `insane-review`(GPT-5.5 Pro 웹) — AND 게이트로 합침.
 - fail-closed: verdict 누락·malformed·timeout은 절대 승인으로 안 친다. 시크릿 스캔은 번들이 기기 밖 나가는 레인에서 비타협.
@@ -141,33 +138,16 @@ gjc 쓰다가 로그에 남은 gjc 자체 버그를 긁어모은다. `~/.gjc/log
 
 ### `tower` — 관제탑 (별도 플러그인)
 
-TUI 에이전트(gjc) 세션 여러 개를 관제탑 하나로 감시·전파·중재한다. 감시기가 각 세션의
-완료(작업 중→입력 대기)·블록을 잡고, 사람에겐 결정이 필요한 것만 큐로 모아 보고한다.
-관측은 기계가, 판정은 사람이.
+세션 여러 개 띄우는 건 쉽다. 어려운 건 사람 쪽이다 — 주의는 싱글스레드라 N개를
+동시에 지켜보려는 순간 컨텍스트 스위칭으로 무너진다. `tower`가 그 관측을 대신한다:
+감시기가 각 세션의 완료(작업 중→입력 대기)·블록을 잡고, 사람에겐 **결정이 필요한 것만**
+큐로 모아 온다. 관측은 기계가, 판정은 사람이. (하루 7세션 굴리다 나온 도구.)
 
 - 별도 플러그인이다: `/plugin install tower@oh-my-gjc` 후 네이티브 설치 필요.
 - 세션에 메시지를 tmux로 주입할 때 TUI 함정 3종(물결·괄호대문자·실존 경로 토큰)을 방어한다.
 - 감시·순찰은 세션 귀속 — 관제탑 세션 재개 시 재등록한다. 빈 순찰은 무보고.
 - gjc `team`(작업 워커 조율)과 다르다 — team은 일 분배, tower는 상주 관측 + 사람 결정 큐.
 - 원문: [`plugins/tower/skills/tower/SKILL.md`](./plugins/tower/skills/tower/SKILL.md)
-
-## 전체 스킬 목록
-
-**코어 (`oh-my-gjc`)**
-- `easy-answer` — 쉬운 말로 답
-- `gate-briefing` — 승인 게이트 비전문가 브리핑
-- `multivendor-presets` — 역할별 모델 프리셋
-- `branch-flow` — dev 통합 / main 릴리스 브랜치 규칙
-- `extragoal` — 외부 최종 리뷰 게이트(무공유·교차패밀리 리뷰 후 머지)
-
-**옵션 플러그인 (필요할 때 따로 설치)**
-- `codex-cli-control` — 로컬 Codex CLI에 읽기 전용 질문 위임
-- `codex-deepwork` — Codex에 파일 쓰는 자동 작업 위임
-- `lazycodex` — LazyCodex 하네스 설치·관리 + ultrawork 실행
-- `codex-app-control` — Codex 데스크톱 앱 GUI를 CDP로 제어
-- `insane-review` — GPT-5.5 Pro 웹 코드 리뷰
-- `gjc-bugwatch` — gjc 자체 버그 수집
-- `tower` — TUI 에이전트 세션 함대를 관제탑 하나로 감시·전파·결정 큐(gjc team과 다름)
 
 ## 라이선스
 
