@@ -63,3 +63,19 @@ profiles:
       planner:   google-antigravity/gemini-3.1-pro-low:high     # 1M
       architect: anthropic/claude-opus-4-8:high                 # 1M 멀티턴 누적·실효검색 최상
       critic:    opencode-go/glm-5.2                            # 1M. ⚠증류-상관성(GLM=Claude 증류 → 실패 표면 공유) — ctx 감수 가능하면 gpt-5.4:high 우선
+
+  # ── reviewer: 리뷰/감사 스탠스 — 저작 모드(executor 리드)를 반전. architect/critic이 리드,
+  #   executor는 지원(repro PoC·실패 테스트). 일반화 규칙: 리뷰 모델 패밀리 ≠ 코드를 저작한 패밀리.
+  #   용도: 교차세션 최종 리뷰 게이트(extragoal 스킬) — 저작 세션이 무공유 리뷰어 서브세션을 띄워
+  #   완성 diff를 저작 컨텍스트 없이 판정. 상류 정본(docs/multi-vendor-profiles.md) 흡수.
+  #   ⚠ 원샷 게이트(`gjc -p --no-session --model <cross-family> --tools read,search,find`)는
+  #   default 모델이 verdict 저자 — task 미허용이라 critic/architect 좌석은 안 탐. 이 프로파일은
+  #   role 위임이 실제로 일어나는 "인터랙티브 리뷰 세션"용. 셀렉터 실호출 검증 2026-07-08(전부 rc=0).
+  reviewer:
+    required_providers: [anthropic, openai-codex, google-antigravity]
+    model_mapping:
+      default:   anthropic/claude-opus-4-8:high                 # 집계자 절제 — 원 리뷰어 verdict 원문 보존
+      executor:  openai-codex/gpt-5.5:high                      # 지원 — repro PoC·실패 테스트·하네스
+      planner:   google-antigravity/gemini-3.1-pro-low:high     # 리뷰 체크리스트·감사 스코핑
+      architect: anthropic/claude-opus-4-8:high                 # 리드1 — 주 코드리뷰 판정(실효 롱컨텍스트)
+      critic:    openai-codex/gpt-5.5:high                      # 리드2 — 머지 게이트, Claude 저작 코드에 교차패밀리
