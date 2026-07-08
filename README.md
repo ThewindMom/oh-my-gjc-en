@@ -51,14 +51,13 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___tower___*/bin/install-ski
 
 ## 2. 있는것
 
-**코어 (`oh-my-gjc`)**
+원샷이 아래를 전부 깔아준다 — `/omg`로 보는 카탈로그와 같은 목록:
+
 - `easy-answer` — 쉬운 말로 답 · 상시 온·오프 가능(`/omg:easy-always`)
 - `gate-briefing` — 승인 게이트 비전문가 브리핑 · 상시 온·오프 가능(`/omg:gate-always`)
 - `multivendor-presets` — 역할별 모델 프리셋
 - `branch-flow` — dev 통합 / main 릴리스 브랜치 규칙 · 상시 온·오프 가능(`/omg:branchflow-always`)
 - `extragoal` — 외부 최종 리뷰 게이트(무공유·교차패밀리 리뷰 후 머지)
-
-**옵션 플러그인 (원샷이 같이 깔아줌 — 단, 각자 전제 도구가 있어야 동작)**
 - `codex-cli-control` — 로컬 Codex CLI에 읽기 전용 질문 위임 · **Codex CLI 보유자용**
 - `codex-deepwork` — Codex에 파일 쓰는 자동 작업 위임 · **Codex CLI 보유자용**
 - `lazycodex` — LazyCodex 하네스 설치·관리 + ultrawork 실행 · **Codex CLI + Node/npx 필요**
