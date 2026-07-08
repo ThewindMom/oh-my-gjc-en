@@ -6,18 +6,19 @@
 
 ## 1. 설치
 
-한 줄이면 끝 — **원샷(정본).** 마켓플레이스 추가 + 본체 설치 + 네이티브 설치까지 셸에서 전부:
+한 줄이면 끝 — **원샷(정본).** 본체 + 옵션 플러그인 **전부**를 네이티브 설치까지 한 방에 (oh-my-zsh처럼 다 깔아줌, 고민 불필요):
 
 ```
 curl -fsSL https://raw.githubusercontent.com/devswha/oh-my-gjc/main/install.sh | bash
-# 옵션 플러그인도 같이: … | bash -s -- tower insane-review
+# 미니멀(본체만): … | bash -s -- --core   ·   특정 옵션만: … | bash -s -- tower insane-review
 ```
 
 **에이전트한테 시키려면** — 아무 코딩 에이전트에 아래 한 문장만 붙여넣으면 알아서 깐다:
 
 > Install oh-my-gjc by following https://raw.githubusercontent.com/devswha/oh-my-gjc/main/INSTALLATION.md — run the steps, verify, and report.
 
-설치되면 gjc 세션 새로 열고(또는 `/move .`) `/omg`로 카탈로그, `/omg:setup`으로 마무리.
+설치되면 **gjc 세션 새로 열면 끝**(또는 `/move .`). `/omg`로 뭐가 깔렸는지 본다.
+(모델 프리셋 병합·상시 모드는 원할 때만 `/omg:setup` — 필수 아님.)
 커맨드는 `/omg:<name>` (구 `/oh-my-gjc:<name>`는 폐기 예정 별칭). 업그레이드 때마다 원샷 한 줄 다시.
 
 ### 수동 설치 (폴백 — 원샷이 막힐 때 / 무슨 일이 일어나는지)
@@ -34,7 +35,7 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install
 
 ### 옵션 플러그인 설치 (tower 등) — 각자 따로
 
-옵션 플러그인은 **플러그인마다** ① 설치 ② 네이티브 한 줄이 따로 필요하다(gjc는 플러그인별로 스킬·명령을 안 불러오므로). 마켓플레이스 추가는 위에서 한 번 했으면 생략. 예: tower.
+원샷이 이미 전부 깔지만, **나중에 하나만 더** 추가하려면 플러그인마다 ① 설치 ② 네이티브 한 줄이면 된다(마켓플레이스 추가는 한 번 했으면 생략). 예: tower.
 
 ```
 gjc plugin install tower@oh-my-gjc
