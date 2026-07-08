@@ -21,7 +21,7 @@ description: LazyCodex(=OmO Codex Light) deep-work 하니스를 설치/업데이
 
 ## A. 셋업 (설치/업데이트/점검)
 
-`/lazycodex:setup [doctor|install|update|uninstall]` — 기본 `doctor`.
+`/omg:lazycodex-setup [doctor|install|update|uninstall]` — 기본 `doctor`.
 
 1. **점검 우선**: `command -v lazycodex` 와 `lazycodex doctor`로 현재 상태 확인. 이미 설치돼 OK면 재설치하지 말 것.
 2. **설치(미설치 시)**: `npx --yes lazycodex-ai install --codex-autonomous` (TUI 없이 자동). `~/.codex`에 스킬/훅/에이전트를 깐다.
@@ -34,7 +34,7 @@ description: LazyCodex(=OmO Codex Light) deep-work 하니스를 설치/업데이
 
 ## B. 사용 (ultrawork deep-work)
 
-`/lazycodex:work task="<작업>" [cwd] [sandbox] [timeout_s]` — Codex에 plan→work→verify를 위임한다.
+`/omg:lazycodex-work task="<작업>" [cwd] [sandbox] [timeout_s]` — Codex에 plan→work→verify를 위임한다.
 
 설치돼 있으면 `codex exec`가 ulw/omo 스킬을 자동 활성화한다(예: 코드 작업 시 `omo:programming` 로드 →
 계획 추적 → 구현 → unittest/타입체커/LOC 검증 게이트). 절차:
@@ -42,7 +42,7 @@ description: LazyCodex(=OmO Codex Light) deep-work 하니스를 설치/업데이
 1. **입력 검증(injection 방지, codex-deepwork와 동일 계약)**: `task`는 env(`CODEX_TASK`)→**stdin 전용**(argv 금지);
    `sandbox` enum(기본 `workspace-write`); `timeout_s` 양의 정수≤3600; `cwd` 존재 디렉터리; `model` `^[A-Za-z0-9._/-]+$`;
    알 수 없는 인자 거부; `--dangerously-bypass-*`/`danger-full-access` 자동 파생 금지.
-2. **codex 존재 확인** → 없으면 안내 후 종료(자동 설치 금지; 설치는 `/lazycodex:setup`).
+2. **codex 존재 확인** → 없으면 안내 후 종료(자동 설치 금지; 설치는 `/omg:lazycodex-setup`).
 3. **실행**: `printf '%s' "$CODEX_TASK" | timeout "$TIMEOUT_S" codex exec --sandbox "$SANDBOX" --skip-git-repo-check -C "$CWD" -o "$OUT" -` (검증된 argv 배열).
    - ultrawork를 명시적으로 끌어내려면 작업 지시를 "계획하고, 구현하고, 테스트로 검증하라"처럼 다단계로 준다.
 4. **결과**: `"$OUT"`(최종 메시지) 반환 + **"변경 검토(`git diff`/`git status`)" 안내** 동반. 자동 커밋/푸시 금지.
@@ -58,7 +58,7 @@ fi
 lazycodex doctor    # System OK 확인
 
 # work (injection-safe; 위 codex-deepwork 계약)
-command -v codex >/dev/null || { echo "codex CLI not found. /lazycodex:setup 또는 codex 설치+login 먼저."; exit 1; }
+command -v codex >/dev/null || { echo "codex CLI not found. /omg:lazycodex-setup 또는 codex 설치+login 먼저."; exit 1; }
 OUT="$(mktemp -t lazycodex-XXXX.txt)"
 CODEX_TASK="<task 원문>"
 printf '%s' "$CODEX_TASK" | timeout "${TIMEOUT_S:-600}" codex exec --sandbox "${SANDBOX:-workspace-write}" --skip-git-repo-check -C "${CWD:-$PWD}" -o "$OUT" -

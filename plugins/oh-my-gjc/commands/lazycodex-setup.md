@@ -18,4 +18,4 @@ argument-hint: "[doctor|install|update|uninstall]"
   - `update` → `lazycodex update` (또는 `npx --yes lazycodex-ai update`) 후 `doctor`.
   - `uninstall` → 사용자에게 영향(스킬/훅 제거)을 알리고 **명시 확정 시에만** `lazycodex uninstall`.
 - **⚠️ 안전**: install/update/uninstall는 `~/.codex`의 스킬·훅·에이전트·config를 수정하고 npm/네트워크를 쓴다. 이미 동작 중인 Codex 설정을 사용자 요청 없이 건드리지 마라. codex/lazycodex 자동 로그인은 하지 않는다.
-- 설치/사용은 `/lazycodex:work`로 이어서 deep-work를 돌릴 수 있음을 한 줄 안내한다.
+- 설치/사용은 `/omg:lazycodex-work`로 이어서 deep-work를 돌릴 수 있음을 한 줄 안내한다.

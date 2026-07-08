@@ -17,7 +17,7 @@ description: 여러 TUI 에이전트(gjc) 세션을 하나의 관제탑(supervis
 
 ## 설정
 
-`bin/` 경로 해석(설치 캐시): `~/.gjc/plugins/cache/plugins/*tower*/bin/`. 프로젝트/레포
+`bin/` 경로 해석(설치 캐시): `~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/` (`sort -V | tail -1`로 최신). 프로젝트/레포
 설치면 각 스코프의 폴백. 값은 **설정 파일 또는 환경변수**로 준다(하드코딩 금지):
 - `TOWER_WINDOW_PREFIX`(기본 `GJC-`) — 감시 대상 세션의 tmux 창 이름 접두어.
 - `TOWER_QUEUE_FILE` > `TOWER_HOME/queue.json` > `~/.gjc/tower/queue.json` — 큐 경로.

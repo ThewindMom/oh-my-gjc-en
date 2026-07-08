@@ -1,5 +1,5 @@
 ---
-description: 코딩 작업을 Codex에 자율로 위임해 파일을 직접 수정/생성하게 한다(codex exec, 기본 workspace-write). LazyCodex가 설치돼 있으면 deep-work 스킬·검증을 자동 활용. 읽기전용 질의는 codex-cli-control:ask 사용.
+description: 코딩 작업을 Codex에 자율로 위임해 파일을 직접 수정/생성하게 한다(codex exec, 기본 workspace-write). LazyCodex가 설치돼 있으면 deep-work 스킬·검증을 자동 활용. 읽기전용 질의는 /omg:codex-ask 사용.
 argument-hint: "task=<작업 지시> [cwd=<dir>] [sandbox=workspace-write|read-only] [model=<name>] [timeout_s=600]"
 ---
 
