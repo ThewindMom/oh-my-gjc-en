@@ -11,7 +11,7 @@ description: LazyCodex(=OmO Codex Light) deep-work 하니스를 설치/업데이
 전문 에이전트(executor/code-reviewer/qa-executor/gate-reviewer), 검증 게이트가 추가된다. 이후 모든
 `codex`/`codex exec` 실행이 자동으로 이 역량을 받는다.
 
-> 차이: `codex-cli-control`=읽기전용 단발 질의 · `codex-deepwork`=일반 자율 작업(lazycodex 있으면 묻어감) ·
+> 차이: `/omg:codex-ask`=읽기전용 단발 질의 · `/omg:codex-run`=일반 자율 작업(lazycodex 있으면 묻어감) ·
 > **이 스킬**=lazycodex 자체를 *설치/관리*하고 *ultrawork(plan→work→verify)*를 명시적으로 구동.
 
 ## 전제
@@ -67,4 +67,4 @@ printf '%s' "$CODEX_TASK" | timeout "${TIMEOUT_S:-600}" codex exec --sandbox "${
 ## 범위
 
 **한다:** LazyCodex 설치/업데이트/점검/제거, Codex 통한 ultrawork(plan→work→verify) 작업 위임(파일 수정).
-**Non-Goal:** codex/lazycodex 자동 로그인, App/CDP GUI 제어(→ `codex-app-control`), 읽기전용 단발 질의(→ `codex-cli-control`), 자동 커밋/푸시, opencode(Ultimate) 에디션 관리.
+**Non-Goal:** codex/lazycodex 자동 로그인, App/CDP GUI 제어(→ `/omg:codex-app-launch`·`/omg:codex-app-ask`), 읽기전용 단발 질의(→ `/omg:codex-ask`), 자동 커밋/푸시, opencode(Ultimate) 에디션 관리.

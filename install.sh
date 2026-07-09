@@ -29,11 +29,11 @@ die()  { printf '\033[1;31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 command -v gjc >/dev/null 2>&1 || die "gjc not found on PATH. Install Gajae Code first, then re-run."
 
 # ── parse args ────────────────────────────────────────────────────────────────
-MARKET="$MARKET_DEFAULT"; LEGACY=()
+MARKET="$MARKET_DEFAULT"; CAND_MODE=0; LEGACY=()
 while [ $# -gt 0 ]; do
   case "$1" in
-    --candidate-ref)   shift; [ $# -gt 0 ] || die "--candidate-ref needs a path or ref"; MARKET="$1" ;;
-    --candidate-ref=*) MARKET="${1#*=}" ;;
+    --candidate-ref)   shift; [ $# -gt 0 ] || die "--candidate-ref needs a path or ref"; MARKET="$1"; CAND_MODE=1 ;;
+    --candidate-ref=*) MARKET="${1#*=}"; CAND_MODE=1 ;;
     --*)               LEGACY+=("$1") ;;
     *)                 LEGACY+=("$1") ;;
   esac
@@ -49,7 +49,13 @@ say "marketplace add: $MARKET"
 gjc plugin marketplace add "$MARKET" 2>&1 | tail -1 || warn "marketplace add non-zero (already added?) — continuing"
 
 say "install $ENTRY@$ENTRY"
-gjc plugin install "$ENTRY@$ENTRY" 2>&1 | tail -1 || warn "install non-zero (already installed?) — continuing"
+if [ "$CAND_MODE" = 1 ]; then
+  # candidate/provenance mode: force reinstall so the cache is the candidate, not a stale copy.
+  # Fail closed — never fall through to install a possibly-stale cache as release evidence.
+  gjc plugin install "$ENTRY@$ENTRY" --force || die "candidate install failed — refusing to proceed with a possibly-stale cache (provenance integrity)."
+else
+  gjc plugin install "$ENTRY@$ENTRY" 2>&1 | tail -1 || warn "install non-zero (already installed?) — continuing"
+fi
 
 # NATIVE install — newest cached version, plugin-scoped glob (cache is <market>___<entry>___<ver>;
 # marketplace name == entry name, so anchor to oh-my-gjc___oh-my-gjc___* — a bare *oh-my-gjc* glob

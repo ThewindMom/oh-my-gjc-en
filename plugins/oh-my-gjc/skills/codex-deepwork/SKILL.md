@@ -1,12 +1,12 @@
 ---
 name: codex-deepwork
-description: 코딩 작업을 Codex에 자율로 위임해 실제로 파일을 고치게 할 때 사용한다. "codex로 구현시켜 / codex deep work / 자율로 작업시켜 / lazycodex로 시켜 / codex가 직접 고치게" 같은 요청에 활성화. codex exec를 write 샌드박스로 돌려 계획→실행→검증을 맡긴다. 단순 질의/읽기 전용은 codex-cli-control(ask)을 쓰고, 데스크톱 App/CDP 제어는 codex-app-control을 쓴다.
+description: 코딩 작업을 Codex에 자율로 위임해 실제로 파일을 고치게 할 때 사용한다. "codex로 구현시켜 / codex deep work / 자율로 작업시켜 / lazycodex로 시켜 / codex가 직접 고치게" 같은 요청에 활성화. codex exec를 write 샌드박스로 돌려 계획→실행→검증을 맡긴다. 단순 질의/읽기 전용은 /omg:codex-ask, 데스크톱 App/CDP 제어는 /omg:codex-app-* 를 쓴다.
 ---
 
 # Codex Deep Work (codex exec, write 샌드박스)
 
 코딩 작업을 **Codex에 자율로 위임**해 Codex가 직접 파일을 수정/생성하게 한다.
-단발 응답(`codex-cli-control:ask`)과 달리 **여러 단계로 일하고 파일을 바꾼다.**
+단발 응답(`/omg:codex-ask`)과 달리 **여러 단계로 일하고 파일을 바꾼다.**
 
 `~/.codex`에 **LazyCodex 하니스**가 설치돼 있으면(`npx lazycodex-ai install`), 이 codex 실행은
 자동으로 deep-work 스킬(research/deepinit/…), 전문 에이전트(executor/code-reviewer/qa-executor/
@@ -33,7 +33,7 @@ gate-reviewer), 검증 루프의 이점을 받는다. **추가 플래그 없이*
 
 ### 입력 검증 규칙 (보안 — shell/option injection 방지)
 
-`codex-cli-control`과 동일 계약을 강제한다. 사용자 인자를 **셸 명령 문자열에 직접 보간하지 마라.**
+`/omg:codex-ask`(codex-cli-ask 스킬)과 동일 계약을 강제한다. 사용자 인자를 **셸 명령 문자열에 직접 보간하지 마라.**
 
 - **`task`**: env(`CODEX_TASK`)에 담아 **stdin으로만** 전달(argv에 넣지 않음; `-`로 시작해도 옵션 오인 방지).
 - **`sandbox`**: 정확히 `read-only` | `workspace-write` | `danger-full-access` 중 하나만(그 외 거부, 기본 `workspace-write`).
@@ -86,4 +86,4 @@ rc=$?
 ## 범위
 
 **한다:** Codex에 자율 코딩 작업 위임(파일 수정/생성), write 샌드박스, lazycodex 하니스 자동 활용, 최종 메시지 + 변경 검토 안내.
-**안 한다 (Non-Goal):** 읽기 전용 단발 질의(→ `codex-cli-control:ask`), 데스크톱 App/CDP 제어(→ `codex-app-control`), lazycodex 자동 설치, 멀티 세션/스레드 오케스트레이션, 자동 커밋/푸시(변경 검토·커밋은 사용자 몫).
+**안 한다 (Non-Goal):** 읽기 전용 단발 질의(→ `/omg:codex-ask`), 데스크톱 App/CDP 제어(→ `/omg:codex-app-launch`·`/omg:codex-app-ask`), lazycodex 자동 설치, 멀티 세션/스레드 오케스트레이션, 자동 커밋/푸시(변경 검토·커밋은 사용자 몫).

@@ -94,6 +94,14 @@ report_missing() {
   fi
 }
 
+preflight_all() {  # verify ALL expected files exist BEFORE copying anything (never a partial install)
+  MISSING=()
+  for s in "${EXPECTED_SKILLS[@]}";     do [ -f "$PLUGIN_ROOT/skills/$s/SKILL.md" ]  || MISSING+=("skills/$s/SKILL.md"); done
+  for c in "${EXPECTED_COMMANDS[@]}";   do [ -f "$PLUGIN_ROOT/commands/$c.md" ]       || MISSING+=("commands/$c.md"); done
+  for t in "${EXPECTED_TOMBSTONES[@]}"; do [ -f "$PLUGIN_ROOT/tombstones/$t.md" ]     || MISSING+=("tombstones/$t.md"); done
+  report_missing
+}
+
 # First arg may be "all", a skill/command name, or a mode.
 target="all"
 if [ $# -ge 1 ]; then
@@ -120,6 +128,7 @@ case "$mode" in
     ;;
   user|project)
     if [ "$target" = "all" ]; then
+      preflight_all
       for s in "${EXPECTED_SKILLS[@]}";     do install_skill     "$s" "$mode"; done
       for c in "${EXPECTED_COMMANDS[@]}";   do install_command   "$c" "$mode"; done
       for t in "${EXPECTED_TOMBSTONES[@]}"; do install_tombstone "$t" "$mode"; done
