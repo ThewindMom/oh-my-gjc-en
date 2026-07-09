@@ -13,8 +13,9 @@
 # to print a migration note; they NEVER add extra plugin installs.
 #
 # Absorbs everything setup does that needs no user choice: marketplace add, the single
-# plugin install, and the NATIVE skill/command copy (gjc doesn't load plugin skills/
-# commands into a session). User-choice stuff — model presets (need your vendor + login)
+# plugin install, and the NATIVE skill/command copy. gjc 0.9.x auto-exposes plugin
+# commands as `oh-my-gjc:*` (wrong namespace), so command bodies ship in templates/ and
+# install natively as `omg:*`; skills install natively too. User-choice stuff — model presets
 # and always-on toggles — stays opt-in via /omg:setup. Idempotent. Shell CLI only.
 set -euo pipefail
 

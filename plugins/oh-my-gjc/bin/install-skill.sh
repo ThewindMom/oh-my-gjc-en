@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
-# Install oh-my-gajaecode SKILLs and slash COMMANDs as
-# NATIVE gjc capabilities. WHY: gjc does not load a marketplace plugin's skills or
-# commands into a session (skill registry takes native `.gjc` only; the claude-plugins
-# slash-command provider is never registered) — verified. A native capability's name
-# IS its filename, so we copy them into the native dirs.
+# Install oh-my-gajaecode SKILLs and slash COMMANDs as NATIVE gjc capabilities.
 #
-#   canonical commands : commands/<name>.md  → ~/.gjc/agent/commands/omg:<name>.md → /omg:<name>
-#   catalog            : commands/omg.md     → ~/.gjc/agent/commands/omg.md        → /omg
+# WHY native install (and why command files live in templates/, not commands/):
+#   gjc 0.9.x auto-exposes a marketplace plugin's convention `commands/*.md` as
+#   `<plugin>:<name>` slash commands (claude-plugins provider). For this suite that
+#   would surface a second, wrongly-namespaced `oh-my-gjc:*` command set alongside
+#   the canonical `/omg:*`. To keep exactly ONE command surface, the command bodies
+#   live in `templates/` — a NON-convention dir gjc never auto-registers — and this
+#   installer copies them into the native commands dir with the `omg:` prefix.
+#   (Plugin SKILLs do not surface as slash commands, so skills/ stays a convention dir.)
+#
+#   canonical commands : templates/<name>.md  → ~/.gjc/agent/commands/omg:<name>.md → /omg:<name>
+#   catalog            : templates/omg.md     → ~/.gjc/agent/commands/omg.md        → /omg
 #   skills             : skills/<name>/SKILL.md → ~/.gjc/agent/skills/<name>/SKILL.md
 #
 # Installation is driven by the EXPECTED_* manifests below (not a directory scan), so a
@@ -58,8 +63,8 @@ install_skill() { # $1=name $2=scope
 }
 install_command() { # $1=name $2=scope
   local src dir
-  src="$PLUGIN_ROOT/commands/$1.md"
-  [ -f "$src" ] || { MISSING+=("commands/$1.md"); return 0; }
+  src="$PLUGIN_ROOT/templates/$1.md"
+  [ -f "$src" ] || { MISSING+=("templates/$1.md"); return 0; }
   dir="$(commands_dir "$2")"; mkdir -p "$dir"
   if [ "$1" = "omg" ]; then cp -f "$src" "$dir/omg.md"; echo "✓ command ($2): $dir/omg.md  → /omg"; return 0; fi
   cp -f "$src" "$dir/omg:$1.md"
@@ -79,7 +84,7 @@ report_missing() {
 preflight_all() {  # verify ALL expected files exist BEFORE copying anything (never a partial install)
   MISSING=()
   for s in "${EXPECTED_SKILLS[@]}";     do [ -f "$PLUGIN_ROOT/skills/$s/SKILL.md" ]  || MISSING+=("skills/$s/SKILL.md"); done
-  for c in "${EXPECTED_COMMANDS[@]}";   do [ -f "$PLUGIN_ROOT/commands/$c.md" ]       || MISSING+=("commands/$c.md"); done
+  for c in "${EXPECTED_COMMANDS[@]}";   do [ -f "$PLUGIN_ROOT/templates/$c.md" ]      || MISSING+=("templates/$c.md"); done
   report_missing
 }
 
@@ -88,7 +93,7 @@ target="all"
 if [ $# -ge 1 ]; then
   if [ "$1" = "all" ]; then
     target="all"; shift
-  elif [ -d "$PLUGIN_ROOT/skills/$1" ] || [ -f "$PLUGIN_ROOT/commands/$1.md" ]; then
+  elif [ -d "$PLUGIN_ROOT/skills/$1" ] || [ -f "$PLUGIN_ROOT/templates/$1.md" ]; then
     target="$1"; shift
   fi
 fi
@@ -102,8 +107,8 @@ case "$mode" in
       for s in "${EXPECTED_SKILLS[@]}";     do uninstall_skill     "$s" "$scope"; done
       for c in "${EXPECTED_COMMANDS[@]}";   do uninstall_command   "$c" "$scope"; done
     else
-      if [ -d "$PLUGIN_ROOT/skills/$target" ];      then uninstall_skill   "$target" "$scope"; fi
-      if [ -f "$PLUGIN_ROOT/commands/$target.md" ]; then uninstall_command "$target" "$scope"; fi
+      if [ -d "$PLUGIN_ROOT/skills/$target" ];       then uninstall_skill   "$target" "$scope"; fi
+      if [ -f "$PLUGIN_ROOT/templates/$target.md" ]; then uninstall_command "$target" "$scope"; fi
     fi
     ;;
   user|project)
@@ -113,8 +118,8 @@ case "$mode" in
       for c in "${EXPECTED_COMMANDS[@]}";   do install_command   "$c" "$mode"; done
       report_missing
     else
-      if [ -d "$PLUGIN_ROOT/skills/$target" ];      then install_skill   "$target" "$mode"; fi
-      if [ -f "$PLUGIN_ROOT/commands/$target.md" ]; then install_command "$target" "$mode"; fi
+      if [ -d "$PLUGIN_ROOT/skills/$target" ];       then install_skill   "$target" "$mode"; fi
+      if [ -f "$PLUGIN_ROOT/templates/$target.md" ]; then install_command "$target" "$mode"; fi
       report_missing
     fi
     if [ "$mode" = "user" ]; then

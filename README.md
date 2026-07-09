@@ -117,7 +117,7 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install
 - 보고서 상위 발견은 실코드랑 대조(스팟체크)한 뒤에만 브리핑한다. 억지 결함 안 만든다.
 - `:max` 금지 — Fable은 조용히 `xhigh`로 깎인다. Fable이 거부하면 `opus-4-8`로 대체한다.
 - 쓰기: `/omg:fable "주문 경로와 손절 로직"`
-- 원문: [`plugins/oh-my-gjc/commands/fable.md`](./plugins/oh-my-gjc/commands/fable.md)
+- 원문: [`plugins/oh-my-gjc/templates/fable.md`](./plugins/oh-my-gjc/templates/fable.md)
 
 ### `codex-cli-control` — 로컬 Codex CLI에 읽기 전용 질문
 
