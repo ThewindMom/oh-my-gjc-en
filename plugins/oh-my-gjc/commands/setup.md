@@ -34,7 +34,6 @@ bash "${OMG_ROOT}bin/install-skill.sh" all
 
 - 스킬 → `~/.gjc/agent/skills/<name>/SKILL.md` (트리거로 자동활성화).
 - 커맨드 → `~/.gjc/agent/commands/omg:<name>.md` (파일명이 곧 커맨드명이라 `/omg:<name>` UX).
-- 폐기된 구 명령들은 안내 전용 묘비 스텁으로 함께 깔려 사용자를 새 `/omg:*`로 보낸다(다음 릴리스에 삭제).
 - 누락 파일이 있으면 설치는 "복사 가능한 것만"이 아니라 **전체 실패**로 보고한다.
 
 ⚠ **최초 부트스트랩은 셸에서** 돌려야 한다 — `/omg:setup` 자체가 설치 전엔 안 뜨는
@@ -48,7 +47,6 @@ bash "${OMG_ROOT}bin/install-skill.sh" all
   `~/.gjc/agent/SYSTEM.md`로 자동 마이그레이션한다.
 - 과거에 개별 플러그인을 따로 설치했던 사용자면, 단일 스위트로 통합됐으니 옛 개별 플러그인
   제거를 제안한다(동의 후에만, 셸): 예 `gjc plugin uninstall my-workflows@oh-my-gjc`.
-  구 개별 기능 명령들의 묘비 스텁은 Step 1에서 자동 설치되므로 익숙한 손버릇도 새 이름으로 안내된다.
 
 ## Step 3 — 프리셋 병합 제안
 

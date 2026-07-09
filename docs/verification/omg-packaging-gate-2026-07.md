@@ -38,7 +38,7 @@ Phase 0 독립 리뷰 단위. 계획: `/tmp/omg-plan/pending-approval.md` + `sta
 - 대상: `README.md`, `INSTALLATION.md`, `plugins/oh-my-gjc/README.md`, canonical command bodies, skill bodies, native installer.
 - 금지 패턴(별도/옵션 플러그인·각자 셸·`/plugin`·`gjc plugin install <feat>@`·구 cache glob·구 슬래시 prefix) 전부 제거.
 - **예외(allowlist) 2종:**
-  1. `plugins/oh-my-gjc/tombstones/*.md` — 안내 스텁(본문은 새 `/omg:*`만, old 설치단위 안내 없음).
+  1. `plugins/oh-my-gjc/tombstones/*.md` — 안내 스텁(본문은 새 `/omg:*`만, old 설치단위 안내 없음). **[0.8.1 폐지: tombstones 17개 삭제 완료 — 이 예외 항목 불필요]**
   2. `bin/install-skill.sh` `uninstall_command` — 구 alias 파일(`oh-my-gjc:<name>.md`)도 제거하는 정리 코드(설치 단위 안내 아님).
 - frontmatter `description`/`argument-hint`/H1/사용예시/"켜기·쓰기" 문구까지 스캔. canonical 본문에 old prefix drift 없음. ✅
 

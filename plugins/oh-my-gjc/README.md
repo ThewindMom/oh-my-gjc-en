@@ -46,8 +46,7 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install
 | `/omg:tower-setup` | 관제탑 세션 함대 감시·전파·결정 큐 | tmux |
 
 > 전제가 붙은 커맨드는 설치는 이미 됐고, 그 도구가 있어야 실제 동작한다. 없으면 실행 시
-> 안내하고 멈춘다. 예전 개별 명령들은 폐기됐고, 실행하면 새 `/omg:*` 이름을 알려주는
-> 안내 스텁만 뜬다(한 릴리스짜리, 다음 릴리스에 삭제).
+> 안내하고 멈춘다. 예전 개별 명령들은 폐기됐다 — 구 이름은 더는 설치되지 않는다(0.8.0의 한-릴리스 안내 스텁은 0.8.1에서 삭제).
 
 ### 모델 프리셋
 
@@ -73,7 +72,7 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install
 과거에 개별 플러그인(my-workflows, multivendor-presets, tower, insane-review, codex-*,
 lazycodex, gjc-bugwatch)을 따로 설치했다면, 이제 이 단일 스위트로 통합됐다. `/omg:setup`이
 잔재를 감지해 정리를 제안한다(동의 후 셸): 예 `gjc plugin uninstall my-workflows@oh-my-gjc`.
-구 개별 명령들의 안내 스텁은 네이티브 설치 시 함께 깔려 손버릇을 새 `/omg:*`로 보낸다.
+구 개별 명령 이름은 폐기됐고 더는 설치되지 않는다 — 새 `/omg:*` 이름만 쓴다.
 
 ## Non-Goals
 
