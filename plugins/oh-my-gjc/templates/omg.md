@@ -23,6 +23,7 @@ oh-my-gajaecode 스위트의 단일 진입점(oh-my-zsh의 `omz` 관례 계승).
 - `/omg:insane-review` — GPT-5.5 Pro 웹 코드 리뷰. · 전제: ChatGPT 구독 + 크로미움 로그인
 - `/omg:bugwatch-scan` — gjc 자체 버그 수집(초안만).
 - `/omg:tower-setup` — 관제탑 세션 함대 감시·전파·결정 큐. · 전제: tmux
+- `/omg:gajae-app [install|update|status]` — 가재코드 앱(셀프호스트 웹 UI) 설치·업데이트·상태. · 전제: Node 22 + git
 
 > **전제**가 붙은 커맨드는 설치는 이미 됐고, 그 도구가 있어야 실제로 동작한다. 없으면
 > 실행 시 친절히 안내하고 안전하게 멈춘다(설치를 깨뜨리지 않는다).
@@ -30,7 +31,7 @@ oh-my-gajaecode 스위트의 단일 진입점(oh-my-zsh의 `omz` 관례 계승).
 
 ## 스킬 (트리거로 자동 활성)
 - `easy-answer` · `gate-briefing` · `multivendor-presets` · `branch-flow` · `extragoal`(외부 최종 리뷰 게이트)
-- `codex-cli-ask` · `codex-deepwork` · `lazycodex` · `codex-app-launch` · `codex-app-cdp` · `insane-review` · `gjc-bugwatch` · `tower`
+- `codex-cli-ask` · `codex-deepwork` · `lazycodex` · `codex-app-launch` · `codex-app-cdp` · `insane-review` · `gjc-bugwatch` · `tower` · `gajae-app`
 
 ## 문서
 - 설치·자세히: 저장소 README. 원샷 설치: `install.sh`(curl 한 줄) / 에이전트용 `INSTALLATION.md`.

@@ -29,7 +29,7 @@ gjc plugin install oh-my-gjc@oh-my-gjc
 bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install-skill.sh 2>/dev/null | sort -V | tail -1)" all
 ```
 
-한 번 설치로 13개 기능이 전부 들어온다(추가 설치 없음). 업그레이드 땐 원샷 한 줄 다시.
+한 번 설치로 14개 기능이 전부 들어온다(추가 설치 없음). 업그레이드 땐 원샷 한 줄 다시.
 원리·글롭 규칙 등 기여자용 상세는 AGENTS.md 참조.
 
 </details>
@@ -49,6 +49,7 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install
 - `insane-review` — GPT-5.5 Pro 웹 코드 리뷰 · **ChatGPT 구독 + 크로미움 로그인 필요**
 - `gjc-bugwatch` — gjc 자체 버그 수집
 - `tower` — TUI 에이전트 세션 함대를 관제탑 하나로 감시·전파·결정 큐(gjc team과 다름) · **tmux 세션 함대 운영자용**
+- `gajae-app` — 가재코드 앱(셀프호스트 웹 UI: 브라우저에서 gjc 세션 열람·릴레이 + claude/codex tmux 터미널 + 파일 패널) 설치·업데이트·운영 · **Node 22 + git 필요**
 
 ## 3. 자세히
 
