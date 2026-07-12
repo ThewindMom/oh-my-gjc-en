@@ -40,6 +40,7 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install
 - `gate-briefing` — 승인 게이트 비전문가 브리핑 · 상시 온·오프 가능(`/omg:gate-always`)
 - `multivendor-presets` — 역할별 모델 프리셋
 - `branch-flow` — dev 통합 / main 릴리스 브랜치 규칙 · 상시 온·오프 가능(`/omg:branchflow-always`)
+- `worktree` — git worktree 병렬 작업 폴더 생성·목록·정리(`/omg:worktree`, branch-flow 규약)
 - `extragoal` — 외부 최종 리뷰 게이트(무공유·교차패밀리 리뷰 후 머지)
 - `/omg:fable` — 안전-크리티컬 코드 적대적 감사(돈·데이터·보안 코드) · **Fable 5 모델 필요**
 - `codex-cli-ask` — 로컬 Codex CLI에 읽기 전용 질문 위임 · **Codex CLI 보유자용**

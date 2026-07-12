@@ -1,11 +1,12 @@
 ---
-description: git worktree 병렬 작업 폴더를 만들고·보고·정리한다. new <slug>는 origin/dev에서 <type>/<slug> 브랜치+../<repo>-<slug>-wt 폴더 생성, list는 상태 요약, clean은 머지 완료+클린 트리만 제거(--force 금지).
+description: git worktree 병렬 작업 폴더를 만들고·보고·정리한다. new <slug>는 origin/dev에서 <type>/<slug> 브랜치+../<repo>-<slug>-wt 폴더 생성(dev 없으면 main 분기+보고 명시), list는 상태 요약, clean은 머지 완료+클린 트리+비잠금만 제거 — 에이전트 임의 --force/-D 금지(사용자 지목 명시 지시 시만 예외).
 argument-hint: "[new <slug> [feat|fix|chore|docs] | list | clean]"
 ---
 
 사용자가 worktree 작업을 요청했다. **worktree 스킬의 규약을 그대로 따른다**
 (폴더 `../<repo>-<slug>-wt`, 브랜치 `<type>/<slug>`, 분기점 `origin/dev`,
-정리는 머지 완료+클린+비잠금만, `--force` 금지).
+정리는 머지 완료+클린+비잠금만, 에이전트 임의 `--force`/`-D` 금지 — 사용자가
+특정 worktree를 지목해 강제 삭제를 명시 지시한 경우만 예외).
 
 입력 인자: $ARGUMENTS
 
@@ -24,5 +25,8 @@ argument-hint: "[new <slug> [feat|fix|chore|docs] | list | clean]"
   지우지 않는다.
 - 그 외 인자 → 사용법 한 줄: `/omg:worktree [new <slug> [type] | list | clean]`.
 
-git 저장소가 아니거나 dev 브랜치가 없으면(원격 포함) 상황을 설명하고 안전하게
-멈춘다 — dev가 없을 때 new는 main에서 분기하되 그 사실을 보고에 명시한다.
+경계 조건 (스킬과 동일):
+- **git 저장소가 아니면** 상황을 설명하고 멈춘다.
+- **dev가 없으면**(로컬·원격 모두) 멈추지 않는다 — `new`는 `main`에서 분기하되
+  그 사실을 보고에 명시하고, `list`/`clean`의 비교·머지 판정 기준도 `main`으로
+  대체한다.

@@ -33,7 +33,8 @@ catalog; `gjc plugin list` shows installed). **Plugin management is shell-CLI on
 - `codex-deepwork` (recommended): LazyCodex harness — `npx lazycodex-ai install` — adds deep-work skills/agents/verification to Codex runs. Works without it (plain `codex exec`).
 - `codex-app-launch` / `codex-app-cdp`: an already-**built** Codex desktop App — `/omg:codex-app-launch` starts it headlessly with CDP; `/omg:codex-app-ask` attaches via an explicit `cdp_url`. Neither builds the app from the DMG.
 - `insane-review`: ChatGPT subscription + a Chromium-family browser on CDP `:9222` logged into chatgpt.com.
-- Everything else (easy-answer, gate-briefing, presets, branch-flow, extragoal, fable, gjc-bugwatch, tower) + the `example-plugin` template: no external prerequisites (tower needs tmux; fable needs Fable 5 model access).
+- `gajae-app`: Node 22 + git (installs/updates the self-hosted web app from devswha/claudecodeui).
+- Everything else (easy-answer, gate-briefing, presets, branch-flow, worktree, extragoal, fable, gjc-bugwatch, tower) + the `example-plugin` template: no external prerequisites (tower needs tmux; worktree needs a git repo; fable needs Fable 5 model access).
 
 ## Layout
 
