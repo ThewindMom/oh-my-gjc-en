@@ -29,7 +29,7 @@ gjc plugin install oh-my-gjc@oh-my-gjc
 bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install-skill.sh 2>/dev/null | sort -V | tail -1)" all
 ```
 
-한 번 설치로 13개 기능이 전부 들어온다(추가 설치 없음). 업그레이드 땐 원샷 한 줄 다시.
+한 번 설치로 15개 기능이 전부 들어온다(추가 설치 없음). 업그레이드 땐 원샷 한 줄 다시.
 원리·글롭 규칙 등 기여자용 상세는 AGENTS.md 참조.
 
 </details>
@@ -40,6 +40,7 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install
 - `gate-briefing` — 승인 게이트 비전문가 브리핑 · 상시 온·오프 가능(`/omg:gate-always`)
 - `multivendor-presets` — 역할별 모델 프리셋
 - `branch-flow` — dev 통합 / main 릴리스 브랜치 규칙 · 상시 온·오프 가능(`/omg:branchflow-always`)
+- `worktree` — git worktree 병렬 작업 폴더 생성·목록·정리(`/omg:worktree`, branch-flow 규약)
 - `extragoal` — 외부 최종 리뷰 게이트(무공유·교차패밀리 리뷰 후 머지)
 - `/omg:fable` — 안전-크리티컬 코드 적대적 감사(돈·데이터·보안 코드) · **Fable 5 모델 필요**
 - `codex-cli-ask` — 로컬 Codex CLI에 읽기 전용 질문 위임 · **Codex CLI 보유자용**
@@ -49,6 +50,7 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install
 - `insane-review` — GPT-5.5 Pro 웹 코드 리뷰 · **ChatGPT 구독 + 크로미움 로그인 필요**
 - `gjc-bugwatch` — gjc 자체 버그 수집
 - `tower` — TUI 에이전트 세션 함대를 관제탑 하나로 감시·전파·결정 큐(gjc team과 다름) · **tmux 세션 함대 운영자용**
+- `gajae-app` — 가재코드 앱(셀프호스트 웹 UI: 브라우저에서 gjc 세션 열람·릴레이 + claude/codex tmux 터미널 + 파일 패널) 설치·업데이트·운영 · **Node 22 + git 필요**
 
 ## 3. 자세히
 
@@ -198,6 +200,19 @@ gjc 쓰다가 로그에 남은 gjc 자체 버그를 긁어모은다. `~/.gjc/log
 - 감시·순찰은 세션 귀속 — 관제탑 세션 재개 시 재등록한다. 빈 순찰은 무보고.
 - gjc `team`(작업 워커 조율)과 다르다 — team은 일 분배, tower는 상주 관측 + 사람 결정 큐.
 - 원문: [`plugins/oh-my-gjc/skills/tower/SKILL.md`](./plugins/oh-my-gjc/skills/tower/SKILL.md)
+
+### `gajae-app` — 가재코드 앱 (브라우저에서 세션 보기)
+
+터미널에 붙어 있지 않아도 폰·브라우저에서 gjc 세션을 본다. tmux에서 도는 gjc
+세션을 자동으로 찾아 열람하고(관제탑 경유로 지시도 보냄), claude/codex 세션은
+터미널 그대로 붙어서 보고, 지정 폴더 파일도 브라우저에서 열어본다. 이 기능은
+그 앱을 **설치·업데이트·운영**해주는 관리자다 — 앱 소스 자체는 별도 레포
+([devswha/claudecodeui](https://github.com/devswha/claudecodeui))에 산다.
+
+- 전제: Node 22 + git. `/omg:gajae-app install` 한 번이면 systemd 서비스로 뜬다.
+- 원격 접속은 tailscale serve 경유만 — 서버는 루프백에만 열린다(직노출 금지).
+- tmux 세션 종료/메시지 주입은 서버가 "gjc가 진짜 그 안에서 도는지" 재검증한다.
+- 원문: [`plugins/oh-my-gjc/skills/gajae-app/SKILL.md`](./plugins/oh-my-gjc/skills/gajae-app/SKILL.md)
 
 ## 라이선스
 
