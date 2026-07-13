@@ -15,7 +15,7 @@ Gate 2(extragoal 교차리뷰)·Gate 3(하코 승인) 통과 후에도 발행일
   - **lazycodex**: `/omg:lazycodex-*` 하니스 발원 세션 7월 0건.
   - **tower**: 실관제탑(horcrux)은 자체 스크립트 구현 — 번들 tower 스킬 미사용.
 - 유지(하코 확인): gate-briefing, easy-answer, gajae-app.
-- 제거 파일(19):
+- 제거 파일(12 = skills 3 + templates 4 + tower orphan bin/reference 5):
   - skills: `codex-cli-ask/`, `lazycodex/`, `tower/`
   - templates: `codex-ask.md`, `lazycodex-setup.md`, `lazycodex-work.md`, `tower-setup.md`
   - tower 전용 orphan bin/reference: `bin/session_watch.py`, `bin/tower-notify.sh`,
@@ -23,7 +23,7 @@ Gate 2(extragoal 교차리뷰)·Gate 3(하코 승인) 통과 후에도 발행일
 - 매니페스트: `EXPECTED_SKILLS` 9 / `EXPECTED_COMMANDS` 13; `REMOVED_SKILLS`·`REMOVED_COMMANDS`에
   0.11.0+0.12.0 누적(업그레이드 스윕). 버전 0.12.0.
 - 문서 동수준 갱신: marketplace/plugin.json(9 skills), AGENTS(3절 REMOVED 묘비 + 카운트
-  12→9·17→13·현재 16→12 등), README×2, INSTALLATION, install.sh, templates/omg.md·setup.md.
+  12→9 skills·17→13 commands·AGENTS 현재 omg:* 16→12(+bare /omg = 13)), README×2, INSTALLATION, install.sh, templates/omg.md·setup.md.
 
 ## 1. Static
 
