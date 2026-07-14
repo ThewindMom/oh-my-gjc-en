@@ -78,10 +78,19 @@ payload에서 expected 2개(`skills/plain-layer/SKILL.md`, `templates/plain.md`)
 
 수정 후 단위 테스트 **46 pass / 0 fail**(신규 회귀 3건 포함), `bash -n`·JSON parse OK.
 
-**Round 2 (re-sign, candidate 60b6888): VERDICT: (수신 후 기록)**
+**Round 2 (re-sign, candidate 60b6888): VERDICT: REQUEST_CHANGES** — 잔여 2건(3·4·5는 완결 확인):
+스니펫이 리터럴 placeholder를 재할당해 env 주입값을 덮어씀(테스트가 비공백만 검사) +
+정리 문구가 '등'/'비활성 옛 프리셋'으로 닫힌 목록보다 넓음. → fix-forward(77d45f4):
+리터럴 할당 전면 제거(가드 → bare export), 행동 테스트를 **주입값 정확 일치 + 빈값
+fail-closed(gjc 미호출)**로 강화; 정리 문구 3표면(커맨드·스킬·setup)을 닫힌 은퇴 목록
+10종으로 확정 + 목록 동치·개방 표현 금지 테스트. 단위 테스트 **47 pass / 0 fail**(221 expects).
+
+**Round 3 (re-sign r2, candidate 77d45f4): VERDICT: APPROVE** — "both blockers are fully
+resolved, tests cover exact preservation and fail-closed behavior, and no new
+release-blocking regression was found."
 
 ## 8. 판정
 
-Gate 1 **PASS**. Gate 2 round-2 verdict 수신 후 본 절 갱신. Gate 3 = 하코 직접 발주(본 릴리스의
-발원 지시 "0.14 배포되게 만들어놔 메인 브랜치")로 충족 — 발행: dev→main 머지 + `v0.14.0` 태그 +
-GitHub Release.
+Gate 1 **PASS** · Gate 2 **APPROVE**(round 3, 재서명 ≤2 한도 내) · Gate 3 = 하코 직접 발주
+(본 릴리스의 발원 지시 "0.14 배포되게 만들어놔 메인 브랜치") — **발행 진행**:
+dev→main 머지 + `v0.14.0` 태그 + GitHub Release.
