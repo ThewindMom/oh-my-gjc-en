@@ -28,10 +28,13 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install
 ```
 The native installer copies every bundled skill + command in one shot and fails loudly (with a missing list) if anything expected is absent — never a partial install.
 
+## Gajae app migration
+The self-hosted web UI now lives in [`devswha/claudecodeui`'s canonical SELF-HOST guide](https://github.com/devswha/claudecodeui/blob/feat/gjc-provider/docs/SELF-HOST.md). Upgrades remove native launchers only; they do not stop or modify a running app or service, its data, or its network state.
+
 ## Verify (report these)
 ```sh
 gjc plugin list                                   # oh-my-gjc@oh-my-gjc listed
-ls ~/.gjc/agent/skills/                            # 8 skills (easy-answer, gate-briefing, …, gajae-app)
+ls ~/.gjc/agent/skills/                            # 8 skills (easy-answer, gate-briefing, plain-layer, …)
 ls ~/.gjc/agent/commands/ | grep '^omg'            # 13 commands: omg.md + 12 omg:<name>.md
 ```
 

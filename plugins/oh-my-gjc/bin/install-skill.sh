@@ -43,18 +43,21 @@ PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # ── EXPECTED manifest (the single source of truth for a complete install) ────────────
 EXPECTED_SKILLS=(easy-answer gate-briefing multivendor-presets branch-flow extragoal \
-                 insane-review gjc-bugwatch gajae-app)
+                 insane-review gjc-bugwatch plain-layer)
 EXPECTED_COMMANDS=(omg setup easy easy-always gate gate-always presets fable branchflow-always \
-                   insane-review bugwatch-scan gajae-app worktree)
+                   insane-review bugwatch-scan worktree plain)
 # Capabilities REMOVED (관제탑 발주, 하코 승인). 0.11.0: codex-deepwork(실사용 0회, lazycodex와 중복) +
 # codex-app 짝(대상 앱 빌드 트랙 07-03 아카이브; Pro 리뷰는 insane-review 전담). 0.12.0: codex-cli-ask·
 # lazycodex·tower(명시 호출 0 — Codex 트래픽은 전량 제품 파이프라인 codex exec 직결로 스킬 미경유,
 # lazycodex 하니스 발원 세션 0건, 실관제탑은 자체 스크립트 구현이라 tower 스킬 미사용).
 # 0.12.0 추가: worktree 스킬은 branch-flow로 흡수(중복 트리거·축약복제 드리프트 정리) —
 # /omg:worktree 커맨드는 유지(EXPECTED_COMMANDS 그대로), skill dir만 REMOVED_SKILLS로 스윕.
+# 0.14.0: gajae-app ownership transferred to the separate claudecodeui repository. Upgrades
+# remove only its native skill and command entries; app checkout, service, data, env, logs,
+# and Tailscale/network state are outside this installer and remain untouched.
 # Upgrades sweep their native files so no orphan surface remains.
-REMOVED_SKILLS=(codex-deepwork codex-app-launch codex-app-cdp codex-cli-ask lazycodex tower worktree)
-REMOVED_COMMANDS=(codex-run codex-app-launch codex-app-ask codex-ask lazycodex-setup lazycodex-work tower-setup)
+REMOVED_SKILLS=(codex-deepwork codex-app-launch codex-app-cdp codex-cli-ask lazycodex tower worktree gajae-app)
+REMOVED_COMMANDS=(codex-run codex-app-launch codex-app-ask codex-ask lazycodex-setup lazycodex-work tower-setup gajae-app)
 # Pre-0.8.1 native files that upgrades must sweep away: the 17 one-release deprecation
 # tombstones shipped by 0.8.0 (removed in 0.8.1). Old `oh-my-gjc:<name>.md` aliases are
 # covered separately by looping EXPECTED_COMMANDS in cleanup_legacy_commands.
@@ -80,7 +83,7 @@ cleanup_legacy_commands() { # $1=scope — drop pre-0.8.1 leftovers (0.8.0 tombs
   if [ "$removed" -gt 0 ]; then echo "✓ cleaned $removed legacy command file(s) (pre-0.8.1 tombstones/aliases)"; fi
 }
 
-cleanup_removed() { # $1=scope — sweep native files of capabilities removed from the suite (≤0.11.0 upgrades)
+cleanup_removed() { # $1=scope — sweep only native files of capabilities removed from the suite (through 0.14.0)
   local d sd n removed=0
   d="$(commands_dir "$1")"; sd="$(skills_dir "$1")"
   for n in "${REMOVED_COMMANDS[@]}"; do
@@ -89,7 +92,7 @@ cleanup_removed() { # $1=scope — sweep native files of capabilities removed fr
   for n in "${REMOVED_SKILLS[@]}"; do
     if [ -d "$sd/$n" ]; then rm -rf "$sd/$n"; removed=$((removed+1)); fi
   done
-  if [ "$removed" -gt 0 ]; then echo "✓ cleaned $removed removed-capability file(s) (codex-deepwork/codex-app 0.11.0 · codex-cli-ask/lazycodex/tower + worktree 스킬 branch-flow 흡수 0.12.0)"; fi
+  if [ "$removed" -gt 0 ]; then echo "✓ cleaned $removed removed-capability native file(s) (0.11.0–0.12.0 removals; gajae-app ownership transfer 0.14.0)"; fi
 }
 
 MISSING=()

@@ -48,12 +48,14 @@ bash "${OMG_ROOT}bin/install-skill.sh" all
   `~/.gjc/agent/SYSTEM.md`로 자동 마이그레이션한다.
 - 과거에 개별 플러그인을 따로 설치했던 사용자면, 단일 스위트로 통합됐으니 옛 개별 플러그인
   제거를 제안한다(동의 후에만, 셸): 예 `gjc plugin uninstall my-workflows@oh-my-gjc`.
+- 0.14.0 업그레이드는 레거시 네이티브 `~/.gjc/agent/skills/gajae-app/`와 `~/.gjc/agent/commands/omg:gajae-app.md`만 정리하며, 기존 셀프호스트 앱 배포를 삭제하거나 변경하지 않는다. 이후 관리는 [devswha/claudecodeui SELF-HOST 문서](https://github.com/devswha/claudecodeui/blob/feat/gjc-provider/docs/SELF-HOST.md)를 따른다.
 
 ## Step 3 — 프리셋 병합 제안
 
-`~/.gjc/agent/models.yml`을 읽어 `ideal` 프리셋이 없으면 제안한다:
-"멀티벤더 프리셋(ideal/escalate-surgical/monorepo/reviewer)을 병합할까? → `/omg:presets`"
-이미 있으면 건너뛴다. 구버전 `ultimate`/`ultimate-f5`가 보이면 정리도 함께 제안.
+`~/.gjc/agent/models.yml`을 읽어 `grok` 프리셋이 없으면 제안한다:
+"멀티벤더 프리셋 `grok`을 병합할까? → `/omg:presets`"
+이미 있으면 건너뛴다. 구버전 `daily`/`fast`/`ultimate`/`ultimate-f5` 또는 비활성 옛 프리셋이 보이면 정리도 함께 제안.
+병합 후 세션 시작 기본은 `gjc --mpreset grok --default`로 고정하도록 안내한다.
 
 ## Step 4 — 전제조건 기능 사용 가능 여부 (읽기 전용 안내)
 
@@ -72,6 +74,7 @@ bash "${OMG_ROOT}bin/install-skill.sh" all
 /omg:easy-always on          # 모든 세션에서 최종 답변을 쉬운 말로
 /omg:gate-always on          # 모든 승인 게이트에 비전문가 브리핑 자동 첨부
 /omg:branchflow-always on    # 이 레포에 dev통합/main릴리즈 브랜치 규율 (레포별, 커밋 대상)
+/omg:plain "아이디어"        # (선택) 쉬운 기획: 선택지 설명 + 인터뷰 후 대화로 스펙 다듬기
 ```
 
 ## 출력 형식
