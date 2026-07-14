@@ -94,9 +94,12 @@ native crystallization + sanctioned final write 이후:
 ### Sanctioned write (session-keyed, gjc 0.10.1)
 
 ```sh
-GJC_NOTIFICATIONS=0 \
-GJC_DEEP_INTERVIEW_SPEC='<full markdown via tool env, not shell paste>' \
-  gjc deep-interview --write --stage final \
+# spec 본문은 bash tool의 env 파라미터로 주입한다(셸 붙여넣기 금지).
+# ⚠ 커맨드-로컬 할당(VAR=... cmd "$VAR")은 같은 명령줄의 "$VAR" 인자 확장에 적용되지 않아
+#   빈 spec이 넘어간다 — 반드시 별도 export 후, 비어있지 않음을 가드하고 호출한다.
+export GJC_DEEP_INTERVIEW_SPEC='<full markdown via tool env, not shell paste>'
+[ -n "$GJC_DEEP_INTERVIEW_SPEC" ] || { echo "empty spec — abort (write 금지)"; exit 1; }
+GJC_NOTIFICATIONS=0 gjc deep-interview --write --stage final \
   --session-id "$GJC_SESSION_ID" \
   --slug "$TARGET_SLUG" \
   --spec "$GJC_DEEP_INTERVIEW_SPEC" \
@@ -155,4 +158,4 @@ plain-layer는 승인 포맷을 새로 만들지 않는다.
 
 - 정적: 이 파일에 native-only 경계, 3항목 해설, single Phase-5, writer 경로, exact missing marker, ≥2 보류, no proxy, no plain-always, no direct `.gjc` edit
 - gate heading text tokens vs `gate-briefing/SKILL.md` 정본 일치
-- installer EXPECTED에 `plain-layer` / `plain` 포함 (9/14)
+- installer EXPECTED에 `plain-layer` / `plain` 포함 (8/13)

@@ -19,6 +19,8 @@ MARKERS = [
     "templates/omg.md",
     "templates/setup.md",
     "skills/insane-review/SKILL.md",
+    "references/presets.yml",
+    "skills/plain-layer/SKILL.md",
 ]
 
 def sha256(path):

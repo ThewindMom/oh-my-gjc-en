@@ -61,3 +61,14 @@ test("preset command exposes safe selection semantics", () => {
   expect(command).toContain("이름 단위 병합만");
   expect(command).toContain("부분 저장 금지");
 });
+
+test("legacy cleanup is consent-gated and never names an active preset", () => {
+  // v0.14.0 cross-review F2: the sole merge-contract exception is consent-gated removal
+  // of RETIRED preset blocks; active presets must never appear in the cleanup list.
+  const seg = command.match(/구버전 정리:[\s\S]*?않는다\)\./)?.[0];
+  expect(seg).toBeDefined();
+  expect(seg!).toMatch(/동의/);
+  for (const active of Object.keys(parsed.profiles)) {
+    expect(seg!).not.toMatch(new RegExp("[`/]" + active + "[`/]"));
+  }
+});

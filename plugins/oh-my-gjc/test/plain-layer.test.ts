@@ -89,6 +89,46 @@ describe("plain-layer static contract", () => {
     expect(t).toContain("--stage final");
     expect(t).toContain("gate-always de-dup");
   });
+
+  test("sanctioned write snippet exports spec before use (static)", () => {
+    const t = read(skillPath);
+    // regression (v0.14.0 cross-review F1): command-local assignment does not apply to
+    // same-command-line "$VAR" argument expansion → empty spec. Must export + guard.
+    expect(t).toContain("export GJC_DEEP_INTERVIEW_SPEC");
+    expect(t).toContain('[ -n "$GJC_DEEP_INTERVIEW_SPEC" ]');
+    expect(t).not.toMatch(/GJC_DEEP_INTERVIEW_SPEC='[^']*' \\\n\s+gjc /);
+  });
+
+  test("sanctioned write snippet passes non-empty spec (behavioral, stub gjc)", () => {
+    const t = read(skillPath);
+    const m = t.match(/### Sanctioned write[\s\S]*?```sh\n([\s\S]*?)```/);
+    expect(m).not.toBeNull();
+    const snippet = m![1];
+    const dir = mkdtempSync(join(tmpdir(), "omg-spec-"));
+    try {
+      // stub gjc: capture the value following --spec
+      writeFileSync(
+        join(dir, "gjc"),
+        '#!/usr/bin/env bash\nwhile [ $# -gt 0 ]; do if [ "$1" = --spec ]; then printf %s "$2" > "$CAPTURE"; shift; fi; shift; done\n',
+        { mode: 0o755 },
+      );
+      const r = spawnSync("bash", ["-c", snippet], {
+        env: {
+          ...process.env,
+          PATH: `${dir}:${process.env.PATH}`,
+          CAPTURE: join(dir, "spec.out"),
+          GJC_SESSION_ID: "test-session",
+          TARGET_SLUG: "test-slug",
+        },
+        encoding: "utf8",
+      });
+      expect(r.status).toBe(0);
+      const captured = readFileSync(join(dir, "spec.out"), "utf8");
+      expect(captured.length).toBeGreaterThan(0); // old snippet shape captured ""
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("install-skill.sh manifest includes plain-layer", () => {
