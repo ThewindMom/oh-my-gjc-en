@@ -43,9 +43,9 @@ PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # ── EXPECTED manifest (the single source of truth for a complete install) ────────────
 EXPECTED_SKILLS=(easy-answer gate-briefing multivendor-presets branch-flow extragoal \
-                 insane-review gjc-bugwatch plain-layer lazycodex-gjc)
+                 insane-review gjc-bugwatch plain-layer lazycodex-gjc release-gate)
 EXPECTED_COMMANDS=(omg setup easy easy-always gate gate-always presets fable branchflow-always \
-                   insane-review bugwatch-scan worktree plain lazycodex-gjc)
+                   insane-review bugwatch-scan worktree plain lazycodex-gjc release)
 EXPECTED_RUNTIMES=(bin/lazycodex-gjc.mjs)
 # Capabilities REMOVED (관제탑 발주, 하코 승인). 0.11.0: codex-deepwork(실사용 0회, lazycodex와 중복) +
 # codex-app 짝(대상 앱 빌드 트랙 07-03 아카이브; Pro 리뷰는 insane-review 전담). 0.12.0: codex-cli-ask·
@@ -220,6 +220,62 @@ cleanup_removed() { # $1=scope — sweep only native files of capabilities remov
   if [ "$removed" -gt 0 ]; then echo "✓ cleaned $removed removed-capability native file(s) (0.11.0–0.12.0 removals; gajae-app ownership transfer 0.14.0)"; fi
 }
 
+# ── Install-time preset merge (v0.17.0, 하코 지시 2026-07-14) ──────────────────────────
+# A fresh machine must see the custom `sol` profile in the model-preset picker right after
+# install — without running /omg:presets first. Same merge safety contract as the command:
+# name-scoped (ONLY the `sol` block), backup first, never touch other profiles or top-level
+# keys, validate against the live gjc profile registry, restore the backup on ANY failure.
+# NON-FATAL by design: a preset-merge failure must never break the suite install (warn and
+# point at /omg:presets). Consent-gated retired-preset cleanup stays in /omg:presets ONLY —
+# this function never deletes anything.
+merge_sol_preset() { # user scope only — models.yml is user-global
+  local src dst bak block out tmp
+  src="$PLUGIN_ROOT/references/presets.yml"
+  dst="$HOME/.gjc/agent/models.yml"
+  [ -f "$src" ] || { echo "! preset merge skipped: references/presets.yml missing — run /omg:presets later" >&2; return 0; }
+  command -v gjc >/dev/null 2>&1 || { echo "! preset merge skipped: gjc not on PATH — run /omg:presets later" >&2; return 0; }
+  # canonical sol block = everything below `profiles:` (the canonical source is sol-only since v0.10)
+  block="$(awk 'f; /^profiles:$/ {f=1}' "$src")"
+  [ -n "$block" ] || { echo "! preset merge skipped: could not extract sol block — run /omg:presets later" >&2; return 0; }
+  mkdir -p "$(dirname "$dst")"
+  bak=""
+  if [ -f "$dst" ]; then
+    bak="$dst.bak-$(date +%s)"
+    cp "$dst" "$bak" || { echo "! preset merge skipped: backup failed" >&2; return 0; }
+    if grep -Eq '^  sol:[[:space:]]*$' "$dst"; then
+      # Replace the existing sol block in place (its leading `  #` comments + 4+-space body).
+      # Other profiles, their comments, and top-level keys pass through untouched.
+      tmp="$(mktemp)"
+      OMG_SOL_BLOCK="$block" awk '
+        BEGIN { n = 0; insol = 0 }
+        {
+          if (insol) { if ($0 ~ /^    /) next; insol = 0 }
+          if ($0 ~ /^  #/) { buf[++n] = $0; next }
+          if ($0 ~ /^  sol:[ \t]*$/) { n = 0; print ENVIRON["OMG_SOL_BLOCK"]; insol = 1; next }
+          for (i = 1; i <= n; i++) print buf[i]
+          n = 0; print
+        }
+        END { for (i = 1; i <= n; i++) print buf[i] }
+      ' "$dst" > "$tmp" && mv "$tmp" "$dst"
+    else
+      grep -q '^profiles:' "$dst" || printf '\nprofiles:\n' >> "$dst"
+      printf '\n%s\n' "$block" >> "$dst"
+    fi
+  else
+    printf 'profiles:\n\n%s\n' "$block" > "$dst"
+  fi
+  # Validate against the live registry: the probe fails fast (no auth/network) and its
+  # error lists every registered profile — `sol` must be among them, meaning the file
+  # parses AND the profile registered. (word-safe match: avoid `fable-sol` false hits)
+  out="$(GJC_NOTIFICATIONS=0 gjc --mpreset __omg_probe__ -p --no-session --no-tools "x" 2>&1 || true)"
+  if printf '%s' "$out" | grep -qE '[:,] sol(,|$)'; then
+    echo "✓ preset  (user): merged \`sol\` into $dst${bak:+ (backup: $bak)}"
+  else
+    if [ -n "$bak" ]; then cp "$bak" "$dst"; else rm -f "$dst"; fi
+    echo "! preset merge rolled back (registry validation failed) — run /omg:presets manually" >&2
+  fi
+}
+
 MISSING=()
 
 install_skill() { # $1=name $2=scope
@@ -302,6 +358,7 @@ case "$mode" in
       cleanup_legacy_commands "$mode"
       cleanup_removed "$mode"
       report_missing
+      if [ "$mode" = "user" ]; then merge_sol_preset; fi
     else
       if [ "$target" = "lazycodex-gjc" ]; then
         [ -f "$PLUGIN_ROOT/bin/lazycodex-gjc.mjs" ] && [ ! -L "$PLUGIN_ROOT/bin/lazycodex-gjc.mjs" ] || MISSING+=("bin/lazycodex-gjc.mjs")
@@ -312,6 +369,7 @@ case "$mode" in
       if [ -f "$PLUGIN_ROOT/templates/$target.md" ]; then install_command "$target" "$mode"; fi
       if [ "$target" = "lazycodex-gjc" ] && [ "$mode" = "user" ]; then install_runtime_binding; fi
       report_missing
+      if [ "$target" = "multivendor-presets" ] && [ "$mode" = "user" ]; then merge_sol_preset; fi
     fi
     if [ "$mode" = "user" ]; then
       echo "  → skills auto-activate by trigger words; commands are /omg:<name>. Type /omg for the catalog."
