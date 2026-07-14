@@ -374,8 +374,8 @@ function killGroup(child) {
 function stopUnit(systemctl, unit) {
   return new Promise((resolveStop) => {
     const stop = spawn(systemctl, ["--user", "kill", "--kill-who=all", "--signal=SIGKILL", unit], { shell: false, stdio: "ignore" });
-    stop.once("error", () => resolveStop());
-    stop.once("close", () => resolveStop());
+    stop.once("error", () => resolveStop(false));
+    stop.once("close", (code) => resolveStop(code === 0));
   });
 }
 
@@ -391,11 +391,17 @@ function runChild(binary, args, prompt, env, output, timeoutSeconds, supervisor)
     supervisorArgs.push(binary, ...args);
     const child = spawn(supervisor.systemdRun, supervisorArgs, { detached: true, env: process.env, shell: false, stdio: ["pipe", "pipe", "pipe"] });
     let failure;
+    let containmentStopFailed = false;
     let stdoutBytes = 0;
     let stderrBytes = 0;
     const stop = (reason) => {
       if (failure === undefined) failure = reason;
-      void stopUnit(supervisor.systemctl, unit).then(() => killGroup(child));
+      void (async () => {
+        // Fail-closed containment accounting: one retry, then record the failure so the
+        // caller reports an uncertain stop instead of silently assuming the unit died.
+        if (!(await stopUnit(supervisor.systemctl, unit)) && !(await stopUnit(supervisor.systemctl, unit))) containmentStopFailed = true;
+        killGroup(child);
+      })();
     };
     const failOverflow = () => stop("overflow");
     child.stdout.on("data", (chunk) => { stdoutBytes += chunk.length; if (stdoutBytes > OUTPUT_LIMIT) failOverflow(); });
@@ -413,9 +419,9 @@ function runChild(binary, args, prompt, env, output, timeoutSeconds, supervisor)
       process.off("SIGTERM", interrupt);
       await stopUnit(supervisor.systemctl, unit);
       killGroup(child);
-      resolveResult({ code, signal, failure });
+      resolveResult({ code, signal, failure, containmentStopFailed });
     });
-    child.stdin.on("error", (error) => { if (error.code !== "EPIPE") reject(new CliError("worker input failed", 1)); });
+    child.stdin.on("error", (error) => { if (error.code !== "EPIPE") stop("input"); });
     child.stdin.end(prompt);
   });
 }
@@ -442,8 +448,10 @@ async function main() {
     const env = childEnvironment(runtime, childCodexHome, temp);
     const result = await runChild(runtime.core, childArgs({ ...config, protectedStatePaths: protectedPaths }, env, runtime, output), workerPrompt(task, omo, config.sandbox), env, output, config.timeoutSeconds, binding);
     rejectNewWorkspaceState(config.cwd, initialWorkspaceState);
-    if (result.failure === "interrupted") throw new CliError("worker interrupted", 130);
-    if (result.failure === "timeout") throw new CliError("worker timed out", 124);
+    const stopSuffix = result.containmentStopFailed ? "; containment stop failed — the systemd user unit may still be running" : "";
+    if (result.failure === "input") throw new CliError(`worker input failed${stopSuffix}`, 1);
+    if (result.failure === "interrupted") throw new CliError(`worker interrupted${stopSuffix}`, 130);
+    if (result.failure === "timeout") throw new CliError(`worker timed out${stopSuffix}`, 124);
     if (result.failure === "overflow" || statSync(output).size > OUTPUT_LIMIT) throw new CliError("worker output exceeded limit", 1);
     if (result.code !== 0) throw new CliError(result.code === null ? `worker terminated by signal ${result.signal ?? "unknown"}` : `worker exited with code ${result.code}`, result.code ?? 1);
     const bytes = readFileSync(output);

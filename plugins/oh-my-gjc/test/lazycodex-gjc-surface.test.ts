@@ -173,6 +173,16 @@ describe("lazycodex-gjc skill and command contract", () => {
     const unsafe = spawnSync("bash", ["-c", script], { cwd: f.project, env, encoding: "utf8" });
     expect(unsafe.status).toBe(1);
     expect(unsafe.stderr).toBe("lazycodex-gjc runtime permissions are unsafe; rerun native user install\n");
+
+    chmodSync(runtime, 0o700);
+    const writableInterp = join(f.root, "writable-node");
+    writeFileSync(writableInterp, "#!/bin/sh\nexit 99\n");
+    chmodSync(writableInterp, 0o770); // explicit: writeFileSync mode is umask-masked
+    writeSentinel(binding, ["lazycodex-gjc-binding-v1", f.home, digest(runner), runner, digest(writableInterp), writableInterp, digest(node), node, join(node, ".."), process.env.CODEX_HOME ?? join(process.env.HOME ?? "", ".codex"), digest(systemdRun), systemdRun, digest(systemctl), systemctl, digest(envBinary), envBinary].join("\n") + "\n");
+    chmodSync(binding, 0o600);
+    const writableNode = spawnSync("bash", ["-c", script], { cwd: f.project, env, encoding: "utf8" });
+    expect(writableNode.status).toBe(1);
+    expect(writableNode.stderr).toBe("lazycodex-gjc runtime verification failed; rerun native user install\n");
   });
 });
 
@@ -213,8 +223,9 @@ describe("lazycodex-gjc isolated native install", () => {
     }
   });
 
-  test("all-user install without a Codex home skips only the runtime binding", () => {
+  test("all-user install without a Codex home skips AND removes the runtime binding", () => {
     const f = fixture("user");
+    writeSentinel(join(f.nativeRoot, "runtimes/lazycodex-gjc/binding"), "stale binding from a previous install");
     const result = spawnSync("bash", [installerPath, "all", "user"], {
       cwd: f.project,
       env: { ...process.env, HOME: f.home, CODEX_HOME: join(f.home, ".codex-absent") },
@@ -226,6 +237,7 @@ describe("lazycodex-gjc isolated native install", () => {
     expect(readdirSync(join(f.nativeRoot, "skills")).sort()).toEqual([...parseManifest("EXPECTED_SKILLS")].sort());
     expect(readdirSync(join(f.nativeRoot, "commands")).sort()).toEqual([...ownedCommands()].sort());
     expect(existsSync(join(f.nativeRoot, "runtimes/lazycodex-gjc"))).toBe(false);
+    expect(result.stdout + result.stderr).toContain("removed runtime binding");
   });
 
   test("normalizes group-writable trusted runtime paths during user install", () => {

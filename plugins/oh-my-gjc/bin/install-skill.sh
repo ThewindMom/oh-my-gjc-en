@@ -156,7 +156,7 @@ NODE
   RUNTIME_ENV="$(readlink -f "$(command -v env)")"
   for entry in "$RUNTIME_NODE" "$RUNTIME_CORE" "$RUNTIME_SYSTEMD_RUN" "$RUNTIME_SYSTEMCTL" "$RUNTIME_ENV"; do [ -f "$entry" ] && [ ! -L "$entry" ] || { echo "❌ install FAILED — trusted runtime file unavailable: $entry" >&2; exit 1; }; done
   [ -d "$RUNTIME_CODEX_PATH" ] && [ -d "$RUNTIME_CODEX_HOME" ] || { echo "❌ install FAILED — Codex runtime/home unavailable" >&2; exit 1; }
-  for entry in "$RUNTIME_CORE" "$RUNTIME_CODEX_PATH" "$RUNTIME_CODEX_HOME" "$RUNTIME_SYSTEMD_RUN" "$RUNTIME_SYSTEMCTL" "$RUNTIME_ENV"; do normalize_trusted_path "$entry"; done
+  for entry in "$RUNTIME_NODE" "$RUNTIME_CORE" "$RUNTIME_CODEX_PATH" "$RUNTIME_CODEX_HOME" "$RUNTIME_SYSTEMD_RUN" "$RUNTIME_SYSTEMCTL" "$RUNTIME_ENV"; do normalize_trusted_path "$entry"; done
   if [ -f "$RUNTIME_CODEX_HOME/auth.json" ] && [ -O "$RUNTIME_CODEX_HOME/auth.json" ]; then chmod 600 "$RUNTIME_CODEX_HOME/auth.json"; fi
 }
 
@@ -290,7 +290,11 @@ case "$mode" in
       LAZYCODEX_BIND=0
       if [ "$mode" = "user" ]; then
         if lazycodex_runtime_available; then prepare_runtime_binding; LAZYCODEX_BIND=1
-        else echo "! lazycodex-gjc runtime not bound (Codex CLI / systemd / Codex home missing) — the bridge stays disabled (fail-closed). After installing+logging in Codex, re-run: install-skill.sh lazycodex-gjc user" >&2; fi
+        else
+          echo "! lazycodex-gjc runtime not bound (Codex CLI / systemd / Codex home missing) — the bridge stays disabled (fail-closed). After installing+logging in Codex, re-run: install-skill.sh lazycodex-gjc user" >&2
+          # A stale binding from a previous install must not stay executable across upgrades.
+          if [ -d "$(runner_runtime)" ]; then uninstall_runtime_binding; fi
+        fi
       fi
       for s in "${EXPECTED_SKILLS[@]}";     do install_skill     "$s" "$mode"; done
       for c in "${EXPECTED_COMMANDS[@]}";   do install_command   "$c" "$mode"; done
