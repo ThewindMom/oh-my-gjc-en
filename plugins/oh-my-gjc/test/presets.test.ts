@@ -48,8 +48,10 @@ test("preset command exposes safe selection semantics and builtin lanes", () => 
 	expect(command).toContain("이름 단위 병합만");
 	expect(command).toContain("부분 저장 금지");
 	// quality/emergency/safety lanes are gjc BUILT-INS — never re-shipped as custom copies
-	// (local copies rot: the stale `daily` incident, 2026-07-14).
-	for (const builtin of ["opus-codex", "codex-pro", "fable-opus-codex"]) {
+	// (local copies rot: the stale `daily` incident, 2026-07-14). All FOUR builtin names
+	// must appear on every user surface (v0.16.0 cross-review r1: codex-medium was dropped
+	// from half the surfaces).
+	for (const builtin of ["opus-codex", "codex-medium", "codex-pro", "fable-opus-codex"]) {
 		expect(command).toContain(builtin);
 	}
 });

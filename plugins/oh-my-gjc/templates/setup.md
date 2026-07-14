@@ -56,7 +56,7 @@ bash "${OMG_ROOT}bin/install-skill.sh" all
 "커스텀 프리셋 `sol`(전 구간 저지연)을 병합할까? → `/omg:presets`"
 이미 있으면 건너뛴다. 은퇴 프리셋(닫힌 목록 — `/omg:presets` 본문의 구버전 정리 목록: `ultimate`/`ultimate-f5`/`daily`/`fast`/`ideal`/`escalate-surgical`/`monorepo`/`reviewer`/`fable-sol`/`grok-main`/`grok`/`codex`/`fable-codex`)이 보이면 정리도 함께 제안(동의 후에만, 목록 밖 프로파일은 절대 제거 금지).
 병합 후 세션 시작 기본은 `gjc --mpreset sol --default`로 고정하도록 안내한다.
-품질/비상/안전 레인은 gjc 빌트인 `opus-codex`/`codex-pro`/`fable-opus-codex`를 안내한다(병합 불필요).
+품질/비상/안전 레인은 gjc 빌트인 `opus-codex`/`codex-medium`/`codex-pro`/`fable-opus-codex`를 안내한다(병합 불필요).
 
 ## Step 4 — 전제조건 기능 사용 가능 여부 (읽기 전용 안내)
 
