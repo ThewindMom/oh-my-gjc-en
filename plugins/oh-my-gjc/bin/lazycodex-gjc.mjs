@@ -310,7 +310,7 @@ function childArgs(config, env, runtime, output) {
   const access = config.sandbox === "workspace-write" ? "write" : "read";
   const baseProfile = config.sandbox === "workspace-write" ? ":workspace" : ":read-only";
   const workspaceRoots = `{"."="${access}"}`;
-  const grants = [...config.protectedStatePaths.map((path) => [path, "deny"]), [env.HOME, "deny"], [env.CODEX_HOME, "read"], [join(env.CODEX_HOME, "auth.json"), "deny"], [runtime.core, "read"], [runtime.helperDir, "read"], [runtime.codexPath, "read"]].map(([path, mode]) => `${toml(path)}=${toml(mode)}`).join(",");
+  const grants = [...config.protectedStatePaths.map((path) => [path, "deny"]), [env.HOME, "deny"], [env.CODEX_HOME, "read"], [runtime.core, "read"], [runtime.helperDir, "read"], [runtime.codexPath, "read"]].map(([path, mode]) => `${toml(path)}=${toml(mode)}`).join(",");
   const filesystem = `{":minimal"="read",":workspace_roots"=${workspaceRoots},":tmpdir"="write",${grants}}`;
   const args = ["exec", "--ephemeral", "--color", "never", "--ignore-user-config", "--ignore-rules", "--strict-config", "-C", config.cwd];
   for (const value of ['approval_policy="never"', 'web_search="disabled"', 'cli_auth_credentials_store="file"', 'default_permissions="lazycodex_gjc"', `permissions.lazycodex_gjc.extends=${toml(baseProfile)}`, `permissions.lazycodex_gjc.filesystem=${filesystem}`, "permissions.lazycodex_gjc.network.enabled=false", 'shell_environment_policy.inherit="none"', `shell_environment_policy.set={HOME=${toml(env.HOME)},TMPDIR=${toml(env.TMPDIR)},PATH=${toml(runtime.safePath)}}`, "mcp_servers={}", "apps={}", "hooks={}"]) args.push("-c", value);
@@ -361,12 +361,12 @@ async function main() {
   let temp;
   let childCodexHome;
   try {
-    childCodexHome = prepareChildCodexHome(process.env.HOME, codexHome);
     temp = mkdtempSync(join(tmpdir(), "lazycodex-gjc-"));
     chmodSync(temp, 0o700);
+    const runtime = prepareRuntime(binary, temp);
+    childCodexHome = prepareChildCodexHome(process.env.HOME, codexHome);
     const output = join(temp, "final.txt");
     writeFileSync(output, "", { mode: 0o600 });
-    const runtime = prepareRuntime(binary, temp);
     const env = childEnvironment(runtime, childCodexHome, temp);
     const result = await runChild(runtime.core, childArgs({ ...config, protectedStatePaths: protectedPaths }, env, runtime, output), workerPrompt(task, omo, config.sandbox), env, output, config.timeoutSeconds);
     if (result.timedOut) throw new CliError("worker timed out", 124);

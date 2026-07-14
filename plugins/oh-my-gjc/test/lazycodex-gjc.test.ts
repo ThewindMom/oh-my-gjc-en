@@ -190,7 +190,7 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(readFileSync(join(f.record, "auth-target"), "utf8")).toBe(realpathSync(join(f.env.CODEX_HOME, "auth.json")));
     expect(args).toContain('cli_auth_credentials_store="file"');
     expect(filesystem).toContain(`${JSON.stringify(childCodexHome)}="read"`);
-    expect(filesystem).toContain(`${JSON.stringify(join(childCodexHome, "auth.json"))}="deny"`);
+    expect(filesystem).not.toContain(`${JSON.stringify(join(childCodexHome, "auth.json"))}="deny"`);
     expect(filesystem).toContain(`${JSON.stringify(realpathSync(f.env.CODEX_HOME))}="deny"`);
     expect(readFileSync(join(f.env.CODEX_HOME, "config.toml"), "utf8")).toContain('sandbox_mode = "danger-full-access"');
     expect(readFileSync(join(f.env.CODEX_HOME, "auth.json"), "utf8")).toBe('{"fixture":"auth-canary"}');
@@ -321,6 +321,7 @@ describe("lazycodex-gjc isolated runner", () => {
 
   test("fails closed when an npm Codex wrapper has no compatible native runtime", () => {
     const f = fixture();
+    rmSync(join(f.env.CODEX_HOME, "auth.json"));
     const codex = join(f.root, "bin/codex");
     const wrapper = join(f.root, "bin/codex.js");
     writeFileSync(wrapper, readFileSync(codex), { mode: 0o755 });
