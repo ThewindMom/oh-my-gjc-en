@@ -36,6 +36,7 @@ function fixture(mode: Mode = "success", omoMode: OmoMode = "valid"): Fixture {
   const codexHome = join(root, "codex-home");
   mkdirSync(codexHome);
   writeFileSync(join(codexHome, "config.toml"), 'sandbox_mode = "danger-full-access"\nweb_search = "live"\n[hooks]\n');
+  writeFileSync(join(codexHome, "auth.json"), '{"fixture":"auth-canary"}', { mode: 0o600 });
   if (omoMode !== "missing") {
     const version = omoMode === "stale" ? "4.17.1" : "4.18.0";
     const omoRoot = join(codexHome, "plugins/cache/sisyphuslabs/omo", version);
@@ -77,6 +78,11 @@ process.stdin.on("end", () => {
   fs.writeFileSync(${JSON.stringify(join(record, "stdin"))}, input);
   fs.writeFileSync(${JSON.stringify(join(record, "mode"))}, String(fs.statSync(out).mode & 0o777));
   fs.writeFileSync(${JSON.stringify(join(record, "temp"))}, path.dirname(out));
+  fs.writeFileSync(${JSON.stringify(join(record, "codex-home"))}, process.env.CODEX_HOME);
+  fs.writeFileSync(${JSON.stringify(join(record, "codex-home-mode"))}, String(fs.statSync(process.env.CODEX_HOME).mode & 0o777));
+  const childAuth = path.join(process.env.CODEX_HOME, "auth.json");
+  fs.writeFileSync(${JSON.stringify(join(record, "auth-is-symlink"))}, String(fs.lstatSync(childAuth).isSymbolicLink()));
+  fs.writeFileSync(${JSON.stringify(join(record, "auth-target"))}, fs.realpathSync(childAuth));
   if (${JSON.stringify(mode)} === "nonzero") process.exit(23);
   if (${JSON.stringify(mode)} === "stderr-secret") {
     process.stderr.write(input + "\\nFILE-CANARY-7d321\\n");
@@ -166,6 +172,31 @@ afterEach(() => {
 });
 
 describe("lazycodex-gjc isolated runner", () => {
+  test("isolates child CODEX_HOME while keeping real auth and Codex state protected", () => {
+    const f = fixture();
+    const result = run(f, ["--sandbox", "workspace-write"]);
+    const args = stringArray(parsedRecord(join(f.record, "args.json")));
+    const env = stringRecord(parsedRecord(join(f.record, "env.json")));
+    const childCodexHome = readFileSync(join(f.record, "codex-home"), "utf8");
+    const filesystem = args.find((value) => value.startsWith("permissions.lazycodex_gjc.filesystem=")) ?? "";
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(env.CODEX_HOME).toBe(childCodexHome);
+    expect(childCodexHome).not.toBe(f.env.CODEX_HOME);
+    expect(childCodexHome).toStartWith(join(f.home, ".cache/oh-my-gjc/lazycodex-gjc"));
+    expect(childCodexHome).not.toStartWith(env.TMPDIR ?? "missing-tmpdir");
+    expect(readFileSync(join(f.record, "codex-home-mode"), "utf8")).toBe("448");
+    expect(readFileSync(join(f.record, "auth-is-symlink"), "utf8")).toBe("true");
+    expect(readFileSync(join(f.record, "auth-target"), "utf8")).toBe(realpathSync(join(f.env.CODEX_HOME, "auth.json")));
+    expect(args).toContain('cli_auth_credentials_store="file"');
+    expect(filesystem).toContain(`${JSON.stringify(childCodexHome)}="read"`);
+    expect(filesystem).toContain(`${JSON.stringify(join(childCodexHome, "auth.json"))}="deny"`);
+    expect(filesystem).toContain(`${JSON.stringify(realpathSync(f.env.CODEX_HOME))}="deny"`);
+    expect(readFileSync(join(f.env.CODEX_HOME, "config.toml"), "utf8")).toContain('sandbox_mode = "danger-full-access"');
+    expect(readFileSync(join(f.env.CODEX_HOME, "auth.json"), "utf8")).toBe('{"fixture":"auth-canary"}');
+    expect(existsSync(childCodexHome)).toBe(false);
+  });
+
   test("passes an exact restrictive argv, isolated env, and raw task payload", () => {
     const f = fixture();
     const task = "line one\n$(touch /tmp/nope) --model injected\nline three";
@@ -237,7 +268,8 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(env.HTTPS_PROXY).toBeUndefined();
     expect(env.HOME).not.toBe(f.home);
     expect(env.HOME).toStartWith(env.TMPDIR ?? "missing-tmpdir");
-    expect(env.CODEX_HOME).toBe(f.env.CODEX_HOME);
+    expect(env.CODEX_HOME).not.toBe(f.env.CODEX_HOME);
+    expect(env.CODEX_HOME).toStartWith(join(f.home, ".cache/oh-my-gjc/lazycodex-gjc"));
     expect(env.SHELL).toBeUndefined();
     expect(env.PATH?.split(":")[0]).toEndWith("/helpers");
     expect(env.PATH).not.toContain(f.cwd);
@@ -398,6 +430,7 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(result.status).toBe(status);
     expect(result.stdout).toBe("");
     expect(existsSync(readFileSync(join(f.record, "temp"), "utf8"))).toBe(false);
+    expect(existsSync(readFileSync(join(f.record, "codex-home"), "utf8"))).toBe(false);
   });
 
   test("kills the process group and cleans temporary output on timeout", () => {

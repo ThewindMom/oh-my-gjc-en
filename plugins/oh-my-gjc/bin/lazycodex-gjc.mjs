@@ -156,6 +156,51 @@ function ownedContainedFile(path, root) {
   return !entry.isSymbolicLink() && stats.isFile() && within(canonical, root) && (uid === undefined || stats.uid === uid || stats.uid === 0);
 }
 
+function prepareChildCodexHome(homeInput, hostCodexHomeInput) {
+  let home;
+  let hostCodexHome;
+  try {
+    home = realpathSync(homeInput);
+    hostCodexHome = realpathSync(hostCodexHomeInput);
+  } catch {
+    throw new CliError("private Codex runtime state could not be established", 78);
+  } // no-excuse-ok: catch
+  const auth = join(hostCodexHome, "auth.json");
+  try {
+    const authStats = statSync(auth);
+    const uid = process.getuid?.();
+    if (!ownedContainedFile(auth, hostCodexHome) || (uid !== undefined && authStats.uid !== uid) || (authStats.mode & 0o077) !== 0) {
+      throw new CliError("trusted Codex file credentials not found", 78);
+    }
+  } catch (error) {
+    if (error instanceof CliError) throw error;
+    throw new CliError("trusted Codex file credentials not found", 78);
+  } // no-excuse-ok: catch
+
+  const baseInput = join(home, ".cache", "oh-my-gjc", "lazycodex-gjc");
+  let childHome;
+  try {
+    mkdirSync(baseInput, { recursive: true, mode: 0o700 });
+    const baseEntry = lstatSync(baseInput);
+    const base = realpathSync(baseInput);
+    const baseStats = statSync(base);
+    const uid = process.getuid?.();
+    if (baseEntry.isSymbolicLink() || !baseStats.isDirectory() || !within(base, home) || (uid !== undefined && baseStats.uid !== uid) || (baseStats.mode & 0o077) !== 0) {
+      throw new CliError("private Codex runtime state could not be established", 78);
+    }
+    childHome = mkdtempSync(join(base, "runtime-"));
+    chmodSync(childHome, 0o700);
+    const canonicalChildHome = realpathSync(childHome);
+    if (!within(canonicalChildHome, base)) throw new CliError("private Codex runtime state could not be established", 78);
+    symlinkSync(realpathSync(auth), join(canonicalChildHome, "auth.json"));
+    return canonicalChildHome;
+  } catch (error) {
+    if (childHome !== undefined) rmSync(childHome, { recursive: true, force: true });
+    if (error instanceof CliError) throw error;
+    throw new CliError("private Codex runtime state could not be established", 78);
+  } // no-excuse-ok: catch
+}
+
 function resolveCodex(pathValue, cwd) {
   for (const directory of (pathValue ?? "").split(delimiter)) {
     if (!isAbsolute(directory)) continue;
@@ -265,10 +310,10 @@ function childArgs(config, env, runtime, output) {
   const access = config.sandbox === "workspace-write" ? "write" : "read";
   const baseProfile = config.sandbox === "workspace-write" ? ":workspace" : ":read-only";
   const workspaceRoots = `{"."="${access}"}`;
-  const grants = [...config.protectedStatePaths.map((path) => [path, "deny"]), [env.HOME, "deny"], [runtime.core, "read"], [runtime.helperDir, "read"], [runtime.codexPath, "read"]].map(([path, mode]) => `${toml(path)}=${toml(mode)}`).join(",");
+  const grants = [...config.protectedStatePaths.map((path) => [path, "deny"]), [env.HOME, "deny"], [env.CODEX_HOME, "read"], [join(env.CODEX_HOME, "auth.json"), "deny"], [runtime.core, "read"], [runtime.helperDir, "read"], [runtime.codexPath, "read"]].map(([path, mode]) => `${toml(path)}=${toml(mode)}`).join(",");
   const filesystem = `{":minimal"="read",":workspace_roots"=${workspaceRoots},":tmpdir"="write",${grants}}`;
   const args = ["exec", "--ephemeral", "--color", "never", "--ignore-user-config", "--ignore-rules", "--strict-config", "-C", config.cwd];
-  for (const value of ['approval_policy="never"', 'web_search="disabled"', 'default_permissions="lazycodex_gjc"', `permissions.lazycodex_gjc.extends=${toml(baseProfile)}`, `permissions.lazycodex_gjc.filesystem=${filesystem}`, "permissions.lazycodex_gjc.network.enabled=false", 'shell_environment_policy.inherit="none"', `shell_environment_policy.set={HOME=${toml(env.HOME)},TMPDIR=${toml(env.TMPDIR)},PATH=${toml(runtime.safePath)}}`, "mcp_servers={}", "apps={}", "hooks={}"]) args.push("-c", value);
+  for (const value of ['approval_policy="never"', 'web_search="disabled"', 'cli_auth_credentials_store="file"', 'default_permissions="lazycodex_gjc"', `permissions.lazycodex_gjc.extends=${toml(baseProfile)}`, `permissions.lazycodex_gjc.filesystem=${filesystem}`, "permissions.lazycodex_gjc.network.enabled=false", 'shell_environment_policy.inherit="none"', `shell_environment_policy.set={HOME=${toml(env.HOME)},TMPDIR=${toml(env.TMPDIR)},PATH=${toml(runtime.safePath)}}`, "mcp_servers={}", "apps={}", "hooks={}"]) args.push("-c", value);
   for (const feature of ["apps", "enable_mcp_apps", "hooks", "browser_use", "browser_use_external", "browser_use_full_cdp_access", "computer_use", "in_app_browser", "remote_plugin", "skill_mcp_dependency_install", "plugins"]) args.push("--disable", feature);
   args.push("-o", output);
   if (config.model !== undefined) args.push("--model", config.model);
@@ -313,13 +358,16 @@ async function main() {
   const protectedPaths = [...new Set([...protectedStatePaths(config.cwd, process.env.HOME, codexHome), ...workspaceDenies])];
   const omo = resolveOmoSkill(codexHome);
   const binary = resolveCodex(process.env.PATH, config.cwd);
-  const temp = mkdtempSync(join(tmpdir(), "lazycodex-gjc-"));
-  chmodSync(temp, 0o700);
-  const output = join(temp, "final.txt");
-  writeFileSync(output, "", { mode: 0o600 });
+  let temp;
+  let childCodexHome;
   try {
+    childCodexHome = prepareChildCodexHome(process.env.HOME, codexHome);
+    temp = mkdtempSync(join(tmpdir(), "lazycodex-gjc-"));
+    chmodSync(temp, 0o700);
+    const output = join(temp, "final.txt");
+    writeFileSync(output, "", { mode: 0o600 });
     const runtime = prepareRuntime(binary, temp);
-    const env = childEnvironment(runtime, codexHome, temp);
+    const env = childEnvironment(runtime, childCodexHome, temp);
     const result = await runChild(runtime.core, childArgs({ ...config, protectedStatePaths: protectedPaths }, env, runtime, output), workerPrompt(task, omo, config.sandbox), env, output, config.timeoutSeconds);
     if (result.timedOut) throw new CliError("worker timed out", 124);
     if (result.overflow || statSync(output).size > OUTPUT_LIMIT) throw new CliError("worker output exceeded limit", 1);
@@ -330,7 +378,8 @@ async function main() {
     if (finalOutput.trim().length === 0) throw new CliError("final output is empty", 1);
     process.stdout.write(finalOutput);
   } finally {
-    rmSync(temp, { recursive: true, force: true });
+    if (temp !== undefined) rmSync(temp, { recursive: true, force: true });
+    if (childCodexHome !== undefined) rmSync(childCodexHome, { recursive: true, force: true });
   }
 }
 
