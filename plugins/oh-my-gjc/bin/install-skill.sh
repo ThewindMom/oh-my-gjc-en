@@ -43,9 +43,9 @@ PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # ── EXPECTED manifest (the single source of truth for a complete install) ────────────
 EXPECTED_SKILLS=(easy-answer gate-briefing multivendor-presets branch-flow extragoal \
-                 insane-review gjc-bugwatch plain-layer)
+                 insane-review gjc-bugwatch plain-layer lazycodex-gjc)
 EXPECTED_COMMANDS=(omg setup easy easy-always gate gate-always presets fable branchflow-always \
-                   insane-review bugwatch-scan worktree plain)
+                   insane-review bugwatch-scan worktree plain lazycodex-gjc)
 # Capabilities REMOVED (관제탑 발주, 하코 승인). 0.11.0: codex-deepwork(실사용 0회, lazycodex와 중복) +
 # codex-app 짝(대상 앱 빌드 트랙 07-03 아카이브; Pro 리뷰는 insane-review 전담). 0.12.0: codex-cli-ask·
 # lazycodex·tower(명시 호출 0 — Codex 트래픽은 전량 제품 파이프라인 codex exec 직결로 스킬 미경유,
@@ -58,6 +58,7 @@ EXPECTED_COMMANDS=(omg setup easy easy-always gate gate-always presets fable bra
 # Upgrades sweep their native files so no orphan surface remains.
 REMOVED_SKILLS=(codex-deepwork codex-app-launch codex-app-cdp codex-cli-ask lazycodex tower worktree gajae-app)
 REMOVED_COMMANDS=(codex-run codex-app-launch codex-app-ask codex-ask lazycodex-setup lazycodex-work tower-setup gajae-app)
+# lazycodex-gjc is a distinct isolated bridge; it does not restore the removed lazycodex setup/work surface.
 # Pre-0.8.1 native files that upgrades must sweep away: the 17 one-release deprecation
 # tombstones shipped by 0.8.0 (removed in 0.8.1). Old `oh-my-gjc:<name>.md` aliases are
 # covered separately by looping EXPECTED_COMMANDS in cleanup_legacy_commands.
