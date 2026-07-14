@@ -36,10 +36,11 @@ The self-hosted web UI now lives in [`devswha/claudecodeui`'s canonical SELF-HOS
 gjc plugin list                                   # oh-my-gjc@oh-my-gjc listed
 ls ~/.gjc/agent/skills/                            # 9 skills (easy-answer, gate-briefing, plain-layer, lazycodex-gjc, …)
 ls ~/.gjc/agent/commands/ | grep '^omg'            # 14 commands: omg.md + 13 omg:<name>.md
+ls -l ~/.gjc/agent/receipts/lazycodex-gjc-runner.sha256  # private user-scope runner receipt
 ```
 
 ## Finish
 Tell the human: open a **new** gjc session (or `/move .`) so the command palette rebuilds, then run `/omg` for the catalog and `/omg:setup` to finish (model-preset merge + always-on toggles — all optional). Commands are `/omg:<name>`.
 
 ## Safety
-Idempotent — re-running only re-copies. This installs a documented plugin suite; it does not send code anywhere or change model/provider credentials. Prerequisite-gated features install with the suite but only run when their tools are present: ChatGPT subscription + Chromium for insane-review; an already installed and logged-in Codex CLI + LazyCodex/OMO for lazycodex-gjc. The installer does not install or log in to those tools. The bridge defaults to read-only, requires explicit workspace-write authorization, runs external `codex exec --ephemeral`, and does not create a child GJC session or mutate GJC config/credentials.
+Idempotent — re-running only re-copies. This installs a documented plugin suite; it does not send code anywhere or change model/provider credentials. Prerequisite-gated features install with the suite but only run when their tools are present: ChatGPT subscription + Chromium for insane-review; an already installed and logged-in Codex CLI + LazyCodex/OMO for lazycodex-gjc. The installer does not install or log in to those tools. The bridge defaults to read-only, requires explicit workspace-write authorization, runs external `codex exec --ephemeral`, and does not create a child GJC session or mutate GJC config/credentials. Its sensitive runner requires the private SHA-256 receipt produced by native user-scope install; project-scope installs remain valid for the rest of the suite but cannot supply this bridge receipt.

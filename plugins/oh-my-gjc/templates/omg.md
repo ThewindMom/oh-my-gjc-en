@@ -20,7 +20,7 @@ oh-my-gajaecode 스위트의 단일 진입점(oh-my-zsh의 `omz` 관례 계승).
 - `/omg:fable "<대상>"` — Fable 5 안전-크리티컬 적대적 감사. · 전제: Fable 5 모델 접근
 - `/omg:insane-review` — GPT-5.5 Pro 웹 코드 리뷰. · 전제: ChatGPT 구독 + 크로미움 로그인
 - `/omg:bugwatch-scan` — gjc 자체 버그 수집(초안만).
-- `/omg:lazycodex-gjc "<작업>"` — 이미 설치된 Codex+LazyCodex 외부 작업자(기본 read-only, GJC child 세션 없음). · 전제: Codex+LazyCodex
+- `/omg:lazycodex-gjc "<작업>"` — 이미 설치된 Codex+LazyCodex 외부 작업자(기본 read-only, GJC child 세션 없음). · 전제: Codex+호환 OMO+user-scope runner receipt
 
 > **전제**가 붙은 커맨드는 설치는 이미 됐고, 그 도구가 있어야 실제로 동작한다. 없으면
 > 실행 시 친절히 안내하고 안전하게 멈춘다(설치를 깨뜨리지 않는다).

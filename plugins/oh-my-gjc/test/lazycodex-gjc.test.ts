@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -7,7 +7,9 @@ import { spawnSync } from "node:child_process";
 const runner = join(import.meta.dir, "../bin/lazycodex-gjc.mjs");
 const sandboxes: string[] = [];
 
-type Mode = "success" | "nonzero" | "empty" | "invalid" | "oversized" | "stdout" | "timeout";
+type Mode = "success" | "nonzero" | "stderr-secret" | "empty" | "invalid" | "oversized" | "stdout" | "stdout-infinite" | "final-infinite" | "timeout";
+
+type OmoMode = "valid" | "missing" | "stale" | "incompatible" | "symlinked";
 
 type Fixture = {
   readonly root: string;
@@ -17,7 +19,7 @@ type Fixture = {
   readonly env: Readonly<Record<string, string>>;
 };
 
-function fixture(mode: Mode = "success"): Fixture {
+function fixture(mode: Mode = "success", omoMode: OmoMode = "valid"): Fixture {
   const root = mkdtempSync(join(tmpdir(), "lazycodex-gjc-test-"));
   sandboxes.push(root);
   const bin = join(root, "bin");
@@ -28,6 +30,33 @@ function fixture(mode: Mode = "success"): Fixture {
   mkdirSync(cwd);
   mkdirSync(home);
   mkdirSync(record);
+  const codexHome = join(home, ".codex");
+  mkdirSync(codexHome);
+  writeFileSync(join(codexHome, "config.toml"), 'sandbox_mode = "danger-full-access"\nweb_search = "live"\n[hooks]\n');
+  if (omoMode !== "missing") {
+    const version = omoMode === "stale" ? "4.17.1" : "4.18.0";
+    const omoRoot = join(codexHome, "plugins/cache/sisyphuslabs/omo", version);
+    mkdirSync(join(omoRoot, ".codex-plugin"), { recursive: true });
+    mkdirSync(join(omoRoot, "skills/ultrawork"), { recursive: true });
+    mkdirSync(join(omoRoot, "components/ultrawork"), { recursive: true });
+    const manifestPath = join(omoRoot, ".codex-plugin/plugin.json");
+    const skillPath = join(omoRoot, "skills/ultrawork/SKILL.md");
+    const componentPath = join(omoRoot, "components/ultrawork/package.json");
+    writeFileSync(manifestPath, JSON.stringify({ name: "omo", version }));
+    const skill = omoMode === "incompatible"
+      ? "---\nname: something-else\ndescription: incompatible\n---\n"
+      : "---\nname: ultrawork\ndescription: Binding ultrawork mode directive for omo on Codex.\n---\n<ultrawork-mode>\nULTRAWORK MODE ENABLED!\n</ultrawork-mode>\n";
+    if (omoMode === "symlinked") {
+      const outside = join(root, "outside-omo-skill.md");
+      writeFileSync(outside, skill);
+      symlinkSync(outside, skillPath);
+    } else {
+      writeFileSync(skillPath, skill);
+    }
+    writeFileSync(componentPath, JSON.stringify({ name: "@code-yeongyu/codex-ultrawork", version }));
+    chmodSync(omoRoot, 0o775);
+    for (const path of [manifestPath, skillPath, componentPath]) chmodSync(path, 0o664);
+  }
   const fake = `#!${process.execPath}
 const fs = require("node:fs");
 const cp = require("node:child_process");
@@ -46,12 +75,26 @@ process.stdin.on("end", () => {
   fs.writeFileSync(${JSON.stringify(join(record, "mode"))}, String(fs.statSync(out).mode & 0o777));
   fs.writeFileSync(${JSON.stringify(join(record, "temp"))}, path.dirname(out));
   if (${JSON.stringify(mode)} === "nonzero") process.exit(23);
+  if (${JSON.stringify(mode)} === "stderr-secret") {
+    process.stderr.write(input + "\\nFILE-CANARY-7d321\\n");
+    process.exit(23);
+  }
   if (${JSON.stringify(mode)} === "invalid") fs.writeFileSync(out, Buffer.from([0xff]));
   else if (${JSON.stringify(mode)} === "oversized") fs.writeFileSync(out, Buffer.alloc(1024 * 1024 + 1, 65));
   else if (${JSON.stringify(mode)} === "success") fs.writeFileSync(out, "worker-result");
   else if (${JSON.stringify(mode)} === "stdout") {
     fs.writeFileSync(out, "must-not-succeed");
     for (let index = 0; index < 2049; index += 1) process.stdout.write(Buffer.alloc(512, 65));
+  }
+  if (${JSON.stringify(mode)} === "stdout-infinite") {
+    const child = cp.spawn("/bin/sleep", ["30"]);
+    fs.writeFileSync(${JSON.stringify(join(record, "descendant"))}, String(child.pid));
+    setInterval(() => process.stdout.write(Buffer.alloc(65536, 65)), 1);
+  }
+  if (${JSON.stringify(mode)} === "final-infinite") {
+    const child = cp.spawn("/bin/sleep", ["30"]);
+    fs.writeFileSync(${JSON.stringify(join(record, "descendant"))}, String(child.pid));
+    setInterval(() => fs.appendFileSync(out, Buffer.alloc(65536, 65)), 1);
   }
   if (${JSON.stringify(mode)} === "timeout") {
     const child = cp.spawn("/bin/sleep", ["30"]);
@@ -73,7 +116,7 @@ process.stdin.on("end", () => {
     env: {
       PATH: bin,
       HOME: home,
-      CODEX_HOME: join(home, ".codex"),
+      CODEX_HOME: codexHome,
       SHELL: "/bin/zsh",
       USER: "tester",
       LOGNAME: "tester",
@@ -92,7 +135,8 @@ process.stdin.on("end", () => {
 
 function run(f: Fixture, args: readonly string[] = [], input: string | Uint8Array = "ship it") {
   mkdirSync(f.env.TMPDIR, { recursive: true });
-  return spawnSync(process.execPath, [runner, "--cwd", f.cwd, ...args], {
+  const runnerArgs = args.includes("--cwd") ? args : ["--cwd", f.cwd, ...args];
+  return spawnSync(process.execPath, [runner, ...runnerArgs], {
     env: f.env,
     input,
     encoding: "utf8",
@@ -124,12 +168,35 @@ describe("lazycodex-gjc isolated runner", () => {
     const task = "line one\n$(touch /tmp/nope) --model injected\nline three";
     const result = run(f, ["--model", "gpt-5.6-sol", "--sandbox", "workspace-write"], task);
     const args = stringArray(parsedRecord(join(f.record, "args.json")));
+    const env = stringRecord(parsedRecord(join(f.record, "env.json")));
     const outputPath = args[args.indexOf("-o") + 1];
+    const filesystem = args.find((value) => value.startsWith("permissions.lazycodex_gjc.filesystem=")) ?? "";
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toBe("worker-result");
-    expect(args).toEqual(["exec", "--ephemeral", "--color", "never", "--sandbox", "workspace-write", "-C", f.cwd, "-c", 'approval_policy="never"', "-c", 'network_access="disabled"', "-o", outputPath, "--model", "gpt-5.6-sol", "-"]);
-    expect(readFileSync(join(f.record, "executable"), "utf8")).toBe(join(f.root, "bin/codex"));
+    expect(args).toContain("--ignore-user-config");
+    expect(args).toContain("--ignore-rules");
+    expect(args).toContain("--strict-config");
+    expect(args).not.toContain("--sandbox");
+    expect(args).not.toContain('sandbox_workspace_write.network_access=false');
+    expect(args).toContain('web_search="disabled"');
+    expect(args).toContain('default_permissions="lazycodex_gjc"');
+    expect(args).toContain('permissions.lazycodex_gjc.network.enabled=false');
+    expect(filesystem).toContain('":workspace_roots"={"."="write"}');
+    expect(filesystem).toContain('":tmpdir"="write"');
+    expect(filesystem).toContain(`${JSON.stringify(env.HOME)}="deny"`);
+    expect(filesystem).toContain(`${JSON.stringify(realpathSync(join(f.root, "bin/codex")))}="read"`);
+    expect(filesystem).toContain('helpers"="read"');
+    expect(args).toContain('shell_environment_policy.inherit="none"');
+    expect(args).toContain("mcp_servers={}");
+    expect(args).toContain("apps={}");
+    expect(args).toContain("hooks={}");
+    for (const feature of ["apps", "enable_mcp_apps", "hooks", "browser_use", "browser_use_external", "browser_use_full_cdp_access", "computer_use", "in_app_browser", "remote_plugin", "skill_mcp_dependency_install", "plugins"]) {
+      expect(args).toContain(feature);
+    }
+    expect(args.slice(-3)).toEqual(["--model", "gpt-5.6-sol", "-"]);
+    expect(readFileSync(join(f.record, "executable"), "utf8")).toBe(realpathSync(join(f.root, "bin/codex")));
     expect(readFileSync(join(f.record, "stdin"), "utf8")).toStartWith("$omo:ultrawork\n");
+    expect(readFileSync(join(f.record, "stdin"), "utf8")).toContain("<validated-omo-ultrawork");
     expect(readFileSync(join(f.record, "stdin"), "utf8").split("<lazycodex-gjc-task>\n")[1]?.split("\n</lazycodex-gjc-task>")[0]).toBe(task);
     expect(args).not.toContain(task);
     expect(readFileSync(join(f.record, "mode"), "utf8")).toBe("384");
@@ -142,13 +209,22 @@ describe("lazycodex-gjc isolated runner", () => {
     const result = run(f);
     const args = stringArray(parsedRecord(join(f.record, "args.json")));
     const env = stringRecord(parsedRecord(join(f.record, "env.json")));
+    const filesystem = args.find((value) => value.startsWith("permissions.lazycodex_gjc.filesystem=")) ?? "";
     expect(result.status, result.stderr).toBe(0);
-    expect(args.slice(0, 8)).toEqual(["exec", "--ephemeral", "--color", "never", "--sandbox", "read-only", "-C", f.cwd]);
+    expect(filesystem).toContain('":workspace_roots"={"."="read"}');
+    expect(args).not.toContain("--sandbox");
     expect(env.GJC_SESSION_ID).toBeUndefined();
     expect(env.OPENAI_API_KEY).not.toBe("must-not-leak");
     expect(env.PROVIDER_API_TOKEN_CANARY).toBeUndefined();
     expect(env.SSH_AUTH_SOCK).toBeUndefined();
     expect(env.HTTPS_PROXY).toBeUndefined();
+    expect(env.HOME).not.toBe(f.home);
+    expect(env.HOME).toStartWith(env.TMPDIR ?? "missing-tmpdir");
+    expect(env.CODEX_HOME).toBe(f.env.CODEX_HOME);
+    expect(env.SHELL).toBeUndefined();
+    expect(env.PATH?.split(":")[0]).toEndWith("/helpers");
+    expect(env.PATH).not.toContain(f.cwd);
+    expect(env.PATH).not.toContain(".gjc");
     expect(env.GJC_NOTIFICATIONS).toBe("0");
     expect(env.LAZYCODEX_AUTO_UPDATE_DISABLED).toBe("1");
     expect(env.LAZYCODEX_CONFIG_MIGRATION_DISABLED).toBe("1");
@@ -181,6 +257,56 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(run(f).status).toBe(127);
   });
 
+  test("fails closed when an npm Codex wrapper has no compatible native runtime", () => {
+    const f = fixture();
+    const codex = join(f.root, "bin/codex");
+    const wrapper = join(f.root, "bin/codex.js");
+    writeFileSync(wrapper, readFileSync(codex), { mode: 0o755 });
+    rmSync(codex);
+    symlinkSync("codex.js", codex);
+    const result = run(f);
+    expect(result.status).toBe(127);
+    expect(result.stderr).toBe("lazycodex-gjc: compatible Codex runtime not found\n");
+    expect(existsSync(join(f.record, "args.json"))).toBe(false);
+  });
+
+  test.each(["missing", "stale", "incompatible", "symlinked"] as const)("fails before spawning when OMO ultrawork is %s", (omoMode) => {
+    const f = fixture("success", omoMode);
+    const result = run(f);
+    expect(result.status).toBe(78);
+    expect(result.stderr).toBe("lazycodex-gjc: compatible OMO ultrawork capability not found\n");
+    expect(existsSync(join(f.record, "args.json"))).toBe(false);
+  });
+
+  test("canonicalizes cwd and rejects a repository-local codex executable", () => {
+    const f = fixture();
+    const linked = join(f.root, "linked-workspace");
+    symlinkSync(f.cwd, linked);
+    const canonical = run(f, ["--cwd", linked]);
+    expect(canonical.status, canonical.stderr).toBe(0);
+    expect(stringArray(parsedRecord(join(f.record, "args.json")))).toContain(realpathSync(f.cwd));
+
+    rmSync(join(f.root, "bin/codex"));
+    const localCodex = join(f.cwd, "codex");
+    writeFileSync(localCodex, `#!${process.execPath}\n`, { mode: 0o755 });
+    const rejected = spawnSync(process.execPath, [runner, "--cwd", f.cwd], {
+      env: { ...f.env, PATH: f.cwd }, input: "ship it", encoding: "utf8",
+    });
+    expect(rejected.status).toBe(127);
+    expect(rejected.stderr).toBe("lazycodex-gjc: trusted codex executable not found\n");
+  });
+
+  test("never relays child stderr, task text, or file canaries", () => {
+    const f = fixture("stderr-secret");
+    const task = "TASK-CANARY-a83fb";
+    const result = run(f, [], task);
+    expect(result.status).toBe(23);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe("lazycodex-gjc: worker exited with code 23\n");
+    expect(`${result.stdout}${result.stderr}`).not.toContain(task);
+    expect(`${result.stdout}${result.stderr}`).not.toContain("FILE-CANARY-7d321");
+  });
+
   test.each([["nonzero", 23], ["empty", 1], ["invalid", 1], ["oversized", 1], ["stdout", 1]] as const)("fails closed for %s child output", (mode, status) => {
     const f = fixture(mode);
     const result = run(f);
@@ -197,6 +323,18 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(result.status).toBe(124);
     expect(procState === undefined || procState === "Z").toBe(true);
     expect(existsSync(readFileSync(join(f.record, "temp"), "utf8"))).toBe(false);
+  });
+
+  test.each(["stdout-infinite", "final-infinite"] as const)("kills infinite %s overflow and its descendants promptly", (mode) => {
+    const f = fixture(mode);
+    const started = Date.now();
+    const result = run(f, ["--timeout-seconds", "4"]);
+    const pid = Number.parseInt(readFileSync(join(f.record, "descendant"), "utf8"), 10);
+    const procState = existsSync(`/proc/${pid}/stat`) ? readFileSync(`/proc/${pid}/stat`, "utf8").split(" ")[2] : undefined;
+    expect(result.status).toBe(1);
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(result.stderr).toBe("lazycodex-gjc: worker output exceeded limit\n");
+    expect(procState === undefined || procState === "Z").toBe(true);
   });
 
   test("rejects invalid UTF-8 task bytes and exposes help without invoking codex", () => {

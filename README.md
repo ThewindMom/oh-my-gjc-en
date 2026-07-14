@@ -122,6 +122,8 @@ v0.15.0 한 번 설치로 스킬 9개 + 커맨드 14개(`/omg` + `/omg:*` 13개)
 
 - child GJC 세션·task를 만들지 않고, GJC config·자격증명도 변경하거나 외부 작업자에게 복사하지 않는다.
 - Codex/LazyCodex/OMO 설치·업데이트·로그인은 자동화하지 않는다. 준비돼 있지 않으면 안내하고 멈춘다.
+- native user install의 private SHA-256 receipt와 canonical user cache runner가 일치해야 한다. project install만으로는 이 민감 bridge를 실행하지 않는다.
+- 호환 OMO ultrawork를 검증한 뒤 custom permission profile로 대상 저장소, 정확한 Codex runtime helper, private tmp만 노출한다. web/MCP/apps/hooks/browser egress와 child shell 환경 상속은 비활성화하며 raw child stderr를 전달하지 않는다.
 - 쓰기: `/omg:lazycodex-gjc "<작업>"`
 - 원문: [`plugins/oh-my-gjc/skills/lazycodex-gjc/SKILL.md`](./plugins/oh-my-gjc/skills/lazycodex-gjc/SKILL.md)
 

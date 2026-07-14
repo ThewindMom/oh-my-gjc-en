@@ -46,6 +46,7 @@ EXPECTED_SKILLS=(easy-answer gate-briefing multivendor-presets branch-flow extra
                  insane-review gjc-bugwatch plain-layer lazycodex-gjc)
 EXPECTED_COMMANDS=(omg setup easy easy-always gate gate-always presets fable branchflow-always \
                    insane-review bugwatch-scan worktree plain lazycodex-gjc)
+EXPECTED_RUNTIMES=(bin/lazycodex-gjc.mjs)
 # Capabilities REMOVED (관제탑 발주, 하코 승인). 0.11.0: codex-deepwork(실사용 0회, lazycodex와 중복) +
 # codex-app 짝(대상 앱 빌드 트랙 07-03 아카이브; Pro 리뷰는 insane-review 전담). 0.12.0: codex-cli-ask·
 # lazycodex·tower(명시 호출 0 — Codex 트래픽은 전량 제품 파이프라인 codex exec 직결로 스킬 미경유,
@@ -71,6 +72,39 @@ LEGACY_COMMANDS=('codex-app-control:ask' 'codex-app-control:launch' 'codex-cli-c
 
 skills_dir()   { if [ "$1" = project ]; then echo "$PWD/.gjc/skills";   else echo "$HOME/.gjc/agent/skills";   fi; }
 commands_dir() { if [ "$1" = project ]; then echo "$PWD/.gjc/commands"; else echo "$HOME/.gjc/agent/commands"; fi; }
+runner_receipt() { echo "$HOME/.gjc/agent/receipts/lazycodex-gjc-runner.sha256"; }
+
+sha256_file() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'; return; fi
+  if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}'; return; fi
+  if command -v openssl >/dev/null 2>&1; then openssl dgst -sha256 "$1" | awk '{print $NF}'; return; fi
+  echo "❌ install FAILED — SHA-256 tool unavailable for lazycodex-gjc receipt" >&2
+  return 1
+}
+
+RUNNER_RECEIPT_LINE=""
+prepare_runner_receipt() {
+  local runner canonical digest
+  runner="$PLUGIN_ROOT/bin/lazycodex-gjc.mjs"
+  canonical="$(cd "$(dirname "$runner")" && pwd -P)/$(basename "$runner")"
+  digest="$(sha256_file "$canonical")" || exit 1
+  RUNNER_RECEIPT_LINE="$digest  $canonical"
+}
+
+install_runner_receipt() {
+  local receipt dir temp
+  receipt="$(runner_receipt)"; dir="$(dirname "$receipt")"
+  mkdir -p "$dir"; chmod 700 "$dir"
+  temp="$(mktemp "$dir/.lazycodex-gjc-runner.XXXXXX")"
+  printf '%s\n' "$RUNNER_RECEIPT_LINE" > "$temp"
+  chmod 600 "$temp"; mv -f "$temp" "$receipt"
+  echo "✓ receipt (user): $receipt"
+}
+
+uninstall_runner_receipt() {
+  rm -f "$(runner_receipt)"
+  echo "✓ removed receipt: lazycodex-gjc-runner.sha256"
+}
 
 cleanup_legacy_commands() { # $1=scope — drop pre-0.8.1 leftovers (0.8.0 tombstones + old oh-my-gjc:* aliases)
   local d n removed=0
@@ -129,6 +163,7 @@ preflight_all() {  # verify ALL expected files exist BEFORE copying anything (ne
   MISSING=()
   for s in "${EXPECTED_SKILLS[@]}";     do [ -f "$PLUGIN_ROOT/skills/$s/SKILL.md" ]  || MISSING+=("skills/$s/SKILL.md"); done
   for c in "${EXPECTED_COMMANDS[@]}";   do [ -f "$PLUGIN_ROOT/templates/$c.md" ]      || MISSING+=("templates/$c.md"); done
+  for r in "${EXPECTED_RUNTIMES[@]}";   do [ -f "$PLUGIN_ROOT/$r" ] && [ ! -L "$PLUGIN_ROOT/$r" ] || MISSING+=("$r"); done
   report_missing
 }
 
@@ -152,22 +187,32 @@ case "$mode" in
       for c in "${EXPECTED_COMMANDS[@]}";   do uninstall_command   "$c" "$scope"; done
       cleanup_legacy_commands "$scope"
       cleanup_removed "$scope"
+      if [ "$scope" = "user" ]; then uninstall_runner_receipt; fi
     else
       if [ -d "$PLUGIN_ROOT/skills/$target" ];       then uninstall_skill   "$target" "$scope"; fi
       if [ -f "$PLUGIN_ROOT/templates/$target.md" ]; then uninstall_command "$target" "$scope"; fi
+      if [ "$target" = "lazycodex-gjc" ] && [ "$scope" = "user" ]; then uninstall_runner_receipt; fi
     fi
     ;;
   user|project)
     if [ "$target" = "all" ]; then
       preflight_all
+      if [ "$mode" = "user" ]; then prepare_runner_receipt; fi
       for s in "${EXPECTED_SKILLS[@]}";     do install_skill     "$s" "$mode"; done
       for c in "${EXPECTED_COMMANDS[@]}";   do install_command   "$c" "$mode"; done
+      if [ "$mode" = "user" ]; then install_runner_receipt; fi
       cleanup_legacy_commands "$mode"
       cleanup_removed "$mode"
       report_missing
     else
+      if [ "$target" = "lazycodex-gjc" ]; then
+        [ -f "$PLUGIN_ROOT/bin/lazycodex-gjc.mjs" ] && [ ! -L "$PLUGIN_ROOT/bin/lazycodex-gjc.mjs" ] || MISSING+=("bin/lazycodex-gjc.mjs")
+        report_missing
+        if [ "$mode" = "user" ]; then prepare_runner_receipt; fi
+      fi
       if [ -d "$PLUGIN_ROOT/skills/$target" ];       then install_skill   "$target" "$mode"; fi
       if [ -f "$PLUGIN_ROOT/templates/$target.md" ]; then install_command "$target" "$mode"; fi
+      if [ "$target" = "lazycodex-gjc" ] && [ "$mode" = "user" ]; then install_runner_receipt; fi
       report_missing
     fi
     if [ "$mode" = "user" ]; then
