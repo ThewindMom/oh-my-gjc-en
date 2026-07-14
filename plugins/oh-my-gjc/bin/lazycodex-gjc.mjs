@@ -236,7 +236,7 @@ async function main() {
   try {
     const runtime = prepareRuntime(binary, temp);
     const env = childEnvironment(runtime, codexHome, temp);
-    const result = await runChild(binary, childArgs(config, env, runtime, output), workerPrompt(task, omo), env, output, config.timeoutSeconds);
+    const result = await runChild(runtime.core, childArgs(config, env, runtime, output), workerPrompt(task, omo), env, output, config.timeoutSeconds);
     if (result.timedOut) throw new CliError("worker timed out", 124);
     if (result.overflow || statSync(output).size > OUTPUT_LIMIT) throw new CliError("worker output exceeded limit", 1);
     if (result.code !== 0) throw new CliError(result.code === null ? `worker terminated by signal ${result.signal ?? "unknown"}` : `worker exited with code ${result.code}`, result.code ?? 1);

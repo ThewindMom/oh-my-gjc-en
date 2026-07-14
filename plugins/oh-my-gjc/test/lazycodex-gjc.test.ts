@@ -270,6 +270,48 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(existsSync(join(f.record, "args.json"))).toBe(false);
   });
 
+  test("executes the derived native core instead of the npm wrapper interpreter", () => {
+    const f = fixture();
+    const packageNames: Readonly<Record<string, string>> = {
+      "linux:x64": "codex-linux-x64", "linux:arm64": "codex-linux-arm64",
+      "darwin:x64": "codex-darwin-x64", "darwin:arm64": "codex-darwin-arm64",
+      "win32:x64": "codex-win32-x64", "win32:arm64": "codex-win32-arm64",
+    };
+    const packageName = packageNames[`${process.platform}:${process.arch}`];
+    if (packageName === undefined) throw new TypeError("unsupported test platform");
+    const packageRoot = join(f.root, "npm/@openai/codex");
+    const wrapper = join(packageRoot, "bin/codex.js");
+    const vendorRoot = join(packageRoot, "node_modules/@openai", packageName, "vendor/test-target");
+    const core = join(vendorRoot, "bin/codex");
+    const wrapperMarker = join(f.record, "wrapper-executed");
+    const coreMarker = join(f.record, "core-executed");
+    const coreArgs = join(f.record, "core-args");
+    mkdirSync(join(packageRoot, "bin"), { recursive: true });
+    mkdirSync(join(vendorRoot, "bin"), { recursive: true });
+    mkdirSync(join(vendorRoot, "codex-path"));
+    writeFileSync(join(packageRoot, "package.json"), JSON.stringify({ type: "module" }));
+    writeFileSync(wrapper, `#!/usr/bin/env node\nimport { writeFileSync } from "node:fs";\nawait Promise.resolve();\nwriteFileSync(${JSON.stringify(wrapperMarker)}, process.execPath);\n`, { mode: 0o755 });
+    writeFileSync(core, `#!/bin/sh\nprintf '%s\\n' "$@" > ${coreArgs}\nprintf '%s' "$0" > ${coreMarker}\nout=''\nwhile [ "$#" -gt 0 ]; do\n  if [ "$1" = '-o' ]; then shift; out="$1"; fi\n  shift\ndone\ncat >/dev/null\nprintf '%s' 'worker-result' > "$out"\n`, { mode: 0o755 });
+    rmSync(join(f.root, "bin/codex"));
+    symlinkSync(wrapper, join(f.root, "bin/codex"));
+    const nodePath = spawnSync("node", ["-p", "process.execPath"], { encoding: "utf8" });
+    expect(nodePath.status, nodePath.stderr).toBe(0);
+    mkdirSync(f.env.TMPDIR, { recursive: true });
+
+    const result = spawnSync(realpathSync(nodePath.stdout.trim()), [runner, "--cwd", f.cwd], {
+      env: f.env, input: "ship it", encoding: "utf8", timeout: 5_000,
+    });
+
+    const evidence = [wrapperMarker, coreMarker, coreArgs]
+      .map((path) => `${path}:${existsSync(path) ? readFileSync(path, "utf8") : "missing"}`)
+      .join("\n");
+    expect(result.status, `${result.stderr}${evidence}`).toBe(0);
+    expect(result.stdout).toBe("worker-result");
+    expect(existsSync(wrapperMarker)).toBe(false);
+    expect(readFileSync(coreMarker, "utf8")).toBe(realpathSync(core));
+    expect(readFileSync(coreArgs, "utf8").split("\n")).toContain("--ephemeral");
+  });
+
   test.each(["missing", "stale", "incompatible", "symlinked"] as const)("fails before spawning when OMO ultrawork is %s", (omoMode) => {
     const f = fixture("success", omoMode);
     const result = run(f);
