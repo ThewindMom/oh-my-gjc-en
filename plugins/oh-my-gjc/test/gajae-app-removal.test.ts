@@ -112,7 +112,7 @@ describe("gajae-app upgrade cleanup", () => {
 
       const result = spawnSync("bash", [installSh, "all", scope], {
         cwd: scope === "project" ? project : sandbox,
-        env: { ...process.env, HOME: home },
+        env: { ...process.env, HOME: home, CODEX_HOME: process.env.CODEX_HOME ?? join(process.env.HOME ?? "", ".codex") },
         encoding: "utf8",
       });
 

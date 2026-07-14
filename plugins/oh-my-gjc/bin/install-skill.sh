@@ -72,7 +72,7 @@ LEGACY_COMMANDS=('codex-app-control:ask' 'codex-app-control:launch' 'codex-cli-c
 
 skills_dir()   { if [ "$1" = project ]; then echo "$PWD/.gjc/skills";   else echo "$HOME/.gjc/agent/skills";   fi; }
 commands_dir() { if [ "$1" = project ]; then echo "$PWD/.gjc/commands"; else echo "$HOME/.gjc/agent/commands"; fi; }
-runner_receipt() { echo "$HOME/.gjc/agent/receipts/lazycodex-gjc-runner.sha256"; }
+runner_runtime() { echo "$HOME/.gjc/agent/runtimes/lazycodex-gjc"; }
 
 sha256_file() {
   if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'; return; fi
@@ -82,28 +82,106 @@ sha256_file() {
   return 1
 }
 
-RUNNER_RECEIPT_LINE=""
-prepare_runner_receipt() {
-  local runner canonical digest
-  runner="$PLUGIN_ROOT/bin/lazycodex-gjc.mjs"
-  canonical="$(cd "$(dirname "$runner")" && pwd -P)/$(basename "$runner")"
-  digest="$(sha256_file "$canonical")" || exit 1
-  RUNNER_RECEIPT_LINE="$digest  $canonical"
+# The runner's trust walk (trustedFile/trustedDirectory in bin/lazycodex-gjc.mjs) rejects any
+# group/other-writable component on a binding-pinned path. A default umask of 002 (Ubuntu UPG)
+# leaves self-owned npm/Codex dirs 0775, so a fresh install would fail closed at runtime
+# (exit 78: trusted runtime binding mismatch). Normalize self-owned components at install time
+# and fail the install with the offending path when normalization is impossible.
+# This lane is Linux-only (systemd containment is mandatory), so GNU `find -perm /NNN` is safe.
+normalize_trusted_path() { # $1=absolute canonical path pinned by the runtime binding
+  local current="$1"
+  while :; do
+    if [ -n "$(find "$current" -maxdepth 0 -perm /022 2>/dev/null)" ]; then
+      if [ -O "$current" ]; then
+        chmod g-w,o-w "$current"
+        echo "✓ normalized trusted runtime path mode: $current"
+      fi
+      if [ -n "$(find "$current" -maxdepth 0 -perm /022 2>/dev/null)" ]; then
+        echo "❌ install FAILED — group/other-writable trusted runtime path for lazycodex-gjc: $current (fix: chmod g-w,o-w '$current')" >&2
+        exit 1
+      fi
+    fi
+    # Mirror the runner's walk: stop at the first self-owned private directory, else climb to /.
+    if [ -d "$current" ] && [ -O "$current" ] && [ -z "$(find "$current" -maxdepth 0 -perm /077 2>/dev/null)" ]; then break; fi
+    if [ "$current" = "/" ]; then break; fi
+    current="$(dirname "$current")"
+  done
 }
 
-install_runner_receipt() {
-  local receipt dir temp
-  receipt="$(runner_receipt)"; dir="$(dirname "$receipt")"
-  mkdir -p "$dir"; chmod 700 "$dir"
-  temp="$(mktemp "$dir/.lazycodex-gjc-runner.XXXXXX")"
-  printf '%s\n' "$RUNNER_RECEIPT_LINE" > "$temp"
-  chmod 600 "$temp"; mv -f "$temp" "$receipt"
-  echo "✓ receipt (user): $receipt"
+RUNTIME_NODE="" RUNTIME_CORE="" RUNTIME_CODEX_PATH="" RUNTIME_CODEX_HOME=""
+RUNTIME_SYSTEMD_RUN="" RUNTIME_SYSTEMCTL="" RUNTIME_ENV=""
+prepare_runtime_binding() {
+  local codex entry details
+  command -v node >/dev/null 2>&1 || { echo "❌ install FAILED — node is required for lazycodex-gjc" >&2; exit 1; }
+  command -v codex >/dev/null 2>&1 || { echo "❌ install FAILED — an existing Codex CLI is required for lazycodex-gjc" >&2; exit 1; }
+  for entry in systemd-run systemctl env; do command -v "$entry" >/dev/null 2>&1 || { echo "❌ install FAILED — $entry is required for lazycodex-gjc containment" >&2; exit 1; }; done
+  RUNTIME_NODE="$(readlink -f "$(command -v node)")"
+  codex="$(readlink -f "$(command -v codex)")"
+  details="$("$RUNTIME_NODE" - "$codex" <<'NODE'
+const { basename, dirname, join, resolve } = require("node:path");
+const { readdirSync, realpathSync, statSync } = require("node:fs");
+const binary = realpathSync(process.argv[2]);
+const packages = { "linux:x64": "codex-linux-x64", "linux:arm64": "codex-linux-arm64", "darwin:x64": "codex-darwin-x64", "darwin:arm64": "codex-darwin-arm64", "win32:x64": "codex-win32-x64", "win32:arm64": "codex-win32-arm64" };
+let core = binary;
+let codexPath = dirname(binary);
+if (basename(binary) === "codex.js") {
+  const packageName = packages[`${process.platform}:${process.arch}`];
+  if (packageName === undefined) process.exit(1);
+  const vendor = join(resolve(dirname(binary), ".."), "node_modules/@openai", packageName, "vendor");
+  const target = readdirSync(vendor).find((name) => statSync(join(vendor, name)).isDirectory());
+  if (target === undefined) process.exit(1);
+  core = realpathSync(join(vendor, target, "bin", process.platform === "win32" ? "codex.exe" : "codex"));
+  codexPath = realpathSync(join(vendor, target, "codex-path"));
+}
+process.stdout.write(`${core}\n${codexPath}\n`);
+NODE
+)" || { echo "❌ install FAILED — compatible native Codex runtime not found" >&2; exit 1; }
+  RUNTIME_CORE="$(printf '%s\n' "$details" | sed -n '1p')"
+  RUNTIME_CODEX_PATH="$(printf '%s\n' "$details" | sed -n '2p')"
+  RUNTIME_CODEX_HOME="$(readlink -f "${CODEX_HOME:-$HOME/.codex}")"
+  RUNTIME_SYSTEMD_RUN="$(readlink -f "$(command -v systemd-run)")"
+  RUNTIME_SYSTEMCTL="$(readlink -f "$(command -v systemctl)")"
+  RUNTIME_ENV="$(readlink -f "$(command -v env)")"
+  for entry in "$RUNTIME_NODE" "$RUNTIME_CORE" "$RUNTIME_SYSTEMD_RUN" "$RUNTIME_SYSTEMCTL" "$RUNTIME_ENV"; do [ -f "$entry" ] && [ ! -L "$entry" ] || { echo "❌ install FAILED — trusted runtime file unavailable: $entry" >&2; exit 1; }; done
+  [ -d "$RUNTIME_CODEX_PATH" ] && [ -d "$RUNTIME_CODEX_HOME" ] || { echo "❌ install FAILED — Codex runtime/home unavailable" >&2; exit 1; }
+  for entry in "$RUNTIME_CORE" "$RUNTIME_CODEX_PATH" "$RUNTIME_CODEX_HOME" "$RUNTIME_SYSTEMD_RUN" "$RUNTIME_SYSTEMCTL" "$RUNTIME_ENV"; do normalize_trusted_path "$entry"; done
+  if [ -f "$RUNTIME_CODEX_HOME/auth.json" ] && [ -O "$RUNTIME_CODEX_HOME/auth.json" ]; then chmod 600 "$RUNTIME_CODEX_HOME/auth.json"; fi
 }
 
-uninstall_runner_receipt() {
-  rm -f "$(runner_receipt)"
-  echo "✓ removed receipt: lazycodex-gjc-runner.sha256"
+install_runtime_binding() {
+  local root parent temp runner binding
+  root="$(runner_runtime)"; parent="$(dirname "$root")"
+  mkdir -p "$parent"; chmod 700 "$parent"
+  temp="$(mktemp -d "$parent/.lazycodex-gjc.XXXXXX")"; chmod 700 "$temp"
+  runner="$temp/runner.mjs"; cp "$PLUGIN_ROOT/bin/lazycodex-gjc.mjs" "$runner"; chmod 700 "$runner"
+  binding="$temp/binding"
+  printf '%s\n' \
+    "lazycodex-gjc-binding-v1" \
+    "$HOME" \
+    "$(sha256_file "$runner")" \
+    "$root/runner.mjs" \
+    "$(sha256_file "$RUNTIME_NODE")" \
+    "$RUNTIME_NODE" \
+    "$(sha256_file "$RUNTIME_CORE")" \
+    "$RUNTIME_CORE" \
+    "$RUNTIME_CODEX_PATH" \
+    "$RUNTIME_CODEX_HOME" \
+    "$(sha256_file "$RUNTIME_SYSTEMD_RUN")" \
+    "$RUNTIME_SYSTEMD_RUN" \
+    "$(sha256_file "$RUNTIME_SYSTEMCTL")" \
+    "$RUNTIME_SYSTEMCTL" \
+    "$(sha256_file "$RUNTIME_ENV")" \
+    "$RUNTIME_ENV" > "$binding"
+  chmod 600 "$binding"
+  rm -rf "$root"; mv "$temp" "$root"
+  rm -f "$HOME/.gjc/agent/receipts/lazycodex-gjc-runner.sha256"
+  echo "✓ bound runtime (user): $root"
+}
+
+uninstall_runtime_binding() {
+  rm -rf "$(runner_runtime)"
+  rm -f "$HOME/.gjc/agent/receipts/lazycodex-gjc-runner.sha256"
+  echo "✓ removed runtime binding: lazycodex-gjc"
 }
 
 cleanup_legacy_commands() { # $1=scope — drop pre-0.8.1 leftovers (0.8.0 tombstones + old oh-my-gjc:* aliases)
@@ -187,20 +265,20 @@ case "$mode" in
       for c in "${EXPECTED_COMMANDS[@]}";   do uninstall_command   "$c" "$scope"; done
       cleanup_legacy_commands "$scope"
       cleanup_removed "$scope"
-      if [ "$scope" = "user" ]; then uninstall_runner_receipt; fi
+      if [ "$scope" = "user" ]; then uninstall_runtime_binding; fi
     else
       if [ -d "$PLUGIN_ROOT/skills/$target" ];       then uninstall_skill   "$target" "$scope"; fi
       if [ -f "$PLUGIN_ROOT/templates/$target.md" ]; then uninstall_command "$target" "$scope"; fi
-      if [ "$target" = "lazycodex-gjc" ] && [ "$scope" = "user" ]; then uninstall_runner_receipt; fi
+      if [ "$target" = "lazycodex-gjc" ] && [ "$scope" = "user" ]; then uninstall_runtime_binding; fi
     fi
     ;;
   user|project)
     if [ "$target" = "all" ]; then
       preflight_all
-      if [ "$mode" = "user" ]; then prepare_runner_receipt; fi
+      if [ "$mode" = "user" ]; then prepare_runtime_binding; fi
       for s in "${EXPECTED_SKILLS[@]}";     do install_skill     "$s" "$mode"; done
       for c in "${EXPECTED_COMMANDS[@]}";   do install_command   "$c" "$mode"; done
-      if [ "$mode" = "user" ]; then install_runner_receipt; fi
+      if [ "$mode" = "user" ]; then install_runtime_binding; fi
       cleanup_legacy_commands "$mode"
       cleanup_removed "$mode"
       report_missing
@@ -208,11 +286,11 @@ case "$mode" in
       if [ "$target" = "lazycodex-gjc" ]; then
         [ -f "$PLUGIN_ROOT/bin/lazycodex-gjc.mjs" ] && [ ! -L "$PLUGIN_ROOT/bin/lazycodex-gjc.mjs" ] || MISSING+=("bin/lazycodex-gjc.mjs")
         report_missing
-        if [ "$mode" = "user" ]; then prepare_runner_receipt; fi
+        if [ "$mode" = "user" ]; then prepare_runtime_binding; fi
       fi
       if [ -d "$PLUGIN_ROOT/skills/$target" ];       then install_skill   "$target" "$mode"; fi
       if [ -f "$PLUGIN_ROOT/templates/$target.md" ]; then install_command "$target" "$mode"; fi
-      if [ "$target" = "lazycodex-gjc" ] && [ "$mode" = "user" ]; then install_runner_receipt; fi
+      if [ "$target" = "lazycodex-gjc" ] && [ "$mode" = "user" ]; then install_runtime_binding; fi
       report_missing
     fi
     if [ "$mode" = "user" ]; then

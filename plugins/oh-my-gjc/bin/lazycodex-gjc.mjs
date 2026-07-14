@@ -4,6 +4,7 @@ import { constants, accessSync, chmodSync, lstatSync, mkdirSync, mkdtempSync, re
 import { tmpdir } from "node:os";
 import { basename, delimiter, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 
 const TASK_LIMIT = 256 * 1024;
 const OUTPUT_LIMIT = 1024 * 1024;
@@ -19,6 +20,7 @@ Options:
   --sandbox read-only|workspace-write worker filesystem access (default: read-only)
   --model MODEL                        Codex model selector
   --timeout-seconds N                  timeout from 1 to 3600 (default: 1800)
+  --binding PATH                       private install-time runtime binding
   --help                               show this help
 `;
 
@@ -36,7 +38,7 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index += 2) {
     const name = argv[index];
     const value = argv[index + 1];
-    if (!["--cwd", "--sandbox", "--model", "--timeout-seconds"].includes(name)) throw new CliError(`unknown argument: ${name ?? ""}`);
+    if (!["--cwd", "--sandbox", "--model", "--timeout-seconds", "--binding"].includes(name)) throw new CliError(`unknown argument: ${name ?? ""}`);
     if (value === undefined || value.startsWith("--")) throw new CliError(`missing value for ${name}`);
     if (values.has(name)) throw new CliError(`duplicate argument: ${name}`);
     values.set(name, value);
@@ -54,7 +56,9 @@ function parseArgs(argv) {
   if (!/^[1-9][0-9]*$/.test(timeoutInput)) throw new CliError("invalid --timeout-seconds");
   const timeoutSeconds = Number.parseInt(timeoutInput, 10);
   if (timeoutSeconds > TIMEOUT_LIMIT) throw new CliError("invalid --timeout-seconds");
-  return { help: false, cwd, sandbox, model, timeoutSeconds };
+  const binding = values.get("--binding");
+  if (binding === undefined || !isAbsolute(binding)) throw new CliError("--binding must be an absolute path");
+  return { help: false, cwd, sandbox, model, timeoutSeconds, binding };
 }
 
 function readTask() {
@@ -69,6 +73,68 @@ function readTask() {
 
 function within(path, parent) {
   return path === parent || path.startsWith(`${parent}${sep}`);
+}
+
+function digestFile(path) {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function trustedFile(path, expectedDigest) {
+  const entry = lstatSync(path);
+  const canonical = realpathSync(path);
+  const stats = statSync(canonical);
+  const uid = process.getuid?.();
+  if (entry.isSymbolicLink() || canonical !== resolve(path) || !stats.isFile() || (stats.mode & 0o022) !== 0 || (uid !== undefined && stats.uid !== uid && stats.uid !== 0)) return false;
+  if (expectedDigest !== undefined && digestFile(canonical) !== expectedDigest) return false;
+  let current = dirname(canonical);
+  while (current !== dirname(current)) {
+    const directory = lstatSync(current);
+    if (directory.isSymbolicLink() || !directory.isDirectory() || (uid !== undefined && directory.uid !== uid && directory.uid !== 0)) return false;
+    if ((directory.mode & 0o022) !== 0) return false;
+    if (uid !== undefined && directory.uid === uid && (directory.mode & 0o077) === 0) return true;
+    current = dirname(current);
+  }
+  const root = statSync(current);
+  return root.isDirectory() && root.uid === 0 && (root.mode & 0o022) === 0;
+}
+
+function trustedDirectory(path) {
+  const entry = lstatSync(path);
+  const canonical = realpathSync(path);
+  const stats = statSync(canonical);
+  const uid = process.getuid?.();
+  if (entry.isSymbolicLink() || canonical !== resolve(path) || !stats.isDirectory() || (stats.mode & 0o022) !== 0 || (uid !== undefined && stats.uid !== uid && stats.uid !== 0)) return false;
+  let current = canonical;
+  while (current !== dirname(current)) {
+    const directory = lstatSync(current);
+    if (directory.isSymbolicLink() || !directory.isDirectory() || (directory.mode & 0o022) !== 0 || (uid !== undefined && directory.uid !== uid && directory.uid !== 0)) return false;
+    if (uid !== undefined && directory.uid === uid && (directory.mode & 0o077) === 0) return true;
+    current = dirname(current);
+  }
+  const root = statSync(current);
+  return root.isDirectory() && root.uid === 0 && (root.mode & 0o022) === 0;
+}
+
+function readBinding(path) {
+  let lines;
+  try {
+    if (!trustedFile(path) || (statSync(path).mode & 0o077) !== 0) throw new Error("untrusted binding");
+    lines = readFileSync(path, "utf8").split("\n");
+  } catch {
+    throw new CliError("trusted runtime binding not found", 78);
+  } // no-excuse-ok: catch
+  try {
+    if (lines.at(-1) === "") lines.pop();
+    if (lines.length !== 16 || lines[0] !== "lazycodex-gjc-binding-v1") throw new CliError("trusted runtime binding not found", 78);
+    const [accountHome, runnerDigest, _runnerPath, nodeDigest, _nodePath, coreDigest, corePath, codexPath, codexHome, systemdRunDigest, systemdRunPath, systemctlDigest, systemctlPath, envDigest, envPath] = lines.slice(1);
+    if (![accountHome, runnerDigest, coreDigest, corePath, codexPath, codexHome, systemdRunDigest, systemdRunPath, systemctlDigest, systemctlPath, envDigest, envPath].every((value) => value !== undefined && value.length > 0)) throw new CliError("trusted runtime binding not found", 78);
+    if (digestFile(realpathSync(process.argv[1])) !== runnerDigest || !trustedFile(corePath, coreDigest) || !trustedDirectory(codexPath) || !trustedFile(systemdRunPath, systemdRunDigest) || !trustedFile(systemctlPath, systemctlDigest) || !trustedFile(envPath, envDigest)) throw new CliError("trusted runtime binding mismatch", 78);
+    if (!isAbsolute(accountHome) || !isAbsolute(codexHome)) throw new CliError("trusted runtime binding mismatch", 78);
+    return { accountHome: realpathSync(accountHome), codexHome: realpathSync(codexHome), core: realpathSync(corePath), codexPath: realpathSync(codexPath), systemdRun: realpathSync(systemdRunPath), systemctl: realpathSync(systemctlPath), env: realpathSync(envPath), nodeDigest };
+  } catch (error) {
+    if (error instanceof CliError) throw error;
+    throw new CliError("trusted runtime binding mismatch", 78);
+  } // no-excuse-ok: catch
 }
 
 function protectedStatePaths(cwd, homeInput, codexHomeInput) {
@@ -122,7 +188,8 @@ function workspaceStateDenyPaths(cwd) {
         if (entry.name === ".gjc") {
           state.gjcRoots += 1;
           if (state.gjcRoots > WORKSPACE_GJC_LIMIT) throw new CliError("workspace .gjc protection exceeds state-root limit", 78);
-          addWorkspaceDeny(state, realpathSync(entryPath));
+          addWorkspaceDeny(state, resolve(entryPath));
+          try { addWorkspaceDeny(state, realpathSync(entryPath)); } catch { /* lexical deny still protects dangling state links */ } // no-excuse-ok: catch
           continue;
         }
         if (entry.isDirectory()) {
@@ -130,8 +197,10 @@ function workspaceStateDenyPaths(cwd) {
           continue;
         }
         if (entry.isSymbolicLink()) {
-          const canonical = realpathSync(entryPath);
-          if (statSync(canonical).isDirectory() && within(canonical, cwd)) pending.push(canonical);
+          try {
+            const canonical = realpathSync(entryPath);
+            if (statSync(canonical).isDirectory() && within(canonical, cwd)) pending.push(canonical);
+          } catch { /* dangling non-state links are outside the traversal */ } // no-excuse-ok: catch
         }
       }
     }
@@ -142,10 +211,11 @@ function workspaceStateDenyPaths(cwd) {
   return [...state.denyPaths];
 }
 
-function trustedFile(path) {
-  const stats = statSync(path);
-  const uid = process.getuid?.();
-  return stats.isFile() && (uid === undefined || stats.uid === uid || stats.uid === 0) && (stats.mode & 0o022) === 0;
+function rejectNewWorkspaceState(cwd, initialPaths) {
+  const currentPaths = workspaceStateDenyPaths(cwd);
+  const created = currentPaths.filter((path) => basename(path) === ".gjc" && !initialPaths.has(path));
+  for (const path of created) rmSync(path, { recursive: true, force: true });
+  if (created.length > 0) throw new CliError("worker created forbidden workspace .gjc state", 1);
 }
 
 function ownedContainedFile(path, root) {
@@ -153,7 +223,15 @@ function ownedContainedFile(path, root) {
   const canonical = realpathSync(path);
   const stats = statSync(canonical);
   const uid = process.getuid?.();
-  return !entry.isSymbolicLink() && stats.isFile() && within(canonical, root) && (uid === undefined || stats.uid === uid || stats.uid === 0);
+  if (!trustedDirectory(root) || entry.isSymbolicLink() || !stats.isFile() || !within(canonical, root) || (stats.mode & 0o022) !== 0 || (uid !== undefined && stats.uid !== uid && stats.uid !== 0)) return false;
+  let current = dirname(canonical);
+  while (within(current, root)) {
+    const directory = lstatSync(current);
+    if (directory.isSymbolicLink() || !directory.isDirectory() || (directory.mode & 0o022) !== 0 || (uid !== undefined && directory.uid !== uid && directory.uid !== 0)) return false;
+    if (current === root) break;
+    current = dirname(current);
+  }
+  return current === root;
 }
 
 function prepareChildCodexHome(homeInput, hostCodexHomeInput) {
@@ -199,19 +277,6 @@ function prepareChildCodexHome(homeInput, hostCodexHomeInput) {
     if (error instanceof CliError) throw error;
     throw new CliError("private Codex runtime state could not be established", 78);
   } // no-excuse-ok: catch
-}
-
-function resolveCodex(pathValue, cwd) {
-  for (const directory of (pathValue ?? "").split(delimiter)) {
-    if (!isAbsolute(directory)) continue;
-    const candidate = resolve(directory, "codex");
-    try {
-      accessSync(candidate, constants.X_OK);
-      const canonical = realpathSync(candidate);
-      if (trustedFile(canonical) && !within(canonical, cwd)) return canonical;
-    } catch { /* try the next trusted PATH entry */ } // no-excuse-ok: catch
-  }
-  throw new CliError("trusted codex executable not found", 127);
 }
 
 function versionParts(value) {
@@ -270,27 +335,7 @@ ${task}
 
 function toml(value) { return JSON.stringify(value); }
 
-function prepareRuntime(binary, privateRoot) {
-  const packages = { "linux:x64": "codex-linux-x64", "linux:arm64": "codex-linux-arm64", "darwin:x64": "codex-darwin-x64", "darwin:arm64": "codex-darwin-arm64", "win32:x64": "codex-win32-x64", "win32:arm64": "codex-win32-arm64" };
-  let core = binary;
-  let codexPath = dirname(binary);
-  let derivedVendor = false;
-  const packageName = packages[`${process.platform}:${process.arch}`];
-  if (packageName !== undefined) {
-    const vendor = join(resolve(dirname(binary), ".."), "node_modules/@openai", packageName, "vendor");
-    try {
-      const target = readdirSync(vendor).find((name) => statSync(join(vendor, name)).isDirectory());
-      if (target !== undefined) {
-        const candidate = realpathSync(join(vendor, target, "bin", process.platform === "win32" ? "codex.exe" : "codex"));
-        if (trustedFile(candidate)) {
-          core = candidate;
-          codexPath = realpathSync(join(vendor, target, "codex-path"));
-          derivedVendor = true;
-        }
-      }
-    } catch { /* test doubles and native entrypoints use the canonical binary itself */ } // no-excuse-ok: catch
-  }
-  if (basename(binary) === "codex.js" && !derivedVendor) throw new CliError("compatible Codex runtime not found", 127);
+function prepareRuntime(core, codexPath, privateRoot) {
   const helperDir = join(privateRoot, "helpers");
   mkdirSync(helperDir, { mode: 0o700 });
   for (const name of ["codex-linux-sandbox", "codex-execve-wrapper", "apply_patch", "applypatch"]) symlinkSync(core, join(helperDir, name));
@@ -326,23 +371,49 @@ function killGroup(child) {
   try { process.kill(process.platform === "win32" ? child.pid : -child.pid, "SIGKILL"); } catch { /* already gone */ } // no-excuse-ok: catch
 }
 
-function runChild(binary, args, prompt, env, output, timeoutSeconds) {
+function stopUnit(systemctl, unit) {
+  return new Promise((resolveStop) => {
+    const stop = spawn(systemctl, ["--user", "kill", "--kill-who=all", "--signal=SIGKILL", unit], { shell: false, stdio: "ignore" });
+    stop.once("error", () => resolveStop());
+    stop.once("close", () => resolveStop());
+  });
+}
+
+function runChild(binary, args, prompt, env, output, timeoutSeconds, supervisor) {
   return new Promise((resolveResult, reject) => {
-    const child = spawn(binary, args, { detached: process.platform !== "win32", env, shell: false, stdio: ["pipe", "pipe", "pipe"] });
-    let overflow = false;
-    let timedOut = false;
+    if (process.platform !== "linux") {
+      reject(new CliError("systemd user-service containment is required", 78));
+      return;
+    }
+    const unit = `lazycodex-gjc-${process.pid}-${Date.now()}`;
+    const supervisorArgs = ["--user", "--wait", "--collect", "--pipe", "--quiet", `--unit=${unit}`, "--property=KillMode=control-group", "--property=TimeoutStopSec=1s", "--", supervisor.env, "-i"];
+    for (const [name, value] of Object.entries(env)) supervisorArgs.push(`${name}=${value}`);
+    supervisorArgs.push(binary, ...args);
+    const child = spawn(supervisor.systemdRun, supervisorArgs, { detached: true, env: process.env, shell: false, stdio: ["pipe", "pipe", "pipe"] });
+    let failure;
     let stdoutBytes = 0;
     let stderrBytes = 0;
-    const failOverflow = () => { if (!overflow) { overflow = true; killGroup(child); } };
+    const stop = (reason) => {
+      if (failure === undefined) failure = reason;
+      void stopUnit(supervisor.systemctl, unit).then(() => killGroup(child));
+    };
+    const failOverflow = () => stop("overflow");
     child.stdout.on("data", (chunk) => { stdoutBytes += chunk.length; if (stdoutBytes > OUTPUT_LIMIT) failOverflow(); });
     child.stderr.on("data", (chunk) => { stderrBytes += chunk.length; if (stderrBytes > OUTPUT_LIMIT) failOverflow(); });
     child.once("error", () => reject(new CliError("worker failed to start", 127)));
     const outputMonitor = setInterval(() => { try { if (statSync(output).size > OUTPUT_LIMIT) failOverflow(); } catch { /* close handles missing output */ } }, 10); // no-excuse-ok: catch
-    const timer = setTimeout(() => { timedOut = true; killGroup(child); }, timeoutSeconds * 1000);
-    child.once("close", (code, signal) => {
+    const timer = setTimeout(() => stop("timeout"), timeoutSeconds * 1000);
+    const interrupt = () => stop("interrupted");
+    process.once("SIGINT", interrupt);
+    process.once("SIGTERM", interrupt);
+    child.once("close", async (code, signal) => {
       clearInterval(outputMonitor);
       clearTimeout(timer);
-      resolveResult({ code, signal, timedOut, overflow });
+      process.off("SIGINT", interrupt);
+      process.off("SIGTERM", interrupt);
+      await stopUnit(supervisor.systemctl, unit);
+      killGroup(child);
+      resolveResult({ code, signal, failure });
     });
     child.stdin.on("error", (error) => { if (error.code !== "EPIPE") reject(new CliError("worker input failed", 1)); });
     child.stdin.end(prompt);
@@ -353,24 +424,27 @@ async function main() {
   const config = parseArgs(process.argv.slice(2));
   if (config.help) { process.stdout.write(HELP); return; }
   const task = readTask();
-  const codexHome = process.env.CODEX_HOME;
+  const binding = readBinding(config.binding);
+  const codexHome = binding.codexHome;
   const workspaceDenies = workspaceStateDenyPaths(config.cwd);
-  const protectedPaths = [...new Set([...protectedStatePaths(config.cwd, process.env.HOME, codexHome), ...workspaceDenies])];
+  const initialWorkspaceState = new Set(workspaceDenies.filter((path) => basename(path) === ".gjc"));
+  const protectedPaths = [...new Set([...protectedStatePaths(config.cwd, binding.accountHome, codexHome), ...workspaceDenies])];
   const omo = resolveOmoSkill(codexHome);
-  const binary = resolveCodex(process.env.PATH, config.cwd);
   let temp;
   let childCodexHome;
   try {
     temp = mkdtempSync(join(tmpdir(), "lazycodex-gjc-"));
     chmodSync(temp, 0o700);
-    const runtime = prepareRuntime(binary, temp);
-    childCodexHome = prepareChildCodexHome(process.env.HOME, codexHome);
+    const runtime = prepareRuntime(binding.core, binding.codexPath, temp);
+    childCodexHome = prepareChildCodexHome(binding.accountHome, codexHome);
     const output = join(temp, "final.txt");
     writeFileSync(output, "", { mode: 0o600 });
     const env = childEnvironment(runtime, childCodexHome, temp);
-    const result = await runChild(runtime.core, childArgs({ ...config, protectedStatePaths: protectedPaths }, env, runtime, output), workerPrompt(task, omo, config.sandbox), env, output, config.timeoutSeconds);
-    if (result.timedOut) throw new CliError("worker timed out", 124);
-    if (result.overflow || statSync(output).size > OUTPUT_LIMIT) throw new CliError("worker output exceeded limit", 1);
+    const result = await runChild(runtime.core, childArgs({ ...config, protectedStatePaths: protectedPaths }, env, runtime, output), workerPrompt(task, omo, config.sandbox), env, output, config.timeoutSeconds, binding);
+    rejectNewWorkspaceState(config.cwd, initialWorkspaceState);
+    if (result.failure === "interrupted") throw new CliError("worker interrupted", 130);
+    if (result.failure === "timeout") throw new CliError("worker timed out", 124);
+    if (result.failure === "overflow" || statSync(output).size > OUTPUT_LIMIT) throw new CliError("worker output exceeded limit", 1);
     if (result.code !== 0) throw new CliError(result.code === null ? `worker terminated by signal ${result.signal ?? "unknown"}` : `worker exited with code ${result.code}`, result.code ?? 1);
     const bytes = readFileSync(output);
     let finalOutput;

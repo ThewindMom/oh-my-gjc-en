@@ -18,7 +18,7 @@ oh-my-gajaecode 스위트의 단일 진입점(oh-my-zsh의 `omz` 관례 계승).
 - `/omg:worktree [new <slug> [type] | list | clean]` — git worktree 병렬 작업 폴더 생성·목록·정리(branch-flow 규약).
 - `/omg:presets [grok|sol|codex|fable-codex|all]` — 멀티벤더 모델 프리셋 병합. 세션 기본은 `grok`.
 - `/omg:fable "<대상>"` — Fable 5 안전-크리티컬 적대적 감사. · 전제: Fable 5 모델 접근
-- `/omg:insane-review` — GPT-5.5 Pro 웹 코드 리뷰. · 전제: ChatGPT 구독 + 크로미움 로그인
+- `/omg:insane-review` — GPT-5.6 Sol Pro 웹 코드 리뷰. · 전제: ChatGPT 구독 + 크로미움 로그인
 - `/omg:bugwatch-scan` — gjc 자체 버그 수집(초안만).
 - `/omg:lazycodex-gjc "<작업>"` — 이미 설치된 Codex+LazyCodex 외부 작업자(기본 read-only, GJC child 세션 없음). · 전제: Codex+호환 OMO+user-scope runner receipt
 

@@ -1,23 +1,36 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 
 const runner = join(import.meta.dir, "../bin/lazycodex-gjc.mjs");
 const sandboxes: string[] = [];
 
-type Mode = "success" | "nonzero" | "stderr-secret" | "empty" | "invalid" | "oversized" | "stdout" | "stdout-infinite" | "final-infinite" | "timeout";
+type Mode = "success" | "success-descendant" | "create-gjc" | "nonzero" | "stderr-secret" | "empty" | "invalid" | "oversized" | "stdout" | "stdout-infinite" | "final-infinite" | "timeout";
 
-type OmoMode = "valid" | "missing" | "stale" | "incompatible" | "symlinked";
+type OmoMode = "valid" | "missing" | "stale" | "incompatible" | "symlinked" | "writable";
 
 type Fixture = {
   readonly root: string;
   readonly cwd: string;
   readonly home: string;
+  readonly codexHome: string;
+  readonly core: string;
+  readonly binding: string;
   readonly record: string;
   readonly env: Readonly<Record<string, string>>;
 };
+
+// The runner's trust walk rejects group/other-writable path components, so fixture
+// modes must be deterministic regardless of the host umask (e.g. Ubuntu UPG 0002).
+function clearWritableBits(path: string): void {
+  const entry = lstatSync(path);
+  if (entry.isSymbolicLink()) return;
+  chmodSync(path, entry.mode & 0o777 & ~0o022);
+  if (entry.isDirectory()) for (const name of readdirSync(path)) clearWritableBits(join(path, name));
+}
 
 function fixture(mode: Mode = "success", omoMode: OmoMode = "valid"): Fixture {
   const root = mkdtempSync(join(tmpdir(), "lazycodex-gjc-test-"));
@@ -33,7 +46,7 @@ function fixture(mode: Mode = "success", omoMode: OmoMode = "valid"): Fixture {
   mkdirSync(join(cwd, ".gjc"));
   mkdirSync(join(cwd, "nested/repository/.gjc"), { recursive: true });
   mkdirSync(join(home, ".codex"));
-  const codexHome = join(root, "codex-home");
+  const codexHome = join(home, ".codex-explicit");
   mkdirSync(codexHome);
   writeFileSync(join(codexHome, "config.toml"), 'sandbox_mode = "danger-full-access"\nweb_search = "live"\n[hooks]\n');
   writeFileSync(join(codexHome, "auth.json"), '{"fixture":"auth-canary"}', { mode: 0o600 });
@@ -58,8 +71,8 @@ function fixture(mode: Mode = "success", omoMode: OmoMode = "valid"): Fixture {
       writeFileSync(skillPath, skill);
     }
     writeFileSync(componentPath, JSON.stringify({ name: "@code-yeongyu/codex-ultrawork", version }));
-    chmodSync(omoRoot, 0o775);
-    for (const path of [manifestPath, skillPath, componentPath]) chmodSync(path, 0o664);
+    chmodSync(omoRoot, 0o755);
+    for (const path of [manifestPath, skillPath, componentPath]) chmodSync(path, 0o644);
   }
   const fake = `#!${process.execPath}
 const fs = require("node:fs");
@@ -90,7 +103,7 @@ process.stdin.on("end", () => {
   }
   if (${JSON.stringify(mode)} === "invalid") fs.writeFileSync(out, Buffer.from([0xff]));
   else if (${JSON.stringify(mode)} === "oversized") fs.writeFileSync(out, Buffer.alloc(1024 * 1024 + 1, 65));
-  else if (${JSON.stringify(mode)} === "success") fs.writeFileSync(out, "worker-result");
+  else if (["success", "success-descendant", "create-gjc"].includes(${JSON.stringify(mode)})) fs.writeFileSync(out, "worker-result");
   else if (${JSON.stringify(mode)} === "stdout") {
     fs.writeFileSync(out, "must-not-succeed");
     for (let index = 0; index < 2049; index += 1) process.stdout.write(Buffer.alloc(512, 65));
@@ -110,6 +123,16 @@ process.stdin.on("end", () => {
     fs.writeFileSync(${JSON.stringify(join(record, "descendant"))}, String(child.pid));
     setInterval(() => {}, 1000);
   }
+  if (${JSON.stringify(mode)} === "success-descendant") {
+    const child = cp.spawn("/bin/sleep", ["30"], { detached: true, stdio: "ignore" });
+    child.unref();
+    fs.writeFileSync(${JSON.stringify(join(record, "descendant"))}, String(child.pid));
+  }
+  if (${JSON.stringify(mode)} === "create-gjc") {
+    const state = path.join(${JSON.stringify(cwd)}, "new/subtree/.gjc");
+    fs.mkdirSync(state, { recursive: true });
+    fs.writeFileSync(path.join(state, "config.toml"), "malicious = true\\n");
+  }
 });
 `;
   const codex = join(bin, "codex");
@@ -117,10 +140,42 @@ process.stdin.on("end", () => {
   const sentinel = join(home, ".gjc/session/sentinel");
   mkdirSync(join(home, ".gjc/session"), { recursive: true });
   writeFileSync(sentinel, "unchanged");
+  const binding = join(root, "binding");
+  const digest = (path: string): string => createHash("sha256").update(readFileSync(path)).digest("hex");
+  const systemdRun = "/usr/bin/systemd-run";
+  const systemctl = "/usr/bin/systemctl";
+  const envBinary = "/usr/bin/env";
+  writeFileSync(binding, [
+    "lazycodex-gjc-binding-v1",
+    home,
+    digest(runner),
+    runner,
+    digest(process.execPath),
+    process.execPath,
+    digest(codex),
+    codex,
+    bin,
+    codexHome,
+    digest(systemdRun),
+    systemdRun,
+    digest(systemctl),
+    systemctl,
+    digest(envBinary),
+    envBinary,
+  ].join("\n") + "\n", { mode: 0o600 });
+  clearWritableBits(root);
+  if (omoMode === "writable") {
+    const omoRoot = join(codexHome, "plugins/cache/sisyphuslabs/omo/4.18.0");
+    chmodSync(omoRoot, 0o775);
+    for (const path of [".codex-plugin/plugin.json", "skills/ultrawork/SKILL.md", "components/ultrawork/package.json"]) chmodSync(join(omoRoot, path), 0o664);
+  }
   return {
     root,
     cwd,
     home,
+    codexHome,
+    core: codex,
+    binding,
     record,
     env: {
       PATH: bin,
@@ -138,13 +193,16 @@ process.stdin.on("end", () => {
       PROVIDER_API_TOKEN_CANARY: "must-not-leak",
       SSH_AUTH_SOCK: "must-not-leak",
       HTTPS_PROXY: "must-not-leak",
+      ...(process.env.XDG_RUNTIME_DIR ? { XDG_RUNTIME_DIR: process.env.XDG_RUNTIME_DIR } : {}),
+      ...(process.env.DBUS_SESSION_BUS_ADDRESS ? { DBUS_SESSION_BUS_ADDRESS: process.env.DBUS_SESSION_BUS_ADDRESS } : {}),
     },
   };
 }
 
 function run(f: Fixture, args: readonly string[] = [], input: string | Uint8Array = "ship it") {
   mkdirSync(f.env.TMPDIR, { recursive: true });
-  const runnerArgs = args.includes("--cwd") ? args : ["--cwd", f.cwd, ...args];
+  const withCwd = args.includes("--cwd") ? [...args] : ["--cwd", f.cwd, ...args];
+  const runnerArgs = withCwd.includes("--binding") ? withCwd : [...withCwd, "--binding", f.binding];
   return spawnSync(process.execPath, [runner, ...runnerArgs], {
     env: f.env,
     input,
@@ -167,11 +225,51 @@ function stringRecord(value: unknown): Readonly<Record<string, string>> {
   return Object.fromEntries(Object.entries(value).filter((entry) => typeof entry[1] === "string"));
 }
 
+function updateBinding(f: Fixture, updates: Readonly<Record<number, string>>): void {
+  const lines = readFileSync(f.binding, "utf8").trimEnd().split("\n");
+  for (const [index, value] of Object.entries(updates)) lines[Number.parseInt(index, 10)] = value;
+  writeFileSync(f.binding, `${lines.join("\n")}\n`, { mode: 0o600 });
+}
+
+function digest(path: string): string {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
 afterEach(() => {
   for (const path of sandboxes.splice(0)) rmSync(path, { recursive: true, force: true });
 });
 
 describe("lazycodex-gjc isolated runner", () => {
+  test("uses the standard account .codex when CODEX_HOME is unset", () => {
+    const f = fixture();
+    rmSync(join(f.home, ".codex"), { recursive: true, force: true });
+    renameSync(f.env.CODEX_HOME, join(f.home, ".codex"));
+    updateBinding(f, { 9: join(f.home, ".codex") });
+    mkdirSync(f.env.TMPDIR, { recursive: true });
+    const { CODEX_HOME: _omitted, ...env } = f.env;
+    const result = spawnSync(process.execPath, [runner, "--cwd", f.cwd, "--binding", f.binding], {
+      env,
+      input: "ship it",
+      encoding: "utf8",
+      timeout: 5_000,
+    });
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toBe("worker-result");
+  });
+
+  test("stays trusted when fixtures are created under a group-writable umask", () => {
+    const previous = process.umask(0o002);
+    try {
+      const f = fixture();
+      const result = run(f);
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toBe("worker-result");
+    } finally {
+      process.umask(previous);
+    }
+  });
+
   test("isolates child CODEX_HOME while keeping real auth and Codex state protected", () => {
     const f = fixture();
     const result = run(f, ["--sandbox", "workspace-write"]);
@@ -251,6 +349,7 @@ describe("lazycodex-gjc isolated runner", () => {
   test("uses read-only defaults and an allowlisted child environment", () => {
     const f = fixture();
     const result = run(f);
+    expect(result.status, result.stderr).toBe(0);
     const args = stringArray(parsedRecord(join(f.record, "args.json")));
     const env = stringRecord(parsedRecord(join(f.record, "env.json")));
     const filesystem = args.find((value) => value.startsWith("permissions.lazycodex_gjc.filesystem=")) ?? "";
@@ -313,13 +412,15 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(existsSync(join(f.record, "args.json"))).toBe(false);
   });
 
-  test("returns 127 when codex is unavailable", () => {
+  test("fails closed when the pinned Codex core is unavailable", () => {
     const f = fixture();
     rmSync(join(f.root, "bin/codex"));
-    expect(run(f).status).toBe(127);
+    const result = run(f);
+    expect(result.status).toBe(78);
+    expect(result.stderr).toBe("lazycodex-gjc: trusted runtime binding mismatch\n");
   });
 
-  test("fails closed when an npm Codex wrapper has no compatible native runtime", () => {
+  test("fails closed when the pinned Codex core path is replaced by a wrapper", () => {
     const f = fixture();
     rmSync(join(f.env.CODEX_HOME, "auth.json"));
     const codex = join(f.root, "bin/codex");
@@ -328,8 +429,8 @@ describe("lazycodex-gjc isolated runner", () => {
     rmSync(codex);
     symlinkSync("codex.js", codex);
     const result = run(f);
-    expect(result.status).toBe(127);
-    expect(result.stderr).toBe("lazycodex-gjc: compatible Codex runtime not found\n");
+    expect(result.status).toBe(78);
+    expect(result.stderr).toBe("lazycodex-gjc: trusted runtime binding mismatch\n");
     expect(existsSync(join(f.record, "args.json"))).toBe(false);
   });
 
@@ -355,13 +456,15 @@ describe("lazycodex-gjc isolated runner", () => {
     writeFileSync(join(packageRoot, "package.json"), JSON.stringify({ type: "module" }));
     writeFileSync(wrapper, `#!/usr/bin/env node\nimport { writeFileSync } from "node:fs";\nawait Promise.resolve();\nwriteFileSync(${JSON.stringify(wrapperMarker)}, process.execPath);\n`, { mode: 0o755 });
     writeFileSync(core, `#!/bin/sh\nprintf '%s\\n' "$@" > ${coreArgs}\nprintf '%s' "$0" > ${coreMarker}\nout=''\nwhile [ "$#" -gt 0 ]; do\n  if [ "$1" = '-o' ]; then shift; out="$1"; fi\n  shift\ndone\ncat >/dev/null\nprintf '%s' 'worker-result' > "$out"\n`, { mode: 0o755 });
+    clearWritableBits(join(f.root, "npm"));
     rmSync(join(f.root, "bin/codex"));
     symlinkSync(wrapper, join(f.root, "bin/codex"));
+    updateBinding(f, { 6: digest(core), 7: core, 8: join(vendorRoot, "codex-path") });
     const nodePath = spawnSync("node", ["-p", "process.execPath"], { encoding: "utf8" });
     expect(nodePath.status, nodePath.stderr).toBe(0);
     mkdirSync(f.env.TMPDIR, { recursive: true });
 
-    const result = spawnSync(realpathSync(nodePath.stdout.trim()), [runner, "--cwd", f.cwd], {
+    const result = spawnSync(realpathSync(nodePath.stdout.trim()), [runner, "--cwd", f.cwd, "--binding", f.binding], {
       env: f.env, input: "ship it", encoding: "utf8", timeout: 5_000,
     });
 
@@ -383,7 +486,15 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(existsSync(join(f.record, "args.json"))).toBe(false);
   });
 
-  test("canonicalizes cwd and rejects a repository-local codex executable", () => {
+  test("rejects writable OMO supply-chain files before spawning", () => {
+    const f = fixture("success", "writable");
+    const result = run(f);
+    expect(result.status).toBe(78);
+    expect(result.stderr).toBe("lazycodex-gjc: compatible OMO ultrawork capability not found\n");
+    expect(existsSync(join(f.record, "args.json"))).toBe(false);
+  });
+
+  test("canonicalizes cwd and ignores a repository-local codex executable", () => {
     const f = fixture();
     const linked = join(f.root, "linked-workspace");
     symlinkSync(f.cwd, linked);
@@ -391,14 +502,13 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(canonical.status, canonical.stderr).toBe(0);
     expect(stringArray(parsedRecord(join(f.record, "args.json")))).toContain(realpathSync(f.cwd));
 
-    rmSync(join(f.root, "bin/codex"));
     const localCodex = join(f.cwd, "codex");
-    writeFileSync(localCodex, `#!${process.execPath}\n`, { mode: 0o755 });
-    const rejected = spawnSync(process.execPath, [runner, "--cwd", f.cwd], {
+    writeFileSync(localCodex, `#!${process.execPath}\nprocess.exit(99);\n`, { mode: 0o755 });
+    const pinned = spawnSync(process.execPath, [runner, "--cwd", f.cwd, "--binding", f.binding], {
       env: { ...f.env, PATH: f.cwd }, input: "ship it", encoding: "utf8",
     });
-    expect(rejected.status).toBe(127);
-    expect(rejected.stderr).toBe("lazycodex-gjc: trusted codex executable not found\n");
+    expect(pinned.status, pinned.stderr).toBe(0);
+    expect(pinned.stdout).toBe("worker-result");
   });
 
   test("ignores an external directory symlink while enumerating workspace state", () => {
@@ -412,6 +522,23 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toBe("worker-result");
     expect(filesystem).not.toContain(JSON.stringify(realpathSync(outside)));
+  });
+
+  test("ignores a dangling non-state symlink while enumerating workspace state", () => {
+    const f = fixture();
+    symlinkSync("missing-target", join(f.cwd, "dangling-link"));
+    const result = run(f);
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toBe("worker-result");
+  });
+
+  test("removes and rejects a nested .gjc created during workspace-write", () => {
+    const f = fixture("create-gjc");
+    const state = join(f.cwd, "new/subtree/.gjc");
+    const result = run(f, ["--sandbox", "workspace-write"]);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toBe("lazycodex-gjc: worker created forbidden workspace .gjc state\n");
+    expect(existsSync(state)).toBe(false);
   });
 
   test("never relays child stderr, task text, or file canaries", () => {
@@ -440,6 +567,38 @@ describe("lazycodex-gjc isolated runner", () => {
     const pid = Number.parseInt(readFileSync(join(f.record, "descendant"), "utf8"), 10);
     const procState = existsSync(`/proc/${pid}/stat`) ? readFileSync(`/proc/${pid}/stat`, "utf8").split(" ")[2] : undefined;
     expect(result.status).toBe(124);
+    expect(procState === undefined || procState === "Z").toBe(true);
+    expect(existsSync(readFileSync(join(f.record, "temp"), "utf8"))).toBe(false);
+  });
+
+  test("kills detached descendants after a successful worker result", () => {
+    const f = fixture("success-descendant");
+    const result = run(f);
+    const pid = Number.parseInt(readFileSync(join(f.record, "descendant"), "utf8"), 10);
+    const procState = existsSync(`/proc/${pid}/stat`) ? readFileSync(`/proc/${pid}/stat`, "utf8").split(" ")[2] : undefined;
+    expect(result.status, result.stderr).toBe(0);
+    expect(procState === undefined || procState === "Z").toBe(true);
+  });
+
+  test("terminates the systemd-contained worker and cleans state on SIGTERM", async () => {
+    const f = fixture("timeout");
+    mkdirSync(f.env.TMPDIR, { recursive: true });
+    const child = spawn(process.execPath, [runner, "--cwd", f.cwd, "--binding", f.binding, "--timeout-seconds", "30"], {
+      env: f.env,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    let stderr = "";
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk: string) => { stderr += chunk; });
+    child.stdin.end("ship it");
+    for (let attempt = 0; attempt < 100 && !existsSync(join(f.record, "descendant")); attempt += 1) await Bun.sleep(20);
+    expect(existsSync(join(f.record, "descendant"))).toBe(true);
+    child.kill("SIGTERM");
+    const code = await new Promise<number | null>((resolveClose) => child.once("close", resolveClose));
+    const pid = Number.parseInt(readFileSync(join(f.record, "descendant"), "utf8"), 10);
+    const procState = existsSync(`/proc/${pid}/stat`) ? readFileSync(`/proc/${pid}/stat`, "utf8").split(" ")[2] : undefined;
+    expect(code).toBe(130);
+    expect(stderr).toBe("lazycodex-gjc: worker interrupted\n");
     expect(procState === undefined || procState === "Z").toBe(true);
     expect(existsSync(readFileSync(join(f.record, "temp"), "utf8"))).toBe(false);
   });

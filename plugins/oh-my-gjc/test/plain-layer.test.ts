@@ -152,7 +152,7 @@ describe("install-skill.sh manifest includes plain-layer", () => {
 describe("isolated HOME install/uninstall", () => {
   test("all install copies 9 skills / 14 omg commands including plain", () => {
     const home = mkdtempSync(join(tmpdir(), "omg-plain-"));
-    const env = { ...process.env, HOME: home };
+    const env = { ...process.env, HOME: home, CODEX_HOME: process.env.CODEX_HOME ?? join(process.env.HOME ?? "", ".codex") };
     try {
       const r = spawnSync("bash", [installSh, "all", "user"], { env, encoding: "utf8" });
       expect(r.status).toBe(0);
