@@ -38,14 +38,13 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install
 
 - `easy-answer` — 쉬운 말로 답 · 상시 온·오프 가능(`/omg:easy-always`)
 - `gate-briefing` — 승인 게이트 비전문가 브리핑 · 상시 온·오프 가능(`/omg:gate-always`)
+- `plain-layer` — 쉬운 기획: 선택지 설명 + 인터뷰 후 대화로 스펙 다듬기 + 승인 시 gate-briefing 위임 (`/omg:plain`, 세션 한정; always 없음)
 - `multivendor-presets` — 역할별 모델 프리셋
 - `branch-flow` — dev 통합 / main 릴리스 브랜치 규칙 + git worktree 병렬 세션(`/omg:worktree`) · 상시 온·오프 가능(`/omg:branchflow-always`)
 - `extragoal` — 외부 최종 리뷰 게이트(무공유·교차패밀리 리뷰 후 머지)
 - `/omg:fable` — 안전-크리티컬 코드 적대적 감사(돈·데이터·보안 코드) · **Fable 5 모델 필요**
 - `insane-review` — GPT-5.5 Pro 웹 코드 리뷰 · **ChatGPT 구독 + 크로미움 로그인 필요**
 - `gjc-bugwatch` — gjc 자체 버그 수집
-- `gajae-app` — 가재코드 앱(셀프호스트 웹 UI: 브라우저에서 gjc 세션 열람·릴레이 + claude/codex tmux 터미널 + 파일 패널) 설치·업데이트·운영 · **Node 22 + git 필요**
-
 ## 3. 자세히
 
 ### `easy-answer` — 쉬운 말로 답한다
@@ -69,18 +68,27 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install
 - 도메인 안 가린다. 코드든 인프라든 계약이든 같은 틀로 브리핑한다.
 - 켜기: `/omg:gate` (이번만) / `/omg:gate-always on` (항상)
 - 원문: [`plugins/oh-my-gjc/skills/gate-briefing/SKILL.md`](./plugins/oh-my-gjc/skills/gate-briefing/SKILL.md)
+### `plain-layer` — 쉬운 기획
+
+선택지 인터뷰는 그대로 두고, 각 선택지가 **뭘 허용/배제하는지** 쉬운 말로 붙인다.
+인터뷰가 끝난 뒤에는 **대화로 스펙을 더 다듬을** 수 있다(강제 객관식 루프 아님).
+승인 직전에는 기존 `gate-briefing`에 위임한다(대신 승인/반려 안 함).
+
+- 진입: `/omg:plain "아이디어"` · 끄기: `/omg:plain off`
+- 네이티브 deep-interview/ralplan을 대체하지 않음. GJC ≥0.10.1 (`deep-interview --write`).
+- 원문: [`plugins/oh-my-gjc/skills/plain-layer/SKILL.md`](./plugins/oh-my-gjc/skills/plain-layer/SKILL.md)
+
 
 ### `multivendor-presets` — 역할별 모델 묶음 프리셋
 
 여러 회사 AI 모델을 역할별로 섞어 쓰게 미리 짜둔 묶음을 설정 파일에 꽂아준다.
 (한 놈이 코드 짜고, 다른 놈이 검토하고, 또 다른 놈이 최종 점검하는 식.)
 
-- `ideal` — 평소 기본. 균형 잡힌 조합이다.
-- `escalate-surgical` — 어려운 문제 하나 팰 때만 잠깐 쓴다. 끝나면 `ideal`로 돌아온다.
-- `monorepo` — 개큰 코드베이스용. 모든 역할이 넓은 문맥 씹는다.
-- `reviewer` — 리뷰/감사 전용 조합(코드 저작 패밀리와 다른 패밀리가 판정). extragoal 외부 리뷰 게이트에서 씀.
-- 기존 설정은 안 건드린다. 해당 프리셋만 꽂는다(넣기 전 백업한다).
-- 쓰기: `/omg:presets`로 꽂고 → `gjc --mpreset ideal`로 켠다. 프리셋마다 해당 회사 로그인 필요하다.
+- `grok` — 세션 시작 기본. default는 `grok-4.5:high`, 역할 좌석은 terra/sol/opus (executor는 벤치 근거 `terra:xhigh`).
+- `sol` — default는 `sol:low`, 역할 위임 좌석은 `grok`과 동일.
+- `codex` — openai-codex 로그인 하나로 전 좌석 동작 (default `sol:medium`, executor `terra:xhigh`).
+- 기존 설정은 안 건드리고 선택한 이름만 병합한다(넣기 전 백업). 옛 프리셋 정리는 동의 후.
+- 쓰기: `/omg:presets [grok|sol|codex|all]` → `gjc --mpreset <이름>`. `grok`을 기본으로 고정하려면 `--default`.
 - 원문: [`plugins/oh-my-gjc/skills/multivendor-presets/SKILL.md`](./plugins/oh-my-gjc/skills/multivendor-presets/SKILL.md)
 
 ### `extragoal` — 외부 최종 리뷰 게이트
@@ -91,7 +99,7 @@ bash "$(ls -d ~/.gjc/plugins/cache/plugins/oh-my-gjc___oh-my-gjc___*/bin/install
 
 - 리뷰어 레인: 네이티브 교차세션 gjc(기본) / `/omg:fable` / `insane-review`(GPT-5.5 Pro 웹) — AND 게이트로 합침.
 - fail-closed: verdict 누락·malformed·timeout은 절대 승인으로 안 친다. 시크릿 스캔은 번들이 기기 밖 나가는 레인에서 비타협.
-- 켜기: `reviewer` 프리셋 흡수(`/omg:presets`) 후 스킬 트리거로 활성. 원문: [`plugins/oh-my-gjc/skills/extragoal/SKILL.md`](./plugins/oh-my-gjc/skills/extragoal/SKILL.md)
+- 켜기: 스킬 트리거로 활성. 옛 `reviewer` mpreset은 v0.4에서 정본 제외(교차 패밀리 원샷 레인으로 충분). 원문: [`plugins/oh-my-gjc/skills/extragoal/SKILL.md`](./plugins/oh-my-gjc/skills/extragoal/SKILL.md)
 
 ### `branch-flow` — 저장소 브랜치 규칙
 
@@ -138,18 +146,9 @@ gjc 쓰다가 로그에 남은 gjc 자체 버그를 긁어모은다. `~/.gjc/log
 - 초안은 프로젝트의 `.gjc/bugwatch/drafts/`에 저장한다.
 - 원문: [`plugins/oh-my-gjc/skills/gjc-bugwatch/SKILL.md`](./plugins/oh-my-gjc/skills/gjc-bugwatch/SKILL.md)
 
-### `gajae-app` — 가재코드 앱 (브라우저에서 세션 보기)
+### 가재 앱 마이그레이션 (0.14.0)
 
-터미널에 붙어 있지 않아도 폰·브라우저에서 gjc 세션을 본다. tmux에서 도는 gjc
-세션을 자동으로 찾아 열람하고(관제탑 경유로 지시도 보냄), claude/codex 세션은
-터미널 그대로 붙어서 보고, 지정 폴더 파일도 브라우저에서 열어본다. 이 기능은
-그 앱을 **설치·업데이트·운영**해주는 관리자다 — 앱 소스 자체는 별도 레포
-([devswha/claudecodeui](https://github.com/devswha/claudecodeui))에 산다.
-
-- 전제: Node 22 + git. `/omg:gajae-app install` 한 번이면 systemd 서비스로 뜬다.
-- 원격 접속은 tailscale serve 경유만 — 서버는 루프백에만 열린다(직노출 금지).
-- tmux 세션 종료/메시지 주입은 서버가 "gjc가 진짜 그 안에서 도는지" 재검증한다.
-- 원문: [`plugins/oh-my-gjc/skills/gajae-app/SKILL.md`](./plugins/oh-my-gjc/skills/gajae-app/SKILL.md)
+`gajae-app` 스킬과 `/omg:gajae-app` 커맨드는 이 번들에서 분리됐다. 이 업그레이드는 기존 셀프호스트 앱 배포를 삭제하지 않는다. 설치·업데이트는 [devswha/claudecodeui SELF-HOST 문서](https://github.com/devswha/claudecodeui/blob/feat/gjc-provider/docs/SELF-HOST.md)를 따른다.
 
 ## 라이선스
 
