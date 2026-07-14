@@ -240,7 +240,8 @@ merge_sol_preset() ( # user scope only — models.yml is user-global; body = sub
   command -v gjc >/dev/null 2>&1 || { warn "preset merge skipped: gjc not on PATH — run /omg:presets later"; return 0; }
   # canonical sol block = everything below `profiles:` (the canonical source is sol-only since v0.10)
   block="$(awk 'f; /^profiles:$/ {f=1}' "$src" 2>/dev/null)"
-  [ -n "$block" ] || { warn "preset merge skipped: could not extract sol block — run /omg:presets later"; return 0; }
+  extract_rc=$?
+  [ "$extract_rc" -eq 0 ] && [ -n "$block" ] || { warn "preset merge skipped: could not extract sol block — run /omg:presets later"; return 0; }
   mkdir -p "$(dirname "$dst")" 2>/dev/null || { warn "preset merge skipped: cannot create $(dirname "$dst")"; return 0; }
   # temp lives NEXT TO the target so the final `mv` is a same-filesystem atomic rename —
   # the live file is either the old content or the complete new content, never partial.
@@ -249,8 +250,10 @@ merge_sol_preset() ( # user scope only — models.yml is user-global; body = sub
   if [ -f "$dst" ]; then
     bak="$dst.bak-$(date +%s).$$"    # PID suffix: same-second reruns must not clobber a backup
     cp "$dst" "$bak" 2>/dev/null || { warn "preset merge skipped: backup failed"; rm -f "$tmp"; return 0; }
-    if grep -Eq '^  sol:[ \t]*(#.*)?$' "$dst"; then
-      # REPLACE the existing sol block. Boundary rules (r2 finding 2):
+    if awk 'BEGIN{f=0} /^[^ \t#]/{inprof = ($0 ~ /^profiles:[ \t]*(#.*)?$/)} inprof && /^  sol:[ \t]*(#.*)?$/{f=1} END{exit !f}' "$dst" 2>/dev/null; then
+      # REPLACE the FIRST sol block INSIDE the `profiles:` section only (r3 finding 1 —
+      # a `sol:` key nested under another top-level section like modelBindings must pass
+      # through untouched). Boundary rules (r2 finding 2):
       # - comments contiguously ABOVE `  sol:` document sol by YAML convention → replaced
       #   with the canonical block (which carries its own docs);
       # - INSIDE the block, 2-space comments and blank lines are held in a pending buffer:
@@ -260,15 +263,16 @@ merge_sol_preset() ( # user scope only — models.yml is user-global; body = sub
       OMG_SOL_BLOCK="$block" awk '
         function flushpend() { for (j = 1; j <= p; j++) print pend[j]; p = 0 }
         function flushbuf()  { for (j = 1; j <= n; j++) print buf[j];  n = 0 }
-        BEGIN { n = 0; p = 0; insol = 0 }
+        BEGIN { n = 0; p = 0; insol = 0; inprof = 0; done = 0 }
         {
           if (insol) {
             if ($0 ~ /^    /)                     { p = 0; next }
             if ($0 ~ /^[ \t]*$/ || $0 ~ /^  #/)   { pend[++p] = $0; next }
             insol = 0; flushpend()
           }
-          if ($0 ~ /^  #/) { buf[++n] = $0; next }
-          if ($0 ~ /^  sol:[ \t]*(#.*)?$/) { n = 0; print ENVIRON["OMG_SOL_BLOCK"]; insol = 1; next }
+          if ($0 ~ /^[^ \t#]/) { inprof = ($0 ~ /^profiles:[ \t]*(#.*)?$/) }
+          if (inprof && $0 ~ /^  #/) { buf[++n] = $0; next }
+          if (inprof && !done && $0 ~ /^  sol:[ \t]*(#.*)?$/) { n = 0; print ENVIRON["OMG_SOL_BLOCK"]; insol = 1; done = 1; next }
           flushbuf(); print
         }
         END { if (insol) insol = 0; flushpend(); flushbuf() }
@@ -281,7 +285,7 @@ merge_sol_preset() ( # user scope only — models.yml is user-global; body = sub
         /^profiles:[ \t]*(#.*)?$/ && !done { print ""; print ENVIRON["OMG_SOL_BLOCK"]; done = 1 }
       ' "$dst" > "$tmp" 2>/dev/null || { warn "preset merge skipped: append failed"; rm -f "$tmp"; return 0; }
     else
-      { cat "$dst"; printf '\nprofiles:\n\n%s\n' "$block"; } > "$tmp" 2>/dev/null || { warn "preset merge skipped: build failed"; rm -f "$tmp"; return 0; }
+      { cat "$dst" && printf '\nprofiles:\n\n%s\n' "$block"; } > "$tmp" 2>/dev/null || { warn "preset merge skipped: build failed"; rm -f "$tmp"; return 0; }
     fi
   else
     printf 'profiles:\n\n%s\n' "$block" > "$tmp" 2>/dev/null || { warn "preset merge skipped: build failed"; rm -f "$tmp"; return 0; }
@@ -295,8 +299,12 @@ merge_sol_preset() ( # user scope only — models.yml is user-global; body = sub
   # `sol` must be among them, meaning the file parses AND the profile registered.
   # (word-safe match: avoid `fable-sol` false hits)
   probe_budget="${OMG_PROBE_TIMEOUT:-60}"
+  case "$probe_budget" in ''|0|*[!0-9]*) probe_budget=60 ;; esac   # positive integer only — 0/garbage must not disable the bound
   probe_out="$(mktemp 2>/dev/null)" || probe_out="$tmp.probe"
-  if command -v timeout >/dev/null 2>&1; then
+  if command -v timeout >/dev/null 2>&1 && timeout -k 5 1 true 2>/dev/null; then
+    # -k: a probe that ignores TERM still gets KILL 5s later
+    timeout -k 5 "$probe_budget" env GJC_NOTIFICATIONS=0 gjc --mpreset __omg_probe__ -p --no-session --no-tools "x" > "$probe_out" 2>&1
+  elif command -v timeout >/dev/null 2>&1; then
     timeout "$probe_budget" env GJC_NOTIFICATIONS=0 gjc --mpreset __omg_probe__ -p --no-session --no-tools "x" > "$probe_out" 2>&1
   else
     GJC_NOTIFICATIONS=0 gjc --mpreset __omg_probe__ -p --no-session --no-tools "x" > "$probe_out" 2>&1 &

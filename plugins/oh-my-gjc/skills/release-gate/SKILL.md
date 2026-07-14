@@ -47,9 +47,11 @@ G1·G2를 통과한 최종 후보를 보고 이뤄져야 한다(사전 지시가
 
 - **발행 대상 = 승인된 HEAD의 트리, 정확히 그것.** 발행 경로는 레포 거버넌스를 따른다:
   branch-flow/브랜치 보호가 있는 레포는 release PR(`gh pr create --base main --head dev`)
-  + CI 통과 후 머지, 없는 레포는 로컬 `dev`→`main` `--no-ff` 머지 → 주석 태그 → 릴리스
-  발행(GitHub Release 등). 머지 커밋은 승인 HEAD만 담아야 하며 **트리가 승인 HEAD와
-  동일함을 확인**한다(`git diff <승인해시>..main --stat`이 비어야 함).
+  + CI 통과 후 머지, 없는 레포는 로컬 `dev`→`main` `--no-ff` 머지. **트리 동일성 검사는
+  태그·push 전에 fail-closed로 실행한다**: 로컬 경로는 머지 직후·push 전에
+  `git diff <승인해시>..main --stat`이 비어야 하며, 아니면 `git reset --hard origin/main`으로
+  복구 후 중단(태그 금지); PR 경로는 머지 후 `git fetch origin main` →
+  `git diff <승인해시>..origin/main --stat`이 비어야 태그·발행한다.
 - **증거 문서는 발행 후에 커밋한다** (r2 finding 4 — 발행 전에 커밋하면 실제 발행
   HEAD가 미승인 커밋이 되는 자기모순): `docs/verification/<프로젝트>-release-vX.Y.Z-<날짜>.md`를
   발행 직후 dev에 **docs-only 커밋**으로 남긴다. 릴리스 태그에는 포함되지 않고(코드가

@@ -50,10 +50,14 @@ argument-hint: "[<버전> [<한 줄 요약>]]  (기본: 버전 자동 제안)"
 0. **빈도 캡 확인:** 당일 이미 발행된 릴리스가 있으면 — 긴급 security/install-breakage
    수정이 아닌 한 — 발행을 멈추고 다음 날 번들을 안내한다.
 1. **승인된 HEAD를 그대로 발행한다** (발행 전 어떤 커밋도 추가 금지 — 추가되면 승인 무효,
-   Gate 2부터 다시): branch-flow/브랜치 보호가 있으면 release PR
-   (`gh pr create --base main --head dev`) + CI 통과 후 머지, 없으면
-   `git checkout main && git merge --no-ff dev` → `git tag -a v<ver>` → push(main+tags).
-   머지 후 `git diff <승인해시>..main --stat`이 비어 있는지(트리 동일) 확인한다.
+   Gate 2부터 다시). **트리 동일성 검사는 태그·push 전에, fail-closed로:**
+   - 로컬 경로(branch-flow 없음): `git checkout main && git merge --no-ff dev` →
+     **push 전에** `git diff <승인해시>..main --stat` 확인. 비어 있지 않으면 즉시 중단하고
+     `git reset --hard origin/main`으로 main을 복구한다(태그·push 금지).
+     비어 있을 때만 `git tag -a v<ver>` → push(main+tags).
+   - PR 경로(branch-flow/브랜치 보호): release PR(`gh pr create --base main --head dev`)
+     + CI 통과 후 머지 → `git fetch origin main` 후 `git diff <승인해시>..origin/main --stat`
+     확인. 비어 있지 않으면 태그를 만들지 않고 중단·보고한다. 비어 있을 때만 태그·발행.
 2. 릴리스 발행(예: `gh release create v<ver>`) — 노트에 변경 요약·게이트 증거 링크.
 3. **발행 후** 증거 문서를 dev에 docs-only 커밋: `docs/verification/<repo>-release-v<ver>-<날짜>.md`
    (G1 결과표 · G2 전 라운드 verdict와 수정 커밋 · G3 승인 근거와 승인 해시 · 빈도 캡

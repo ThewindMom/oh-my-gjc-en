@@ -190,4 +190,29 @@ describe("merge_sol_preset failure injection (r2)", () => {
 		expect(result.status, out).toBe(0);
 		expect(readFileSync(models, "utf8")).toContain("keepme");
 	});
+
+	test("a sol: key under a DIFFERENT top-level section is never touched (r3 finding 1)", () => {
+		const seed = [
+			"profiles:",
+			"  sol:",
+			"    display_name: sol",
+			"    required_providers: [openai-codex, anthropic]",
+			"    model_mapping:",
+			"      default: openai-codex/gpt-5.6-sol:low",
+			"      planner: openai-codex/gpt-5.6-sol:xhigh",
+			"modelBindings:",
+			"  sol:",
+			"    keep: exactly-this",
+			"",
+		].join("\n");
+		const { models, result, out } = run(FAKE_GJC_OK, seed);
+		expect(result.status, out).toBe(0);
+		expect(out).toContain("merged `sol`");
+		const doc = Bun.YAML.parse(readFileSync(models, "utf8")) as {
+			profiles: Record<string, { model_mapping: Record<string, string> }>;
+			modelBindings: Record<string, Record<string, string>>;
+		};
+		expect(doc.profiles.sol.model_mapping.planner).toBe("openai-codex/gpt-5.6-sol:high"); // profiles.sol replaced
+		expect(doc.modelBindings.sol.keep).toBe("exactly-this"); // foreign-section sol untouched
+	});
 });
