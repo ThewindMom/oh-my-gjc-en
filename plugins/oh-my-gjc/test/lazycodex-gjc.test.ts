@@ -184,11 +184,12 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(args).toContain('web_search="disabled"');
     expect(args).toContain('default_permissions="lazycodex_gjc"');
     expect(args).toContain('permissions.lazycodex_gjc.network.enabled=false');
-    expect(filesystem).toContain('":workspace_roots"={"."="write",".gjc"="deny","*/**/.gjc/**"="deny"}');
+    expect(filesystem).toContain('":workspace_roots"={"."="write"}');
     expect(filesystem).toContain('":tmpdir"="write"');
     for (const path of [join(f.cwd, ".gjc"), join(f.home, ".gjc"), join(f.home, ".codex"), f.env.CODEX_HOME]) {
       expect(filesystem).toContain(JSON.stringify(realpathSync(path)) + '="deny"');
     }
+    expect(filesystem).toContain(JSON.stringify(realpathSync(join(f.cwd, "nested/repository/.gjc"))) + '="deny"');
     expect(filesystem).not.toContain(JSON.stringify(realpathSync(f.home)) + '="deny"');
     expect(filesystem).toContain(`${JSON.stringify(env.HOME)}="deny"`);
     expect(filesystem).toContain(`${JSON.stringify(realpathSync(join(f.root, "bin/codex")))}="read"`);
@@ -218,7 +219,7 @@ describe("lazycodex-gjc isolated runner", () => {
     const env = stringRecord(parsedRecord(join(f.record, "env.json")));
     const filesystem = args.find((value) => value.startsWith("permissions.lazycodex_gjc.filesystem=")) ?? "";
     expect(result.status, result.stderr).toBe(0);
-    expect(filesystem).toContain('":workspace_roots"={"."="read",".gjc"="deny","*/**/.gjc/**"="deny"}');
+    expect(filesystem).toContain('":workspace_roots"={"."="read"}');
     for (const path of [join(f.cwd, ".gjc"), join(f.home, ".gjc"), join(f.home, ".codex"), f.env.CODEX_HOME]) {
       expect(filesystem).toContain(JSON.stringify(realpathSync(path)) + '="deny"');
     }
@@ -358,6 +359,17 @@ describe("lazycodex-gjc isolated runner", () => {
     });
     expect(rejected.status).toBe(127);
     expect(rejected.stderr).toBe("lazycodex-gjc: trusted codex executable not found\n");
+  });
+
+  test("fails closed when workspace enumeration escapes through a directory symlink", () => {
+    const f = fixture();
+    const outside = join(f.root, "outside-workspace");
+    mkdirSync(outside);
+    symlinkSync(outside, join(f.cwd, "outside-link"));
+    const result = run(f);
+    expect(result.status).toBe(78);
+    expect(result.stderr).toBe("lazycodex-gjc: workspace traversal escaped target cwd\n");
+    expect(existsSync(join(f.record, "args.json"))).toBe(false);
   });
 
   test("never relays child stderr, task text, or file canaries", () => {

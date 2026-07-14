@@ -8,6 +8,9 @@ import { spawn } from "node:child_process";
 const TASK_LIMIT = 256 * 1024;
 const OUTPUT_LIMIT = 1024 * 1024;
 const TIMEOUT_LIMIT = 3600;
+const WORKSPACE_DIRECTORY_LIMIT = 100000;
+const WORKSPACE_GJC_LIMIT = 256;
+const WORKSPACE_DENY_BYTES_LIMIT = 64 * 1024;
 const OMO_MIN = Object.freeze([4, 18, 0]);
 const HELP = `Usage: lazycodex-gjc [options] < task.txt
 
@@ -86,6 +89,60 @@ function protectedStatePaths(cwd, homeInput, codexHomeInput) {
   const hostRoots = [join(home, ".gjc"), join(home, ".codex"), codexHome].map(canonical);
   if (hostRoots.some((root) => within(cwd, root))) throw new CliError("--cwd cannot be inside protected GJC or Codex state");
   return [...new Set([canonical(join(cwd, ".gjc")), ...hostRoots])];
+}
+
+function addWorkspaceDeny(state, path) {
+  if (state.denyPaths.has(path)) return;
+  state.denyBytes += Buffer.byteLength(JSON.stringify(path), "utf8") + 7;
+  if (state.denyBytes > WORKSPACE_DENY_BYTES_LIMIT) throw new CliError("workspace .gjc protection exceeds safe profile size", 78);
+  state.denyPaths.add(path);
+}
+
+function workspaceDirectory(cwd, input, visited) {
+  const directory = realpathSync(input);
+  if (!within(directory, cwd)) throw new CliError("workspace traversal escaped target cwd", 78);
+  if (visited.has(directory)) return undefined;
+  visited.add(directory);
+  if (visited.size > WORKSPACE_DIRECTORY_LIMIT) throw new CliError("workspace .gjc protection exceeds directory limit", 78);
+  return directory;
+}
+
+function workspaceStateDenyPaths(cwd) {
+  const pending = [cwd];
+  const visited = new Set();
+  const state = { denyPaths: new Set(), denyBytes: 0, gjcRoots: 0 };
+  try {
+    while (pending.length > 0) {
+      const input = pending.pop();
+      if (input === undefined) continue;
+      const directory = workspaceDirectory(cwd, input, visited);
+      if (directory === undefined) continue;
+      for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        const entryPath = join(directory, entry.name);
+        if (entry.name === ".gjc") {
+          state.gjcRoots += 1;
+          if (state.gjcRoots > WORKSPACE_GJC_LIMIT) throw new CliError("workspace .gjc protection exceeds state-root limit", 78);
+          addWorkspaceDeny(state, realpathSync(entryPath));
+          continue;
+        }
+        if (entry.isDirectory()) {
+          pending.push(entryPath);
+          continue;
+        }
+        if (entry.isSymbolicLink()) {
+          const canonical = realpathSync(entryPath);
+          if (statSync(canonical).isDirectory()) {
+            if (!within(canonical, cwd)) throw new CliError("workspace traversal escaped target cwd", 78);
+            pending.push(canonical);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    if (error instanceof CliError) throw error;
+    throw new CliError("workspace .gjc protection could not be established", 78);
+  } // no-excuse-ok: catch
+  return [...state.denyPaths];
 }
 
 function trustedFile(path) {
@@ -203,7 +260,7 @@ function childEnvironment(runtime, codexHome, privateRoot) {
 
 function childArgs(config, env, runtime, output) {
   const access = config.sandbox === "workspace-write" ? "write" : "read";
-  const workspaceRoots = `{"."="${access}",".gjc"="deny","*/**/.gjc/**"="deny"}`;
+  const workspaceRoots = `{"."="${access}"}`;
   const grants = [...config.protectedStatePaths.map((path) => [path, "deny"]), [env.HOME, "deny"], [runtime.core, "read"], [runtime.helperDir, "read"], [runtime.codexPath, "read"]].map(([path, mode]) => `${toml(path)}=${toml(mode)}`).join(",");
   const filesystem = `{":minimal"="read",":workspace_roots"=${workspaceRoots},":tmpdir"="write",${grants}}`;
   const args = ["exec", "--ephemeral", "--color", "never", "--ignore-user-config", "--ignore-rules", "--strict-config", "-C", config.cwd];
@@ -248,7 +305,8 @@ async function main() {
   if (config.help) { process.stdout.write(HELP); return; }
   const task = readTask();
   const codexHome = process.env.CODEX_HOME;
-  const protectedPaths = protectedStatePaths(config.cwd, process.env.HOME, codexHome);
+  const workspaceDenies = workspaceStateDenyPaths(config.cwd);
+  const protectedPaths = [...new Set([...protectedStatePaths(config.cwd, process.env.HOME, codexHome), ...workspaceDenies])];
   const omo = resolveOmoSkill(codexHome);
   const binary = resolveCodex(process.env.PATH, config.cwd);
   const temp = mkdtempSync(join(tmpdir(), "lazycodex-gjc-"));
