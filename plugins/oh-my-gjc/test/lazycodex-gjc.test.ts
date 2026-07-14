@@ -361,15 +361,17 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(rejected.stderr).toBe("lazycodex-gjc: trusted codex executable not found\n");
   });
 
-  test("fails closed when workspace enumeration escapes through a directory symlink", () => {
+  test("ignores an external directory symlink while enumerating workspace state", () => {
     const f = fixture();
     const outside = join(f.root, "outside-workspace");
     mkdirSync(outside);
     symlinkSync(outside, join(f.cwd, "outside-link"));
     const result = run(f);
-    expect(result.status).toBe(78);
-    expect(result.stderr).toBe("lazycodex-gjc: workspace traversal escaped target cwd\n");
-    expect(existsSync(join(f.record, "args.json"))).toBe(false);
+    const args = stringArray(parsedRecord(join(f.record, "args.json")));
+    const filesystem = args.find((value) => value.startsWith("permissions.lazycodex_gjc.filesystem=")) ?? "";
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toBe("worker-result");
+    expect(filesystem).not.toContain(JSON.stringify(realpathSync(outside)));
   });
 
   test("never relays child stderr, task text, or file canaries", () => {

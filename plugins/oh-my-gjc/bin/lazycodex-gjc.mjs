@@ -131,10 +131,7 @@ function workspaceStateDenyPaths(cwd) {
         }
         if (entry.isSymbolicLink()) {
           const canonical = realpathSync(entryPath);
-          if (statSync(canonical).isDirectory()) {
-            if (!within(canonical, cwd)) throw new CliError("workspace traversal escaped target cwd", 78);
-            pending.push(canonical);
-          }
+          if (statSync(canonical).isDirectory() && within(canonical, cwd)) pending.push(canonical);
         }
       }
     }
