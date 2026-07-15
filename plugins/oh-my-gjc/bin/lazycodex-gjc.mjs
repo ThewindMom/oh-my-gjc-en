@@ -8,6 +8,8 @@ import { createHash } from "node:crypto";
 
 const TASK_LIMIT = 256 * 1024;
 const OUTPUT_LIMIT = 1024 * 1024;
+const OUTPUT_HARD_LIMIT = 8 * OUTPUT_LIMIT;
+const OVERSIZED_OUTPUT_SUMMARY = "Worker completed successfully; its final summary exceeded the relay limit. Authorized workspace changes and worker verification were preserved.\n";
 const TIMEOUT_LIMIT = 3600;
 const CONTAINMENT_GRACE_SECONDS = 5;
 const WORKSPACE_DIRECTORY_LIMIT = 100000;
@@ -328,7 +330,7 @@ function workerPrompt(task, omo, sandbox) {
 <validated-omo-ultrawork version="${omo.version}">
 ${omo.skill}
 </validated-omo-ultrawork>
-Run the raw task below as the sole goal. This is an isolated Codex/LazyCodex worker: do not invoke, configure, or mutate GJC tasks, sessions, plugins, credentials, or files. Do not run LazyCodex install, update, migration, doctor, or setup commands. Do not commit or push unless the raw task explicitly requests it. Obey the process permissions and return a final answer only after the goal is verified.
+Run the raw task below as the sole goal. This is an isolated Codex/LazyCodex worker: do not invoke, configure, or mutate GJC tasks, sessions, plugins, credentials, or files. Do not run LazyCodex install, update, migration, doctor, or setup commands. Do not commit or push unless the raw task explicitly requests it. Obey the process permissions and return a final answer only after the goal is verified. Keep the final answer concise and below 1 MiB; summarize completed work and verification instead of embedding large files, diffs, or logs.
 ${modeInstructions(sandbox)}
 <lazycodex-gjc-task>
 ${task}
@@ -437,7 +439,7 @@ function runChild(binary, args, prompt, env, output, timeoutSeconds, supervisor)
     child.stdout.on("data", (chunk) => { stdoutBytes += chunk.length; if (stdoutBytes > OUTPUT_LIMIT) failOverflow(); });
     child.stderr.on("data", (chunk) => { stderrBytes += chunk.length; if (stderrBytes > OUTPUT_LIMIT) failOverflow(); });
     child.once("error", () => { if (settled) return; settled = true; clearInterval(outputMonitor); clearTimeout(timer); process.off("SIGINT", interrupt); process.off("SIGTERM", interrupt); reject(new CliError("worker failed to start", 127)); });
-    outputMonitor = setInterval(() => { try { if (statSync(output).size > OUTPUT_LIMIT) failOverflow(); } catch { /* close handles missing output */ } }, 10); // no-excuse-ok: catch
+    outputMonitor = setInterval(() => { try { if (statSync(output).size > OUTPUT_HARD_LIMIT) failOverflow(); } catch { /* close handles missing output */ } }, 10); // no-excuse-ok: catch
     timer = setTimeout(() => stop("timeout"), timeoutSeconds * 1000);
     process.once("SIGINT", interrupt);
     process.once("SIGTERM", interrupt);
@@ -477,11 +479,15 @@ async function main() {
     if (result.failure === "input") throw new CliError(`worker input failed${stopSuffix}`, 1);
     if (result.failure === "interrupted") throw new CliError(`worker interrupted${stopSuffix}`, 130);
     if (result.failure === "timeout") throw new CliError(`worker timed out${stopSuffix}`, 124);
-    if (result.failure === "overflow" || statSync(output).size > OUTPUT_LIMIT) throw new CliError(`worker output exceeded limit${stopSuffix}`, 1);
+    if (result.failure === "overflow" || statSync(output).size > OUTPUT_HARD_LIMIT) throw new CliError(`worker output exceeded hard limit${stopSuffix}`, 1);
     if (result.code !== 0) throw new CliError(result.code === null ? `worker terminated by signal ${result.signal ?? "unknown"}` : `worker exited with code ${result.code}`, result.code ?? 1);
     const bytes = readFileSync(output);
     let finalOutput;
     try { finalOutput = new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { throw new CliError("final output is not valid UTF-8", 1); } // no-excuse-ok: catch
+    if (bytes.length > OUTPUT_LIMIT) {
+      process.stdout.write(OVERSIZED_OUTPUT_SUMMARY);
+      return;
+    }
     if (finalOutput.trim().length === 0) throw new CliError("final output is empty", 1);
     process.stdout.write(finalOutput);
   } finally {
