@@ -63,6 +63,9 @@ payload를 실행할 수 있으므로 금지한다. 설치 후 **새 세션**을
   public `gjc-bugwatch`, `multivendor-presets`, `release-gate`의 native 스킬·커맨드를 제거한다.
   `lazycodex-gjc`는 유지하고, user runtime 전제조건이 없을 때만 stale binding을 제거해
   fail-closed로 둔다. 기존 `models.yml`과 과거 병합된 프로필은 수정하지 않는다.
+- 현재 작업 디렉터리가 git 레포라면, 과거 `/omg:branchflow-always`가 `AGENTS.md`에 쓴
+  well-formed `oh-my-gjc:branchflow` 블록만 백업 후 제거한다. 다른 레포는 각 레포 루트에서
+  installer를 다시 실행한다. `docs/WORKFLOW.md`는 사용자 문서로 취급해 자동 삭제하지 않는다.
 - 과거에 개별 플러그인을 따로 설치했던 사용자면, 단일 스위트로 통합됐으니 옛 개별 플러그인
   제거를 제안한다(동의 후에만, 셸): 예 `gjc plugin uninstall my-workflows@oh-my-gjc`.
 - 0.14.0 업그레이드는 레거시 네이티브 `~/.gjc/agent/skills/gajae-app/`와 `~/.gjc/agent/commands/omg:gajae-app.md`만 정리하며, 기존 셀프호스트 앱 배포를 삭제하거나 변경하지 않는다. 이후 관리는 [devswha/claudecodeui SELF-HOST 문서](https://github.com/devswha/claudecodeui/blob/feat/gjc-provider/docs/SELF-HOST.md)를 따른다.

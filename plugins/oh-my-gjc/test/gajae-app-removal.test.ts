@@ -100,6 +100,7 @@ describe("removed capability manifests", () => {
     expect(existsSync(join(pluginRoot, "bin/lazycodex-gjc.mjs"))).toBe(true);
     expect(existsSync(join(pluginRoot, "skills/lazycodex-gjc/SKILL.md"))).toBe(true);
     expect(existsSync(join(pluginRoot, "templates/lazycodex-gjc.md"))).toBe(true);
+    expect(readFileSync(join(pluginRoot, "skills/extragoal/SKILL.md"), "utf8")).not.toContain("--mpreset reviewer");
   });
 });
 
@@ -356,6 +357,93 @@ describe("removed capability upgrade cleanup", () => {
       ).toEqual([]);
     } finally {
       rmSync(sandbox, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("retired branchflow marker cleanup", () => {
+  function fixture(name: string) {
+    const sandbox = mkdtempSync(join(tmpdir(), `omg-${name}-`));
+    const home = join(sandbox, "home");
+    const project = join(sandbox, "project");
+    mkdirSync(home);
+    mkdirSync(project);
+    expect(spawnSync("git", ["init", "-q"], { cwd: project }).status).toBe(0);
+    return { sandbox, home, project, agents: join(project, "AGENTS.md") };
+  }
+
+  function install(home: string, project: string) {
+    return spawnSync("bash", [installSh, "all", "user"], {
+      cwd: project,
+      env: { ...process.env, HOME: home, CODEX_HOME: join(home, "absent-codex-home") },
+      encoding: "utf8",
+    });
+  }
+
+  test("removes one well-formed marker and preserves outside bytes with backup", () => {
+    const f = fixture("branchflow-marker");
+    const original = [
+      "before",
+      "<!-- BEGIN oh-my-gjc:branchflow -->",
+      "retired policy",
+      "<!-- END oh-my-gjc:branchflow -->",
+      "after",
+      "",
+    ].join("\n");
+    try {
+      writeSentinel(f.agents, original);
+      chmodSync(f.agents, 0o640);
+
+      const result = install(f.home, f.project);
+
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain("removed retired branchflow marker");
+      expect(readFileSync(f.agents, "utf8")).toBe("before\nafter\n");
+      expect(statSync(f.agents).mode & 0o777).toBe(0o640);
+      const backup = readdirSync(f.project).find((name) => name.startsWith("AGENTS.md.bak-"));
+      expect(backup).toBeDefined();
+      expect(readFileSync(join(f.project, backup!), "utf8")).toBe(original);
+      expect(statSync(join(f.project, backup!)).mode & 0o777).toBe(0o640);
+    } finally {
+      rmSync(f.sandbox, { recursive: true, force: true });
+    }
+  });
+
+  test("preserves malformed markers without creating a backup", () => {
+    const f = fixture("branchflow-malformed");
+    const malformed = [
+      "before",
+      "<!-- BEGIN oh-my-gjc:branchflow -->",
+      "retired policy",
+      "after",
+      "",
+    ].join("\n");
+    try {
+      writeSentinel(f.agents, malformed);
+
+      const result = install(f.home, f.project);
+
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stderr).toContain("branchflow marker cleanup skipped (malformed markers)");
+      expect(readFileSync(f.agents, "utf8")).toBe(malformed);
+      expect(readdirSync(f.project).filter((name) => name.startsWith("AGENTS.md."))).toEqual([]);
+    } finally {
+      rmSync(f.sandbox, { recursive: true, force: true });
+    }
+  });
+
+  test("leaves an unmarked repository untouched", () => {
+    const f = fixture("branchflow-absent");
+    try {
+      writeSentinel(f.agents, "repository policy\n");
+
+      const result = install(f.home, f.project);
+
+      expect(result.status, result.stderr).toBe(0);
+      expect(readFileSync(f.agents, "utf8")).toBe("repository policy\n");
+      expect(readdirSync(f.project).filter((name) => name.startsWith("AGENTS.md."))).toEqual([]);
+    } finally {
+      rmSync(f.sandbox, { recursive: true, force: true });
     }
   });
 });

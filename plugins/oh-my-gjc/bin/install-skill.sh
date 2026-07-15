@@ -410,6 +410,66 @@ cleanup_removed_easy_markers() {
   done
 }
 
+cleanup_retired_branchflow_marker() {
+  local repo file content replacement backup
+  repo="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null)" || return 0
+  file="$repo/AGENTS.md"
+  [ -e "$file" ] || [ -L "$file" ] || return 0
+  if [ -L "$file" ] || [ ! -f "$file" ]; then
+    echo "! retired branchflow marker cleanup skipped (not a regular file): $file" >&2
+    return 0
+  fi
+  grep -q '<!-- BEGIN oh-my-gjc:branchflow -->' "$file" || return 0
+  content="$(mktemp "$file.content.XXXXXX")" || {
+    echo "! retired branchflow marker cleanup skipped (temporary file failed): $file" >&2
+    return 0
+  }
+  if ! awk '
+    $0 == "<!-- BEGIN oh-my-gjc:branchflow -->" {
+      seen++
+      if (skip || seen > 1) bad=1
+      skip=1
+      next
+    }
+    $0 == "<!-- END oh-my-gjc:branchflow -->" {
+      if (!skip) bad=1
+      skip=0
+      next
+    }
+    !skip { print }
+    END {
+      if (!seen || skip || bad) exit 1
+    }
+  ' "$file" > "$content"; then
+    rm -f "$content"
+    echo "! retired branchflow marker cleanup skipped (malformed markers): $file" >&2
+    return 0
+  fi
+  backup="$(mktemp "$file.bak-$(date +%s).XXXXXX")" || {
+    rm -f "$content"
+    echo "! retired branchflow marker backup failed: $file" >&2
+    return 0
+  }
+  if ! cp -p "$file" "$backup"; then
+    rm -f "$content" "$backup"
+    echo "! retired branchflow marker backup failed: $file" >&2
+    return 0
+  fi
+  replacement="$(mktemp "$file.tmp.XXXXXX")" || {
+    rm -f "$content"
+    echo "! retired branchflow marker cleanup failed; original preserved: $file" >&2
+    return 0
+  }
+  if cp -p "$file" "$replacement" && cp "$content" "$replacement" && mv -f "$replacement" "$file"; then
+    rm -f "$content"
+    echo "✓ removed retired branchflow marker from current repository: $file (backup: $backup)"
+    echo "! docs/WORKFLOW.md is user-owned and was not removed; review it manually if branch-flow created it." >&2
+  else
+    rm -f "$content" "$replacement"
+    echo "! retired branchflow marker cleanup failed; original preserved: $file" >&2
+  fi
+}
+
 cleanup_legacy_commands() { # $1=scope — drop pre-0.8.1 leftovers (0.8.0 tombstones + old oh-my-gjc:* aliases)
   local d n removed=0
   d="$(commands_dir "$1")"
@@ -501,6 +561,7 @@ case "$mode" in
       cleanup_removed "$scope"
       uninstall_suite_root_binding "$scope"
       if [ "$scope" = "user" ]; then uninstall_runtime_binding; cleanup_removed_easy_markers; fi
+      cleanup_retired_branchflow_marker
     else
       if [ -d "$PLUGIN_ROOT/skills/$target" ];       then uninstall_skill   "$target" "$scope"; fi
       if [ -f "$PLUGIN_ROOT/templates/$target.md" ]; then uninstall_command "$target" "$scope"; fi
@@ -528,6 +589,7 @@ case "$mode" in
       cleanup_legacy_commands "$mode"
       cleanup_removed "$mode"
       if [ "$mode" = "user" ]; then cleanup_removed_easy_markers; fi
+      cleanup_retired_branchflow_marker
       report_missing
     else
       if [ "$target" = "lazycodex-gjc" ]; then

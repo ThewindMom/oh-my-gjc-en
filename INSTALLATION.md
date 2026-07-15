@@ -58,3 +58,5 @@ Tell the human: open a **new** gjc session (or `/move .`) so the command palette
 
 ## Safety
 Idempotent — re-running re-copies the 4 skills and 7 commands, then removes only explicitly retired omj native surfaces. It does not send code anywhere, change model/provider credentials, or modify `models.yml`. `insane-review` needs ChatGPT+Chromium; `lazycodex-gjc` needs an existing logged-in Codex+compatible OMO and is read-only. When those runtime prerequisites are absent, its stale binding is removed and the command remains fail-closed. During user-scope upgrade, the installer also removes only well-formed retired `easy-always` blocks from `~/.gjc/agent/SYSTEM.md` and `AGENTS.md`, preserving unrelated content and `gate-always`.
+
+When run inside a git repository, upgrade/uninstall also backs up that repository's `AGENTS.md` and removes only one well-formed retired `oh-my-gjc:branchflow` marker block. It never deletes `docs/WORKFLOW.md`. Run the installer once from each repository where `/omg:branchflow-always on` was previously enabled, then review the preserved workflow document manually.
