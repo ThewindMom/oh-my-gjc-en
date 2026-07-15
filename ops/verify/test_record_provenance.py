@@ -36,9 +36,14 @@ MARKERS = [
     "templates/lazycodex-gjc.md",
     "bin/lazycodex-gjc.mjs",
     "skills/insane-review/SKILL.md",
-    "skills/gate-briefing/SKILL.md",
+    "skills/adaptive-response/SKILL.md",
+    "skills/workflow-eta/SKILL.md",
     "skills/extragoal/SKILL.md",
     "skills/lazycodex-gjc/SKILL.md",
+    "tools/sdk-lab/package.json",
+    "tools/sdk-lab/bun.lock",
+    "tools/sdk-lab/src/inspect.ts",
+    "tools/sdk-lab/src/eta.ts",
 ]
 NON_MARKER_PAYLOADS = [
     "bin/pack_and_ask.py",

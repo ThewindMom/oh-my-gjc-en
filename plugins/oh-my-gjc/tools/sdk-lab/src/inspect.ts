@@ -251,7 +251,7 @@ async function readSafeDiscoveryFile(path: string): Promise<string> {
   }
 }
 
-async function discoverCandidatePaths(cwd = process.cwd()): Promise<string[]> {
+export async function discoverCandidatePaths(cwd = process.cwd()): Promise<string[]> {
   const directory = join(cwd, ".gjc", "state", "sdk");
   let entries;
   try {
@@ -355,13 +355,19 @@ export type AllowedQuery =
   | "session.metadata"
   | "context.get"
   | "models.list"
-  | "workflow.gates.list";
+  | "workflow.gates.list"
+  | "goal.list/get"
+  | "todo.list"
+  | "runtime.jobs.list";
 
 const ALLOWED_QUERY_NAMES = new Set<AllowedQuery>([
   "session.metadata",
   "context.get",
   "models.list",
   "workflow.gates.list",
+  "goal.list/get",
+  "todo.list",
+  "runtime.jobs.list",
 ]);
 
 type QueryClient = Pick<SdkClient, "query">;
@@ -446,7 +452,7 @@ export async function queryComplete(client: QueryClient, query: AllowedQuery): P
       throw new InspectionError(`SDK query ${query} changed revision while paging.`);
     }
     revision = page.revision;
-    if (query === "session.metadata" || query === "context.get") {
+    if (query === "session.metadata" || query === "context.get" || query === "goal.list/get" || query === "runtime.jobs.list") {
       const chunk = asObject(page.items[0]);
       const isChunk = chunk
         && typeof chunk.body === "string"
@@ -465,7 +471,7 @@ export async function queryComplete(client: QueryClient, query: AllowedQuery): P
       if (page.continuationCursor !== undefined) {
         throw new InspectionError(`SDK query ${query} returned a cursor after completion.`);
       }
-      const completeItems = query === "session.metadata" || query === "context.get"
+      const completeItems = query === "session.metadata" || query === "context.get" || query === "goal.list/get" || query === "runtime.jobs.list"
         ? normalizeScalarItems(query, items)
         : items;
       return {

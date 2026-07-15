@@ -75,7 +75,7 @@ describe("suite root runtime binding", () => {
   });
   test.each(["user", "project"] as const)("binds a single native %s capability to the suite root", (scope) => {
     const sandbox = createSandbox();
-    const result = run(sandbox, ["gate-briefing", scope]);
+    const result = run(sandbox, ["adaptive-response", scope]);
     const binding = bindingPath(sandbox, scope);
 
     expect(result.status, result.stderr).toBe(0);
@@ -94,7 +94,7 @@ describe("suite root runtime binding", () => {
     const retiredCommand = join(nativeRoot, "commands/omg:easy.md");
     const userRetiredRuntime = join(sandbox.home, ".gjc/agent/runtimes/lazycodex-gjc/binding");
     const models = join(sandbox.home, ".gjc/agent/models.yml");
-    const expectedSkills = ["gate-briefing", "extragoal", "insane-review", "lazycodex-gjc"].map((name) =>
+    const expectedSkills = ["adaptive-response", "workflow-eta", "extragoal", "insane-review", "lazycodex-gjc"].map((name) =>
       join(nativeRoot, `skills/${name}/SKILL.md`),
     );
     const expectedCommands = [

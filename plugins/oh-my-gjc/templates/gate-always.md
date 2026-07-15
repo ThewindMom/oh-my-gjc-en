@@ -1,5 +1,5 @@
 ---
-description: 근거 기반 응답 페르소나 보정과 gate-briefing을 사용자 전역 기본값으로 상시 적용/해제한다. ~/.gjc/agent/SYSTEM.md에 정적 절차 블록을 넣거나 빼며, 프로젝트 SYSTEM.md가 우선하는 세션에는 적용되지 않는다.
+description: adaptive-response의 근거 기반 응답 보정과 승인 gate briefing을 사용자 전역 기본값으로 상시 적용/해제한다. ~/.gjc/agent/SYSTEM.md에 정적 절차 블록을 넣거나 빼며, 프로젝트 SYSTEM.md가 우선하는 세션에는 적용되지 않는다.
 argument-hint: "[on|off|status]  (기본: on)"
 ---
 

@@ -11,6 +11,7 @@ import { spawnSync } from "child_process";
 const pluginRoot = join(import.meta.dir, "..");
 const installSh = join(pluginRoot, "bin/install-skill.sh");
 const installer = readFileSync(installSh, "utf8");
+const sdkRuntimeDisabled = { OMG_WORKFLOW_ETA_RUNTIME: "0" };
 
 function parseManifest(name: string): string[] {
   const match = installer.match(new RegExp(`^${name}=\\(([^)]*)\\)`, "m"));
@@ -32,6 +33,7 @@ function intersection(left: string[], right: string[]): string[] {
 }
 
 const retiredSkills = [
+  "gate-briefing",
   "gajae-app",
   "multivendor-presets",
   "release-gate",
@@ -60,13 +62,14 @@ describe("removed capability manifests", () => {
     const expectedCommands = parseManifest("EXPECTED_COMMANDS");
     const removedSkills = parseManifest("REMOVED_SKILLS");
     const removedCommands = parseManifest("REMOVED_COMMANDS");
-    expect(expectedSkills).toHaveLength(4);
+    expect(expectedSkills).toHaveLength(5);
     expect(expectedCommands).toHaveLength(7);
     expect(expectedSkills).not.toContain("gajae-app");
     expect(expectedCommands).not.toContain("gajae-app");
 
     expect(expectedSkills).toEqual([
-      "gate-briefing",
+      "adaptive-response",
+      "workflow-eta",
       "extragoal",
       "insane-review",
       "lazycodex-gjc",
@@ -176,7 +179,7 @@ describe("removed capability upgrade cleanup", () => {
 
       const result = spawnSync("bash", [installSh, "all", scope], {
         cwd: scope === "project" ? project : sandbox,
-        env: { ...process.env, HOME: home, CODEX_HOME: join(sandbox, "absent-codex-home") },
+        env: { ...process.env, ...sdkRuntimeDisabled, HOME: home, CODEX_HOME: join(sandbox, "absent-codex-home") },
         encoding: "utf8",
       });
 
@@ -228,7 +231,7 @@ describe("removed capability upgrade cleanup", () => {
   test("rejects an invalid uninstall scope before mutation", () => {
     const sandbox = mkdtempSync(join(tmpdir(), "omg-invalid-scope-"));
     const home = join(sandbox, "home");
-    const skill = join(home, ".gjc/agent/skills/gate-briefing/SKILL.md");
+    const skill = join(home, ".gjc/agent/skills/adaptive-response/SKILL.md");
     try {
       writeSentinel(skill, "must remain");
       const result = spawnSync("bash", [installSh, "all", "uninstall", "projects"], {
@@ -261,7 +264,7 @@ describe("removed capability upgrade cleanup", () => {
       symlinkSync(external, systemFile);
       const result = spawnSync("bash", [installSh, "all", "user"], {
         cwd: sandbox,
-        env: { ...process.env, HOME: home },
+        env: { ...process.env, ...sdkRuntimeDisabled, HOME: home },
         encoding: "utf8",
       });
       expect(result.status, result.stderr).toBe(0);
@@ -343,7 +346,7 @@ describe("removed capability upgrade cleanup", () => {
       chmodSync(systemFile, 0o600);
       const result = spawnSync("bash", [installSh, "all", "user"], {
         cwd: sandbox,
-        env: { ...process.env, HOME: home },
+        env: { ...process.env, ...sdkRuntimeDisabled, HOME: home },
         encoding: "utf8",
       });
       expect(result.status, result.stderr).toBe(0);
@@ -375,7 +378,7 @@ describe("retired branchflow marker cleanup", () => {
   function install(home: string, project: string) {
     return spawnSync("bash", [installSh, "all", "user"], {
       cwd: project,
-      env: { ...process.env, HOME: home, CODEX_HOME: join(home, "absent-codex-home") },
+      env: { ...process.env, ...sdkRuntimeDisabled, HOME: home, CODEX_HOME: join(home, "absent-codex-home") },
       encoding: "utf8",
     });
   }

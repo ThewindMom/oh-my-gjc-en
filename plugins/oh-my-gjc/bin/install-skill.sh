@@ -42,9 +42,9 @@ done
 PLUGIN_ROOT="$(cd -P "$(dirname "$0")/.." && pwd -P)"
 
 # ── EXPECTED manifest (the single source of truth for a complete install) ────────────
-EXPECTED_SKILLS=(gate-briefing extragoal insane-review lazycodex-gjc)
+EXPECTED_SKILLS=(adaptive-response workflow-eta extragoal insane-review lazycodex-gjc)
 EXPECTED_COMMANDS=(omg setup gate gate-always fable insane-review lazycodex-gjc)
-EXPECTED_RUNTIMES=(bin/lazycodex-gjc.mjs)
+EXPECTED_RUNTIMES=(bin/lazycodex-gjc.mjs tools/sdk-lab/package.json tools/sdk-lab/bun.lock tools/sdk-lab/src/inspect.ts tools/sdk-lab/src/eta.ts)
 # Capabilities REMOVED (관제탑 발주, 하코 승인). 0.11.0: codex-deepwork(실사용 0회, lazycodex와 중복) +
 # codex-app 짝(대상 앱 빌드 트랙 07-03 아카이브; Pro 리뷰는 insane-review 전담). 0.12.0: codex-cli-ask·
 # lazycodex·tower(명시 호출 0 — Codex 트래픽은 전량 제품 파이프라인 codex exec 직결로 스킬 미경유,
@@ -52,8 +52,9 @@ EXPECTED_RUNTIMES=(bin/lazycodex-gjc.mjs)
 # 0.12.0: obsolete control/worker surfaces; 0.14.0: gajae-app ownership transfer.
 # Post-v0.17.1 prune: multivendor-presets, release-gate, easy-answer, plain-layer,
 # branch-flow/worktree, and public gjc-bugwatch. lazycodex-gjc remains supported.
+# The gate-briefing skill was renamed to adaptive-response; upgrades remove only the retired native directory.
 # Upgrades sweep only their native skill/command files plus explicitly owned retired state.
-REMOVED_SKILLS=(codex-deepwork codex-app-launch codex-app-cdp codex-cli-ask lazycodex tower worktree gajae-app multivendor-presets release-gate easy-answer plain-layer branch-flow gjc-bugwatch)
+REMOVED_SKILLS=(gate-briefing codex-deepwork codex-app-launch codex-app-cdp codex-cli-ask lazycodex tower worktree gajae-app multivendor-presets release-gate easy-answer plain-layer branch-flow gjc-bugwatch)
 REMOVED_COMMANDS=(codex-run codex-app-launch codex-app-ask codex-ask lazycodex-setup lazycodex-work tower-setup gajae-app presets release easy easy-always plain branchflow-always worktree bugwatch-scan)
 # Pre-0.8.1 native files that upgrades must sweep away: the 17 one-release deprecation
 # tombstones shipped by 0.8.0 (removed in 0.8.1). Old `oh-my-gjc:<name>.md` aliases are
@@ -68,6 +69,7 @@ LEGACY_COMMANDS=('codex-app-control:ask' 'codex-app-control:launch' 'codex-cli-c
 skills_dir()   { if [ "$1" = project ]; then echo "$PWD/.gjc/skills";   else echo "$HOME/.gjc/agent/skills";   fi; }
 commands_dir() { if [ "$1" = project ]; then echo "$PWD/.gjc/commands"; else echo "$HOME/.gjc/agent/commands"; fi; }
 runner_runtime() { echo "$HOME/.gjc/agent/runtimes/lazycodex-gjc"; }
+sdk_runtime() { printf '%s/sdk-lab\n' "$(suite_runtime_dir "$1")"; }
 suite_runtime_dir() {
   case "$1" in
     user)    printf '%s\n' "$HOME/.gjc/agent/runtimes/oh-my-gjc" ;;
@@ -170,6 +172,122 @@ uninstall_suite_root_binding() { # $1=scope — remove only this suite's root bi
   rm -f "$root"
   echo "✓ removed suite runtime binding ($1): $root"
 }
+
+sdk_runtime_requested() {
+  case "${OMG_WORKFLOW_ETA_RUNTIME:-1}" in
+    1) return 0 ;;
+    0) return 1 ;;
+    *) echo "❌ OMG_WORKFLOW_ETA_RUNTIME must be 0 or 1" >&2; exit 2 ;;
+  esac
+}
+
+sdk_runtime_available() {
+  local version major minor patch
+  command -v bun >/dev/null 2>&1 || return 1
+  command -v flock >/dev/null 2>&1 || return 1
+  version="$(bun --version 2>/dev/null)" || return 1
+  IFS=. read -r major minor patch <<<"$version"
+  case "$major:$minor:$patch" in
+    *[!0-9:]*|::*|*::) return 1 ;;
+  esac
+  [ "$major" -gt 1 ] || {
+    [ "$major" -eq 1 ] && { [ "$minor" -gt 3 ] || { [ "$minor" -eq 3 ] && [ "$patch" -ge 14 ]; }; }
+  }
+}
+
+prepare_sdk_runtime() ( # $1=scope — exact bridge-client lock, scripts disabled, serialized private publication
+  local scope="$1" parent root temp previous="" lock
+  parent="$(prepare_suite_runtime_parent "$scope")" || return 1
+  if [ ! -O "$parent" ] || ! chmod 700 "$parent" || [ -n "$(find "$parent" -maxdepth 0 -perm /077)" ]; then
+    echo "❌ workflow-eta SDK runtime parent is not current-user private: $parent" >&2
+    return 1
+  fi
+  root="$(sdk_runtime "$scope")"
+  lock="$parent/.sdk-lab.lock"
+  if [ -L "$lock" ] || { [ -e "$lock" ] && [ ! -f "$lock" ]; }; then
+    echo "❌ workflow-eta SDK runtime lock is malformed: $lock" >&2
+    return 1
+  fi
+  : >>"$lock"
+  chmod 600 "$lock"
+  [ -O "$lock" ] || { echo "❌ workflow-eta SDK runtime lock is not owned by the current user: $lock" >&2; return 1; }
+  exec 9<>"$lock"
+  flock -x 9 || return 1
+  reject_symlinked_components "$root" || return 1
+  if [ -e "$root" ] && { [ ! -d "$root" ] || [ -L "$root" ]; }; then
+    echo "❌ workflow-eta SDK runtime is malformed: $root" >&2
+    return 1
+  fi
+  temp="$(mktemp -d "$parent/.sdk-lab.XXXXXX")" || return 1
+  chmod 700 "$temp"
+  mkdir -p "$temp/src"
+  chmod 700 "$temp/src"
+  if ! cp "$PLUGIN_ROOT/tools/sdk-lab/package.json" "$PLUGIN_ROOT/tools/sdk-lab/bun.lock" "$temp/" ||
+     ! cp "$PLUGIN_ROOT/tools/sdk-lab/src/inspect.ts" "$PLUGIN_ROOT/tools/sdk-lab/src/eta.ts" "$temp/src/" ||
+     ! chmod 600 "$temp/package.json" "$temp/bun.lock" "$temp/src/inspect.ts" "$temp/src/eta.ts"; then
+    rm -rf "$temp"
+    echo "❌ workflow-eta SDK runtime staging failed" >&2
+    return 1
+  fi
+  if ! (cd "$temp" && bun install --frozen-lockfile --production --ignore-scripts >/dev/null); then
+    rm -rf "$temp"
+    echo "❌ workflow-eta SDK dependency install failed" >&2
+    return 1
+  fi
+  if [ ! -f "$temp/node_modules/@gajae-code/bridge-client/package.json" ] ||
+     ! (cd "$temp" && bun -e '
+       const pkg = await Bun.file("node_modules/@gajae-code/bridge-client/package.json").json();
+       if (pkg.name !== "@gajae-code/bridge-client" || pkg.version !== "0.11.0") process.exit(1);
+     '); then
+    rm -rf "$temp"
+    echo "❌ workflow-eta SDK dependency verification failed" >&2
+    return 1
+  fi
+  if [ -e "$root" ]; then
+    previous="$(mktemp -d "$parent/.sdk-lab.previous.XXXXXX")" || { rm -rf "$temp"; return 1; }
+    rmdir "$previous"
+    if ! mv "$root" "$previous"; then
+      rm -rf "$temp"
+      echo "❌ workflow-eta SDK runtime replacement failed" >&2
+      return 1
+    fi
+  fi
+  if ! mv "$temp" "$root"; then
+    [ -z "$previous" ] || mv "$previous" "$root"
+    rm -rf "$temp"
+    echo "❌ workflow-eta SDK runtime publication failed" >&2
+    return 1
+  fi
+  [ -z "$previous" ] || rm -rf "$previous"
+  echo "✓ bound SDK runtime ($scope): $root"
+)
+
+uninstall_sdk_runtime() ( # $1=scope
+  local parent root lock
+  parent="$(prepare_suite_runtime_parent "$1")" || return 1
+  if [ ! -O "$parent" ] || ! chmod 700 "$parent" || [ -n "$(find "$parent" -maxdepth 0 -perm /077)" ]; then
+    echo "❌ uninstall FAILED — workflow-eta SDK runtime parent is not current-user private: $parent" >&2
+    return 1
+  fi
+  lock="$parent/.sdk-lab.lock"
+  if [ -L "$lock" ] || { [ -e "$lock" ] && [ ! -f "$lock" ]; }; then
+    echo "❌ uninstall FAILED — workflow-eta SDK runtime lock is malformed: $lock" >&2
+    return 1
+  fi
+  : >>"$lock"
+  chmod 600 "$lock"
+  [ -O "$lock" ] || { echo "❌ uninstall FAILED — workflow-eta SDK runtime lock is not owned by the current user: $lock" >&2; return 1; }
+  exec 9<>"$lock"
+  flock -x 9 || return 1
+  root="$(sdk_runtime "$1")"
+  reject_symlinked_components "$root" || return 1
+  if [ -L "$root" ] || { [ -e "$root" ] && [ ! -d "$root" ]; }; then
+    echo "❌ uninstall FAILED — workflow-eta SDK runtime is malformed: $root" >&2
+    return 1
+  fi
+  rm -rf "$root"
+  echo "✓ removed SDK runtime: workflow-eta ($1)"
+)
 
 sha256_file() {
   if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'; return; fi
@@ -559,6 +677,7 @@ case "$mode" in
       for c in "${EXPECTED_COMMANDS[@]}";   do uninstall_command   "$c" "$scope"; done
       cleanup_legacy_commands "$scope"
       cleanup_removed "$scope"
+      if [ "$scope" = "user" ]; then uninstall_sdk_runtime user; fi
       uninstall_suite_root_binding "$scope"
       if [ "$scope" = "user" ]; then uninstall_runtime_binding; cleanup_removed_easy_markers; fi
       cleanup_retired_branchflow_marker
@@ -566,6 +685,7 @@ case "$mode" in
       if [ -d "$PLUGIN_ROOT/skills/$target" ];       then uninstall_skill   "$target" "$scope"; fi
       if [ -f "$PLUGIN_ROOT/templates/$target.md" ]; then uninstall_command "$target" "$scope"; fi
       if [ "$target" = "lazycodex-gjc" ] && [ "$scope" = "user" ]; then uninstall_runtime_binding; fi
+      if [ "$target" = "workflow-eta" ] && [ "$scope" = "user" ]; then uninstall_sdk_runtime user; fi
     fi
     ;;
   user|project)
@@ -573,6 +693,7 @@ case "$mode" in
     if [ "$target" = "all" ]; then
       preflight_all
       LAZYCODEX_BIND=0
+
       if [ "$mode" = "user" ]; then
         if lazycodex_runtime_available; then
           prepare_runtime_binding
@@ -580,6 +701,23 @@ case "$mode" in
         else
           echo "! lazycodex-gjc runtime not bound (Codex CLI / systemd / Codex home missing) — bridge disabled fail-closed. After installing and logging in to Codex, rerun the hardened root installer." >&2
           if [ -e "$(runner_runtime)" ] || [ -L "$(runner_runtime)" ]; then uninstall_runtime_binding; fi
+        fi
+      fi
+      if [ "$mode" = "user" ]; then
+        if ! sdk_runtime_requested; then
+          echo "! workflow-eta SDK runtime disabled by OMG_WORKFLOW_ETA_RUNTIME=0 — skill remains installed but fails closed." >&2
+          if [ -e "$(sdk_runtime user)" ] || [ -L "$(sdk_runtime user)" ]; then uninstall_sdk_runtime user; fi
+        elif sdk_runtime_available; then
+          if ! prepare_sdk_runtime user; then
+            if [ -e "$(sdk_runtime user)" ]; then
+              echo "❌ workflow-eta SDK refresh failed; prior runtime and native surfaces were preserved" >&2
+              exit 1
+            fi
+            echo "! workflow-eta SDK runtime not bound — skill remains installed but fails closed. Rerun the hardened installer with Bun >=1.3.14 and npm access." >&2
+          fi
+        else
+          echo "! workflow-eta SDK runtime not bound (Bun >=1.3.14 or flock missing) — skill remains installed but fails closed." >&2
+          if [ -e "$(sdk_runtime user)" ] || [ -L "$(sdk_runtime user)" ]; then uninstall_sdk_runtime user; fi
         fi
       fi
       install_suite_root_binding "$mode"
@@ -596,6 +734,19 @@ case "$mode" in
         [ -f "$PLUGIN_ROOT/bin/lazycodex-gjc.mjs" ] && [ ! -L "$PLUGIN_ROOT/bin/lazycodex-gjc.mjs" ] || MISSING+=("bin/lazycodex-gjc.mjs")
         report_missing
         if [ "$mode" = "user" ]; then prepare_runtime_binding; fi
+      fi
+      if [ "$target" = "workflow-eta" ]; then
+        for r in tools/sdk-lab/package.json tools/sdk-lab/bun.lock tools/sdk-lab/src/inspect.ts tools/sdk-lab/src/eta.ts; do
+          [ -f "$PLUGIN_ROOT/$r" ] && [ ! -L "$PLUGIN_ROOT/$r" ] || MISSING+=("$r")
+        done
+        report_missing
+        if [ "$mode" = "user" ]; then
+          sdk_runtime_requested || { echo "❌ targeted workflow-eta install cannot disable its SDK runtime" >&2; exit 1; }
+          sdk_runtime_available || { echo "❌ workflow-eta requires Bun >=1.3.14 and flock" >&2; exit 1; }
+          prepare_sdk_runtime user
+        else
+          echo "! project workflow-eta skill installed; its executable SDK runtime is user-scope only" >&2
+        fi
       fi
       install_suite_root_binding "$mode"
       if [ -d "$PLUGIN_ROOT/skills/$target" ];       then install_skill   "$target" "$mode"; fi

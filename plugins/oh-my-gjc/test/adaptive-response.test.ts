@@ -16,9 +16,9 @@ function ownedMarkerBody(content: string): string {
   return match[1];
 }
 
-describe("adaptive gate briefing contract", () => {
+describe("adaptive response contract", () => {
   test("builds a domain-specific ephemeral response persona", () => {
-    const skill = read(join(pluginRoot, "skills/gate-briefing/SKILL.md"));
+    const skill = read(join(pluginRoot, "skills/adaptive-response/SKILL.md"));
 
     for (const contract of [
       "현재 도메인 숙련도",
@@ -39,7 +39,7 @@ describe("adaptive gate briefing contract", () => {
   });
 
   test("limits evidence across every activation surface", () => {
-    const skill = read(join(pluginRoot, "skills/gate-briefing/SKILL.md"));
+    const skill = read(join(pluginRoot, "skills/adaptive-response/SKILL.md"));
     const gate = read(join(pluginRoot, "templates/gate.md"));
     const always = read(join(pluginRoot, "templates/gate-always.md"));
     const marker = ownedMarkerBody(always);
@@ -79,7 +79,7 @@ describe("adaptive gate briefing contract", () => {
   });
 
   test("preserves every gate section and approval invariant", () => {
-    const skill = read(join(pluginRoot, "skills/gate-briefing/SKILL.md"));
+    const skill = read(join(pluginRoot, "skills/adaptive-response/SKILL.md"));
     const gate = read(join(pluginRoot, "templates/gate.md"));
     const marker = ownedMarkerBody(read(join(pluginRoot, "templates/gate-always.md")));
 
@@ -109,7 +109,7 @@ describe("adaptive gate briefing contract", () => {
   test("propagates calibration without hiding Fable findings", () => {
     const fable = read(join(pluginRoot, "templates/fable.md"));
 
-    expect(fable).toContain("gate-briefing의 임시");
+    expect(fable).toContain("adaptive-response의 임시");
     expect(fable).toContain("입문에는 일상어 영향, 실무/전문에는 계약·경계조건·증거");
     expect(fable).toContain("간결한 완전한 목록으로 모두 제시");
     expect(fable).toContain("CRITICAL/HIGH, 안전 경계, 검증 실패");
@@ -117,7 +117,7 @@ describe("adaptive gate briefing contract", () => {
     expect(fable).not.toContain("사용자가 도메인을 모른다고 가정");
   });
 
-  test("keeps the exact public surface at four skills and seven commands", () => {
+  test("keeps the exact public surface at five skills and seven commands", () => {
     const skillRoot = join(pluginRoot, "skills");
     const skillNames = readdirSync(skillRoot, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && existsSync(join(skillRoot, entry.name, "SKILL.md")))
@@ -128,7 +128,7 @@ describe("adaptive gate briefing contract", () => {
       .map((name) => name.slice(0, -3))
       .sort();
 
-    expect(skillNames).toEqual(["extragoal", "gate-briefing", "insane-review", "lazycodex-gjc"]);
+    expect(skillNames).toEqual(["adaptive-response", "extragoal", "insane-review", "lazycodex-gjc", "workflow-eta"]);
     expect(commandNames).toEqual([
       "fable",
       "gate",

@@ -57,7 +57,7 @@ function runInstaller(f: Fixture, action: "install" | "uninstall", path = instal
   const args = action === "install" ? [path, "all", f.scope] : [path, "all", "uninstall", f.scope];
   return spawnSync("bash", args, {
     cwd: f.project,
-    env: { ...process.env, HOME: f.home, CODEX_HOME: process.env.CODEX_HOME ?? join(process.env.HOME ?? "", ".codex") },
+    env: { ...process.env, HOME: f.home, CODEX_HOME: process.env.CODEX_HOME ?? join(process.env.HOME ?? "", ".codex"), OMG_WORKFLOW_ETA_RUNTIME: "0" },
     encoding: "utf8",
   });
 }
@@ -187,7 +187,7 @@ describe("lazycodex-gjc skill and command contract", () => {
 });
 
 describe("lazycodex-gjc isolated native install", () => {
-  test.each(["user", "project"] as const)("installs exactly 4 skills and 7 commands in %s scope", (scope) => {
+  test.each(["user", "project"] as const)("installs exactly 5 skills and 7 commands in %s scope", (scope) => {
     const f = fixture(scope);
     writeSentinel(join(f.nativeRoot, "skills/sentinel/SKILL.md"), "keep skill");
     writeSentinel(join(f.nativeRoot, "commands/sentinel.md"), "keep command");
@@ -200,7 +200,7 @@ describe("lazycodex-gjc isolated native install", () => {
     expect(result.status, result.stderr).toBe(0);
     const expectedSkills = parseManifest("EXPECTED_SKILLS");
     const expectedCommands = ownedCommands();
-    expect(expectedSkills).toHaveLength(4);
+    expect(expectedSkills).toHaveLength(5);
     expect(expectedCommands).toHaveLength(7);
     expect(expectedSkills).toContain("lazycodex-gjc");
     expect(expectedCommands).toContain("omg:lazycodex-gjc.md");
@@ -232,7 +232,7 @@ describe("lazycodex-gjc isolated native install", () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("bin/lazycodex-gjc.mjs");
-    expect(existsSync(join(f.nativeRoot, "skills/gate-briefing/SKILL.md"))).toBe(false);
+    expect(existsSync(join(f.nativeRoot, "skills/adaptive-response/SKILL.md"))).toBe(false);
     expect(existsSync(join(f.nativeRoot, "commands/omg.md"))).toBe(false);
   });
 
@@ -288,7 +288,7 @@ describe("lazycodex-gjc isolated native install", () => {
     writeSentinel(join(f.nativeRoot, "runtimes/lazycodex-gjc/binding"), "stale binding from a previous install");
     const result = spawnSync("bash", [installerPath, "all", "user"], {
       cwd: f.project,
-      env: { ...process.env, HOME: f.home, CODEX_HOME: join(f.home, ".codex-absent") },
+      env: { ...process.env, HOME: f.home, CODEX_HOME: join(f.home, ".codex-absent"), OMG_WORKFLOW_ETA_RUNTIME: "0" },
       encoding: "utf8",
     });
 
