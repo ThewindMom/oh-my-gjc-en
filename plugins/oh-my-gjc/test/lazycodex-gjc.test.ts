@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 const runner = join(import.meta.dir, "../bin/lazycodex-gjc.mjs");
 const sandboxes: string[] = [];
 
-type Mode = "success" | "success-descendant" | "create-gjc" | "create-gjc-symlink" | "nonzero" | "stderr-secret" | "empty" | "invalid" | "oversized" | "stdout" | "stdout-infinite" | "final-infinite" | "timeout";
+type Mode = "success" | "success-descendant" | "create-gjc" | "create-gjc-symlink" | "nonzero" | "stderr-secret" | "empty" | "invalid" | "oversized" | "oversized-write" | "hard-oversized" | "stdout" | "stdout-infinite" | "final-infinite" | "timeout";
 
 type OmoMode = "valid" | "missing" | "stale" | "incompatible" | "symlinked" | "writable";
 
@@ -102,7 +102,11 @@ process.stdin.on("end", () => {
     process.exit(23);
   }
   if (${JSON.stringify(mode)} === "invalid") fs.writeFileSync(out, Buffer.from([0xff]));
-  else if (${JSON.stringify(mode)} === "oversized") fs.writeFileSync(out, Buffer.alloc(1024 * 1024 + 1, 65));
+  else if (["oversized", "oversized-write"].includes(${JSON.stringify(mode)})) {
+    if (${JSON.stringify(mode)} === "oversized-write") fs.writeFileSync(path.join(${JSON.stringify(cwd)}, "worker-change.txt"), "preserved");
+    fs.writeFileSync(out, Buffer.alloc(1024 * 1024 + 1, 65));
+  }
+  else if (${JSON.stringify(mode)} === "hard-oversized") fs.writeFileSync(out, Buffer.alloc(8 * 1024 * 1024 + 1, 65));
   else if (["success", "success-descendant", "create-gjc", "create-gjc-symlink"].includes(${JSON.stringify(mode)})) fs.writeFileSync(out, "worker-result");
   else if (${JSON.stringify(mode)} === "stdout") {
     fs.writeFileSync(out, "must-not-succeed");
@@ -574,13 +578,28 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(`${result.stdout}${result.stderr}`).not.toContain("FILE-CANARY-7d321");
   });
 
-  test.each([["nonzero", 23], ["empty", 1], ["invalid", 1], ["oversized", 1], ["stdout", 1]] as const)("fails closed for %s child output", (mode, status) => {
+  test.each([["nonzero", 23], ["empty", 1], ["invalid", 1], ["stdout", 1]] as const)("fails closed for %s child output", (mode, status) => {
     const f = fixture(mode);
     const result = run(f);
     expect(result.status).toBe(status);
     expect(result.stdout).toBe("");
     expect(existsSync(readFileSync(join(f.record, "temp"), "utf8"))).toBe(false);
     expect(existsSync(readFileSync(join(f.record, "codex-home"), "utf8"))).toBe(false);
+  });
+  test.each(["oversized", "oversized-write"] as const)("preserves successful work and returns a bounded summary for %s final output", (mode) => {
+    const f = fixture(mode);
+    const result = run(f, ["--sandbox", "workspace-write"]);
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toBe("Worker completed successfully; its final summary exceeded the relay limit. Authorized workspace changes and worker verification were preserved.\n");
+    expect(result.stdout.length).toBeLessThan(1024);
+    if (mode === "oversized-write") expect(readFileSync(join(f.cwd, "worker-change.txt"), "utf8")).toBe("preserved");
+  });
+  test("fails closed when completed final output exceeds the hard limit", () => {
+    const f = fixture("hard-oversized");
+    const result = run(f, ["--sandbox", "workspace-write"]);
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toBe("lazycodex-gjc: worker output exceeded hard limit\n");
   });
 
   test("kills the process group and cleans temporary output on timeout", () => {
@@ -655,7 +674,7 @@ describe("lazycodex-gjc isolated runner", () => {
     const procState = existsSync(`/proc/${pid}/stat`) ? readFileSync(`/proc/${pid}/stat`, "utf8").split(" ")[2] : undefined;
     expect(result.status).toBe(1);
     expect(Date.now() - started).toBeLessThan(2_000);
-    expect(result.stderr).toBe("lazycodex-gjc: worker output exceeded limit\n");
+    expect(result.stderr).toBe("lazycodex-gjc: worker output exceeded hard limit\n");
     expect(procState === undefined || procState === "Z").toBe(true);
   });
 
