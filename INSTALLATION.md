@@ -15,7 +15,7 @@ Do exactly the following in a terminal. Do not improvise other steps.
 ```sh
 curl -fsSL https://raw.githubusercontent.com/devswha/oh-my-gjc/main/install.sh | bash
 ```
-One install brings the whole suite (3 skills + 6 commands: `/omg` + 5 `/omg:*`). There are no separate/optional plugins to add.
+One install brings the whole suite (4 skills + 7 commands: `/omg` + 6 `/omg:*`). There are no separate/optional plugins to add.
 
 ## Manual path (equivalent, if curl|bash is disallowed)
 ```sh
@@ -33,26 +33,28 @@ The self-hosted web UI now lives in [`devswha/claudecodeui`'s canonical SELF-HOS
 ```sh
 gjc plugin list  # must list oh-my-gjc@oh-my-gjc
 root="$HOME/.gjc/agent"
-for skill in gate-briefing extragoal insane-review; do
+for skill in gate-briefing extragoal insane-review lazycodex-gjc; do
   test -f "$root/skills/$skill/SKILL.md" || exit 1
 done
-for command in omg.md omg:setup.md omg:gate.md omg:gate-always.md omg:fable.md omg:insane-review.md; do
+for command in omg.md omg:setup.md omg:gate.md omg:gate-always.md omg:fable.md omg:insane-review.md omg:lazycodex-gjc.md; do
   test -f "$root/commands/$command" || exit 1
 done
-for skill in easy-answer plain-layer branch-flow worktree gjc-bugwatch lazycodex-gjc multivendor-presets release-gate; do
+for skill in easy-answer plain-layer branch-flow worktree gjc-bugwatch multivendor-presets release-gate; do
   test ! -e "$root/skills/$skill" && test ! -L "$root/skills/$skill" || exit 1
 done
-for retired in easy easy-always plain branchflow-always worktree bugwatch-scan lazycodex-gjc presets release; do
+for retired in easy easy-always plain branchflow-always worktree bugwatch-scan presets release; do
   test ! -e "$root/commands/omg:$retired.md" && test ! -L "$root/commands/omg:$retired.md" || exit 1
 done
 test -f "$root/runtimes/oh-my-gjc/root"
 test "$(stat -c %a "$root/runtimes/oh-my-gjc/root" 2>/dev/null || stat -f %Lp "$root/runtimes/oh-my-gjc/root")" = 600
-test ! -e "$root/runtimes/lazycodex-gjc" && test ! -L "$root/runtimes/lazycodex-gjc"
-test ! -e "$root/receipts/lazycodex-gjc-runner.sha256" && test ! -L "$root/receipts/lazycodex-gjc-runner.sha256"
+if test -e "$root/runtimes/lazycodex-gjc"; then
+  test -f "$root/runtimes/lazycodex-gjc/binding"
+  test -x "$root/runtimes/lazycodex-gjc/runner.mjs"
+fi
 ```
 
 ## Finish
 Tell the human: open a **new** gjc session (or `/move .`) so the command palette rebuilds, then run `/omg` for the catalog and `/omg:setup` for optional prerequisite checks and always-on toggles. Commands are `/omg:<name>`.
 
 ## Safety
-Idempotent — re-running re-copies the 3 skills and 6 commands, then removes only explicitly retired omj native surfaces and the retired LazyCodex runtime binding/receipt. It does not send code anywhere, change model/provider credentials, or modify `models.yml`. `insane-review` needs a ChatGPT subscription and Chromium only when invoked. During user-scope upgrade, the installer also removes only well-formed retired `easy-always` blocks from `~/.gjc/agent/SYSTEM.md` and `AGENTS.md`: it validates marker structure, creates a unique mode-preserving backup, preserves unrelated content and `gate-always`, and leaves malformed files untouched with a warning.
+Idempotent — re-running re-copies the 4 skills and 7 commands, then removes only explicitly retired omj native surfaces. It does not send code anywhere, change model/provider credentials, or modify `models.yml`. `insane-review` needs ChatGPT+Chromium; `lazycodex-gjc` needs an existing logged-in Codex+compatible OMO and is read-only. When those runtime prerequisites are absent, its stale binding is removed and the command remains fail-closed. During user-scope upgrade, the installer also removes only well-formed retired `easy-always` blocks from `~/.gjc/agent/SYSTEM.md` and `AGENTS.md`, preserving unrelated content and `gate-always`.

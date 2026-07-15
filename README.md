@@ -28,7 +28,7 @@ git clone --depth 1 https://github.com/devswha/oh-my-gjc.git
 bash oh-my-gjc/install.sh
 ```
 
-한 번 설치로 스킬 3개 + 커맨드 6개(`/omg` + `/omg:*` 5개)가 전부 들어온다(추가 설치 없음). 업그레이드 땐 원샷 한 줄 다시.
+한 번 설치로 스킬 4개 + 커맨드 7개(`/omg` + `/omg:*` 6개)가 전부 들어온다(추가 설치 없음). 업그레이드 땐 원샷 한 줄 다시.
 원리·글롭 규칙 등 기여자용 상세는 AGENTS.md 참조.
 
 </details>
@@ -39,8 +39,9 @@ bash oh-my-gjc/install.sh
 - `extragoal` — 외부 최종 리뷰 게이트(무공유·교차패밀리 리뷰 후 머지)
 - `/omg:fable` — 안전-크리티컬 코드 적대적 감사(돈·데이터·보안 코드) · **Fable 5 모델 필요**
 - `insane-review` — GPT-5.6 Sol Pro 웹 코드 리뷰 · **ChatGPT 구독 + 크로미움 로그인 필요**
+- `lazycodex-gjc` — 설치된 Codex+LazyCodex/OMO를 격리 읽기 전용 외부 작업자로 실행(`/omg:lazycodex-gjc`)
 
-커맨드 전체: `/omg`, `/omg:setup`, `/omg:gate`, `/omg:gate-always`, `/omg:fable`, `/omg:insane-review`.
+커맨드 전체: `/omg`, `/omg:setup`, `/omg:gate`, `/omg:gate-always`, `/omg:fable`, `/omg:insane-review`, `/omg:lazycodex-gjc`.
 
 모델 구성은 GJC 기본값과 내장 프리셋을 그대로 쓴다. omj는 커스텀 모델 프리셋을 설치하거나 `models.yml`을 수정하지 않는다.
 
@@ -67,6 +68,16 @@ bash oh-my-gjc/install.sh
 - fail-closed: verdict 누락·malformed·timeout은 절대 승인으로 안 친다. 시크릿 스캔은 번들이 기기 밖 나가는 레인에서 비타협.
 - 켜기: 스킬 트리거로 활성. 별도 reviewer 프리셋 없이 GJC 기본 모델 구성의 교차세션 리뷰를 쓴다. 원문: [`plugins/oh-my-gjc/skills/extragoal/SKILL.md`](./plugins/oh-my-gjc/skills/extragoal/SKILL.md)
 
+### `lazycodex-gjc` — 격리된 읽기 전용 Codex+LazyCodex 작업자
+
+이미 설치·로그인된 **Codex CLI + LazyCodex/OMO**를 외부 `codex exec --ephemeral`
+작업자로 한 번 동기 실행하고 결과만 가져온다.
+
+- `read-only`만 허용한다. 동시 편집 안전성이 해결될 때까지 `workspace-write`는 fail-closed다.
+- child GJC 세션·task를 만들지 않고 GJC config·자격증명을 복사하거나 변경하지 않는다.
+- user-scope native install의 private SHA-256 runtime binding과 runner가 일치해야 실행한다.
+- 쓰기: `/omg:lazycodex-gjc "읽기 전용 조사·리뷰 작업"`
+- 원문: [`plugins/oh-my-gjc/skills/lazycodex-gjc/SKILL.md`](./plugins/oh-my-gjc/skills/lazycodex-gjc/SKILL.md)
 ### `/omg:fable` — 안전-크리티컬 코드 적대적 감사
 
 돈·데이터·보안 걸린 코드를 Fable 5 모델로 적대적 감사한다. 설계 리뷰가 아니라

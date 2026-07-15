@@ -40,7 +40,6 @@ const retiredSkills = [
   "branch-flow",
   "worktree",
   "gjc-bugwatch",
-  "lazycodex-gjc",
 ];
 
 const retiredCommands = [
@@ -53,7 +52,6 @@ const retiredCommands = [
   "branchflow-always",
   "worktree",
   "bugwatch-scan",
-  "lazycodex-gjc",
 ];
 
 describe("removed capability manifests", () => {
@@ -62,8 +60,8 @@ describe("removed capability manifests", () => {
     const expectedCommands = parseManifest("EXPECTED_COMMANDS");
     const removedSkills = parseManifest("REMOVED_SKILLS");
     const removedCommands = parseManifest("REMOVED_COMMANDS");
-    expect(expectedSkills).toHaveLength(3);
-    expect(expectedCommands).toHaveLength(6);
+    expect(expectedSkills).toHaveLength(4);
+    expect(expectedCommands).toHaveLength(7);
     expect(expectedSkills).not.toContain("gajae-app");
     expect(expectedCommands).not.toContain("gajae-app");
 
@@ -71,6 +69,7 @@ describe("removed capability manifests", () => {
       "gate-briefing",
       "extragoal",
       "insane-review",
+      "lazycodex-gjc",
     ]);
     expect(expectedCommands).toEqual([
       "omg",
@@ -79,6 +78,7 @@ describe("removed capability manifests", () => {
       "gate-always",
       "fable",
       "insane-review",
+      "lazycodex-gjc",
     ]);
     for (const skill of retiredSkills) expect(removedSkills).toContain(skill);
     for (const command of retiredCommands) expect(removedCommands).toContain(command);
@@ -97,7 +97,9 @@ describe("removed capability manifests", () => {
     for (const command of retiredCommands) {
       expect(existsSync(join(pluginRoot, `templates/${command}.md`))).toBe(false);
     }
-    expect(existsSync(join(pluginRoot, "bin/lazycodex-gjc.mjs"))).toBe(false);
+    expect(existsSync(join(pluginRoot, "bin/lazycodex-gjc.mjs"))).toBe(true);
+    expect(existsSync(join(pluginRoot, "skills/lazycodex-gjc/SKILL.md"))).toBe(true);
+    expect(existsSync(join(pluginRoot, "templates/lazycodex-gjc.md"))).toBe(true);
   });
 });
 
@@ -173,7 +175,7 @@ describe("removed capability upgrade cleanup", () => {
 
       const result = spawnSync("bash", [installSh, "all", scope], {
         cwd: scope === "project" ? project : sandbox,
-        env: { ...process.env, HOME: home, CODEX_HOME: process.env.CODEX_HOME ?? join(process.env.HOME ?? "", ".codex") },
+        env: { ...process.env, HOME: home, CODEX_HOME: join(sandbox, "absent-codex-home") },
         encoding: "utf8",
       });
 

@@ -30,6 +30,7 @@ catalog; `gjc plugin list` shows installed). **Plugin management is shell-CLI on
 
 ### Capability prerequisites (single `oh-my-gjc` suite)
 - `insane-review`: ChatGPT subscription + a Chromium-family browser on CDP `:9222` logged into chatgpt.com.
+- `lazycodex-gjc`: already installed and logged-in Codex CLI + compatible LazyCodex/OMO. The suite never installs or logs in to them; `workspace-write` is disabled and only read-only delegation is supported.
 - `/omg:fable`: Fable 5 model access (Opus fallback on refusal/clamp).
 - `gate-briefing`, `extragoal`, and the `example-plugin` template: no external prerequisites.
 
@@ -106,9 +107,11 @@ Content is discovered by **convention directories** above; explicit paths in
 ### `lazycodex` (REMOVED in 0.12.0)
 - 관제탑 발주·하코 승인(2026-07-13)으로 제거: `/omg:lazycodex-setup`·`/omg:lazycodex-work` 하니스 발원 세션 7월 0건. 파일-쓰기 자율 위임 수요는 gjc 네이티브 워크플로(team/ultragoal)로 충족. 업그레이드 시 `cleanup_removed`가 네이티브 잔존물(`omg:lazycodex-setup.md`·`omg:lazycodex-work.md`, skill dir)을 청소한다. 과거 상세는 git 히스토리(≤0.11.0)의 skills/lazycodex/SKILL.md 참조.
 
-### `lazycodex-gjc` (REMOVED after v0.17.1)
-- 2026-07-15 prune: removed for zero observed July use and an unresolved concurrent-edit rollback hazard in the unreleased write-mode implementation. GJC native team/ultragoal and direct product-pipeline `codex exec` remain the supported execution surfaces.
-- Upgrade cleanup removes its native skill, `/omg:lazycodex-gjc`, user runtime binding, and legacy receipt. Historical implementation/security details remain in git history at v0.17.1 and the unreleased `dev` commits.
+### `lazycodex-gjc` (retained, read-only)
+- `/omg:lazycodex-gjc` synchronously launches the already installed Codex+LazyCodex/OMO as an external `codex exec --ephemeral` worker. It never installs, updates, migrates, sets up, logs in, or creates a child GJC session.
+- **Permission contract:** `read-only` only. `workspace-write` is fail-closed until concurrent-edit isolation is proven. The worker uses a custom no-network permission profile, blocks GJC/Codex user state, and relays no raw child stderr.
+- **Runtime trust:** only a canonical user-scope mode-0600 SHA-256 binding may execute. Project scope alone cannot authorize the bridge. Missing Codex/systemd/Codex-home removes stale runtime state and leaves the command safely disabled.
+- **Provenance:** runner, skill, and command template are all mandatory markers in `ops/verify/record_provenance.py`.
 
 ### `codex-app-control` (REMOVED in 0.11.0)
 - 관제탑 발주·하코 승인(2026-07-12)으로 제거: 대상 Codex 데스크톱 앱 빌드 트랙이 07-03 아카이브(codex-wrapper-build)로 폐기됐고, GPT Pro 리뷰 용도는 `insane-review`(자체 엔진, codex-app 의존성 없음)가 전담. 업그레이드 시 `cleanup_removed`가 네이티브 잔존물을 청소한다. 과거 라이브 검증 레시피는 git 히스토리(≤0.10.0)의 skills/codex-app-*/SKILL.md 참조.
@@ -134,11 +137,11 @@ Content is discovered by **convention directories** above; explicit paths in
 ### Public capability prune (REMOVED after v0.17.1)
 - `easy-answer`, `plain-layer`, and `branch-flow` were removed as redundant UX/policy layers; use concise direct answers and GJC native deep-interview/ralplan/team plus each repository's own `AGENTS.md`.
 - The public `gjc-bugwatch` skill and `/omg:bugwatch-scan` were removed; the repository-owned collector and `ops/gjc-bugwatch/` automation remain internal operations tooling.
-- Upgrade cleanup removes all retired native skills/commands, the LazyCodex runtime binding, and retired `easy-always` marker blocks after backing up affected user files. It never modifies `models.yml`.
+- Upgrade cleanup removes retired native skills/commands and retired `easy-always` marker blocks after backing up affected user files. It never modifies `models.yml`. `lazycodex-gjc` remains installed.
 
 ### `oh-my-gjc` (core — absorbed my-workflows v0.3)
-- **The current focused suite has 3 skills and 6 commands.** Skills: `gate-briefing`, `extragoal`, and `insane-review`. Commands: bare `/omg` plus `/omg:setup`, `/omg:gate`, `/omg:gate-always`, `/omg:fable`, and `/omg:insane-review`.
-- **Native install is REQUIRED:** canonical command bodies remain in `templates/`; the hardened one-shot installer copies all 3 skills and 6 commands, fails closed on a missing expected file, emits the exact mode-`0600` suite-root binding, and sweeps retired native surfaces.
+- **The current focused suite has 4 skills and 7 commands.** Skills: `gate-briefing`, `extragoal`, `insane-review`, and read-only `lazycodex-gjc`. Commands: bare `/omg` plus `/omg:setup`, `/omg:gate`, `/omg:gate-always`, `/omg:fable`, `/omg:insane-review`, and `/omg:lazycodex-gjc`.
+- **Native install is REQUIRED:** canonical command bodies remain in `templates/`; the hardened one-shot installer copies all 4 skills and 7 commands, validates the LazyCodex runner, emits the suite-root binding, conditionally binds the trusted user runtime when prerequisites exist, and sweeps retired native surfaces.
 - **One-shot install:** root `install.sh` performs marketplace add/update → plugin install → native install. No optional plugin arguments.
 - **⚠ Upstream ideal (contribution CANDIDATE — doc only, needs separate approval):** the native-install dance exists because gjc has no first-class "gjc-native plugin distributed via the marketplace" surface. Historically gjc loaded neither plugin skills nor commands; as of **0.9.x it auto-exposes plugin COMMANDS** as `<plugin>:<name>` (claude-plugins provider, `discovery/index.ts` now imports `./claude-plugins`) — still the wrong namespace — while plugin **skills do not surface as slash commands**. There is a `gajae-plugin.json` "binding-only" marker that makes the claude-plugins provider skip a root, but routing marketplace installs through the gjc-native plugin loader is unverified. Until a clean native path exists, `templates/` + native `install-skill.sh` is the supported workaround. Candidate upstream PR to `Yeachan-Heo/gajae-code` base `dev`; **not started** — file only after explicit approval (like PR #1710/#1676).
 - **Semaphore mechanism:** `/omg:gate-always` owns only its marker block in user-global `~/.gjc/agent/SYSTEM.md`; it backs up before mutation and preserves all content outside its block. Legacy gate blocks in `AGENTS.md` migrate on command use. Installer upgrades separately remove only retired `easy-always` blocks after backup. A project `.gjc/SYSTEM.md` overrides the user file for that repository.

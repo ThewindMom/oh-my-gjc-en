@@ -6,14 +6,14 @@
     "url": "https://github.com/devswha"
   },
   "metadata": {
-    "description": "oh-my-gajaecode — the focused Gajae Code (gjc) suite: 3 skills + 6 commands (/omg + 5 /omg:*).",
+    "description": "oh-my-gajaecode — focused Gajae Code suite: 4 skills + 7 commands. LazyCodex skill/command always install; its read-only runtime binds only when existing logged-in Codex + compatible OMO are available, otherwise fail-closed.",
     "version": "0.17.1"
   },
   "plugins": [
     {
       "name": "oh-my-gjc",
       "source": "./plugins/oh-my-gjc",
-      "description": "oh-my-gajaecode — focused Gajae Code suite. Skills: gate-briefing, extragoal, insane-review. Commands: /omg, /omg:setup, /omg:gate, /omg:gate-always, /omg:fable, /omg:insane-review. It uses GJC defaults and built-in presets without modifying models.yml; repository release governance stays per-repository.",
+      "description": "oh-my-gajaecode — focused Gajae Code suite. Skills: gate-briefing, extragoal, insane-review, lazycodex-gjc. Commands: /omg, /omg:setup, /omg:gate, /omg:gate-always, /omg:fable, /omg:insane-review, /omg:lazycodex-gjc. LazyCodex surfaces always install; its read-only runtime binding is prerequisite-dependent and otherwise fail-closed. models.yml remains untouched; release governance stays per-repository.",
       "version": "0.17.1",
       "category": "core"
     }

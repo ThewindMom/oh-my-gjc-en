@@ -1,7 +1,7 @@
 {
   "name": "oh-my-gjc",
   "version": "0.17.1",
-  "description": "oh-my-gajaecode — focused Gajae Code suite. Skills: gate-briefing, extragoal, insane-review. Commands: /omg, /omg:setup, /omg:gate, /omg:gate-always, /omg:fable, /omg:insane-review. It uses GJC defaults and built-in presets without modifying models.yml; repository release governance stays per-repository.",
+  "description": "oh-my-gajaecode — focused Gajae Code suite. Skills: gate-briefing, extragoal, insane-review, lazycodex-gjc. Commands: /omg, /omg:setup, /omg:gate, /omg:gate-always, /omg:fable, /omg:insane-review, /omg:lazycodex-gjc. LazyCodex surfaces always install; its read-only runtime binding is prerequisite-dependent and otherwise fail-closed. models.yml remains untouched; release governance stays per-repository.",
   "author": {
     "name": "devswha",
     "email": "devswha@gmail.com",
@@ -17,6 +17,8 @@
     "workflow",
     "approval-gate",
     "code-review",
-    "orchestration"
+    "orchestration",
+    "codex-bridge",
+    "lazycodex"
   ]
 }

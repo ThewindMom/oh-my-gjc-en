@@ -33,9 +33,12 @@ MARKERS = [
     "templates/gate-always.md",
     "templates/fable.md",
     "templates/insane-review.md",
+    "templates/lazycodex-gjc.md",
+    "bin/lazycodex-gjc.mjs",
     "skills/insane-review/SKILL.md",
     "skills/gate-briefing/SKILL.md",
     "skills/extragoal/SKILL.md",
+    "skills/lazycodex-gjc/SKILL.md",
 ]
 NON_MARKER_PAYLOADS = [
     "bin/pack_and_ask.py",

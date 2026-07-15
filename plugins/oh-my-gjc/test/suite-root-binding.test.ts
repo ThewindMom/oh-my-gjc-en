@@ -94,7 +94,7 @@ describe("suite root runtime binding", () => {
     const retiredCommand = join(nativeRoot, "commands/omg:easy.md");
     const userRetiredRuntime = join(sandbox.home, ".gjc/agent/runtimes/lazycodex-gjc/binding");
     const models = join(sandbox.home, ".gjc/agent/models.yml");
-    const expectedSkills = ["gate-briefing", "extragoal", "insane-review"].map((name) =>
+    const expectedSkills = ["gate-briefing", "extragoal", "insane-review", "lazycodex-gjc"].map((name) =>
       join(nativeRoot, `skills/${name}/SKILL.md`),
     );
     const expectedCommands = [
@@ -104,6 +104,7 @@ describe("suite root runtime binding", () => {
       "omg:gate-always.md",
       "omg:fable.md",
       "omg:insane-review.md",
+      "omg:lazycodex-gjc.md",
     ].map((name) => join(nativeRoot, `commands/${name}`));
 
     expect(run(sandbox, ["all", scope]).status).toBe(0);

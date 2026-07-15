@@ -49,9 +49,12 @@ MARKERS = [
     "templates/gate-always.md",
     "templates/fable.md",
     "templates/insane-review.md",
+    "templates/lazycodex-gjc.md",
+    "bin/lazycodex-gjc.mjs",
     "skills/insane-review/SKILL.md",
     "skills/gate-briefing/SKILL.md",
     "skills/extragoal/SKILL.md",
+    "skills/lazycodex-gjc/SKILL.md",
 ]
 MARKETPLACE_MANIFEST = ".claude-plugin/marketplace.json"
 PLUGIN_MANIFEST = "plugins/{}/.claude-plugin/plugin.json".format(PLUGIN_NAME)
