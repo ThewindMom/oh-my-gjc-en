@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { constants, accessSync, chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { spawn } from "node:child_process";
@@ -8,8 +8,10 @@ import { createHash } from "node:crypto";
 
 const TASK_LIMIT = 256 * 1024;
 const OUTPUT_LIMIT = 1024 * 1024;
+const OUTPUT_HARD_LIMIT = 8 * OUTPUT_LIMIT;
 const TIMEOUT_LIMIT = 3600;
 const CONTAINMENT_GRACE_SECONDS = 5;
+const UNIT_CONFIRM_ATTEMPTS = 20;
 const WORKSPACE_DIRECTORY_LIMIT = 100000;
 const WORKSPACE_GJC_LIMIT = 256;
 const WORKSPACE_DENY_BYTES_LIMIT = 64 * 1024;
@@ -18,7 +20,7 @@ const HELP = `Usage: lazycodex-gjc [options] < task.txt
 
 Options:
   --cwd PATH                           worker directory (default: current directory)
-  --sandbox read-only|workspace-write worker filesystem access (default: read-only)
+  --sandbox read-only                 worker filesystem access (write mode disabled)
   --model MODEL                        Codex model selector
   --timeout-seconds N                  timeout from 1 to 3600 (default: 1800)
   --binding PATH                       private install-time runtime binding
@@ -50,7 +52,7 @@ function parseArgs(argv) {
   try { cwd = realpathSync(cwdInput); } catch { throw new CliError("--cwd must be an existing directory"); } // no-excuse-ok: catch
   if (!statSync(cwd).isDirectory()) throw new CliError("--cwd is not a directory");
   const sandbox = values.get("--sandbox") ?? "read-only";
-  if (!["read-only", "workspace-write"].includes(sandbox)) throw new CliError("invalid --sandbox");
+  if (sandbox !== "read-only") throw new CliError("invalid --sandbox");
   const model = values.get("--model");
   if (model !== undefined && !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/.test(model)) throw new CliError("invalid --model");
   const timeoutInput = values.get("--timeout-seconds") ?? "1800";
@@ -214,12 +216,6 @@ function workspaceStateDenyPaths(cwd) {
   return { denyPaths: [...state.denyPaths], lexicalGjcPaths: [...state.lexicalGjcPaths] };
 }
 
-function rejectNewWorkspaceState(cwd, initialPaths) {
-  const currentState = workspaceStateDenyPaths(cwd);
-  const created = currentState.lexicalGjcPaths.filter((path) => within(path, cwd) && !initialPaths.has(path));
-  for (const path of created) rmSync(path, { recursive: true, force: true });
-  if (created.length > 0) throw new CliError("worker created forbidden workspace .gjc state", 1);
-}
 
 function ownedContainedFile(path, root) {
   const entry = lstatSync(path);
@@ -318,9 +314,8 @@ function resolveOmoSkill(codexHomeInput) {
   throw new CliError("compatible OMO ultrawork capability not found", 78);
 }
 
-function modeInstructions(sandbox) {
-  if (sandbox === "read-only") return "This worker is read-only; do not create, edit, delete, rename, or move files.";
-  return "The built-in `file_change` route is broken under this custom permission profile; do not use it. Make authorized workspace edits through the shell tool, using the existing `apply_patch` command for patches or other shell commands inside the active custom permission profile. Verify every edit before finishing.";
+function modeInstructions() {
+  return "This worker is read-only; do not create, edit, delete, rename, or move files.";
 }
 
 function workerPrompt(task, omo, sandbox) {
@@ -328,7 +323,7 @@ function workerPrompt(task, omo, sandbox) {
 <validated-omo-ultrawork version="${omo.version}">
 ${omo.skill}
 </validated-omo-ultrawork>
-Run the raw task below as the sole goal. This is an isolated Codex/LazyCodex worker: do not invoke, configure, or mutate GJC tasks, sessions, plugins, credentials, or files. Do not run LazyCodex install, update, migration, doctor, or setup commands. Do not commit or push unless the raw task explicitly requests it. Obey the process permissions and return a final answer only after the goal is verified.
+Run the raw task below as the sole goal. This is an isolated Codex/LazyCodex worker: do not invoke, configure, or mutate GJC tasks, sessions, plugins, credentials, or files. Do not run LazyCodex install, update, migration, doctor, or setup commands. Do not commit or push unless the raw task explicitly requests it. Obey the process permissions and return a final answer only after the goal is verified. Keep the final answer concise and below 1 MiB; summarize completed work and verification instead of embedding large files, diffs, or logs.
 ${modeInstructions(sandbox)}
 <lazycodex-gjc-task>
 ${task}
@@ -351,17 +346,16 @@ function childEnvironment(runtime, codexHome, privateRoot) {
   mkdirSync(isolatedHome, { recursive: true, mode: 0o700 });
   const env = { HOME: isolatedHome, CODEX_HOME: codexHome, PATH: runtime.safePath, TMPDIR: isolatedTmp };
   for (const name of ["LANG", ...Object.keys(process.env).filter((key) => key.startsWith("LC_"))]) if (process.env[name]) env[name] = process.env[name];
-  return { ...env, GJC_NOTIFICATIONS: "0", LAZYCODEX_AUTO_UPDATE_DISABLED: "1", OMO_CODEX_AUTO_UPDATE_DISABLED: "1", LAZYCODEX_CONFIG_MIGRATION_DISABLED: "1", OMO_CODEX_CONFIG_MIGRATION_DISABLED: "1", OMO_CODEX_DISABLE_POSTHOG: "1", OMO_CODEX_SEND_ANONYMOUS_TELEMETRY: "0", OMO_DISABLE_POSTHOG: "1", OMO_SEND_ANONYMOUS_TELEMETRY: "0", OMO_CODEGRAPH_AUTO_PROVISION: "0", CODEX_CODEGRAPH_AUTO_PROVISION: "0", OMO_CODEGRAPH_ENABLED: "0", CODEX_CODEGRAPH_ENABLED: "0", OMO_CODEGRAPH_TELEMETRY: "0", CODEX_CODEGRAPH_TELEMETRY: "0" };
+  return { ...env, GJC_NOTIFICATIONS: "0", GJC_SDK_DISABLE: "1", LAZYCODEX_AUTO_UPDATE_DISABLED: "1", OMO_CODEX_AUTO_UPDATE_DISABLED: "1", LAZYCODEX_CONFIG_MIGRATION_DISABLED: "1", OMO_CODEX_CONFIG_MIGRATION_DISABLED: "1", OMO_CODEX_DISABLE_POSTHOG: "1", OMO_CODEX_SEND_ANONYMOUS_TELEMETRY: "0", OMO_DISABLE_POSTHOG: "1", OMO_SEND_ANONYMOUS_TELEMETRY: "0", OMO_CODEGRAPH_AUTO_PROVISION: "0", CODEX_CODEGRAPH_AUTO_PROVISION: "0", OMO_CODEGRAPH_ENABLED: "0", CODEX_CODEGRAPH_ENABLED: "0", OMO_CODEGRAPH_TELEMETRY: "0", CODEX_CODEGRAPH_TELEMETRY: "0" };
 }
 
 function childArgs(config, env, runtime, output) {
-  const access = config.sandbox === "workspace-write" ? "write" : "read";
-  const baseProfile = config.sandbox === "workspace-write" ? ":workspace" : ":read-only";
-  const workspaceRoots = `{"."="${access}"}`;
+  const baseProfile = ":read-only";
+  const workspaceRoots = `{\".\"=\"read\"}`;
   const grants = [...config.protectedStatePaths.map((path) => [path, "deny"]), [env.HOME, "deny"], [env.CODEX_HOME, "read"], [runtime.core, "read"], [runtime.helperDir, "read"], [runtime.codexPath, "read"]].map(([path, mode]) => `${toml(path)}=${toml(mode)}`).join(",");
   const filesystem = `{":minimal"="read",":workspace_roots"=${workspaceRoots},":tmpdir"="write",${grants}}`;
   const args = ["exec", "--ephemeral", "--color", "never", "--ignore-user-config", "--ignore-rules", "--strict-config", "-C", config.cwd];
-  for (const value of ['approval_policy="never"', 'web_search="disabled"', 'cli_auth_credentials_store="file"', 'default_permissions="lazycodex_gjc"', `permissions.lazycodex_gjc.extends=${toml(baseProfile)}`, `permissions.lazycodex_gjc.filesystem=${filesystem}`, "permissions.lazycodex_gjc.network.enabled=false", 'shell_environment_policy.inherit="none"', `shell_environment_policy.set={HOME=${toml(env.HOME)},TMPDIR=${toml(env.TMPDIR)},PATH=${toml(runtime.safePath)}}`, "mcp_servers={}", "apps={}", "hooks={}"]) args.push("-c", value);
+  for (const value of ['approval_policy="never"', 'web_search="disabled"', 'cli_auth_credentials_store="file"', 'default_permissions="lazycodex_gjc"', `permissions.lazycodex_gjc.extends=${toml(baseProfile)}`, `permissions.lazycodex_gjc.filesystem=${filesystem}`, "permissions.lazycodex_gjc.network.enabled=false", 'shell_environment_policy.inherit="none"', `shell_environment_policy.set={HOME=${toml(env.HOME)},TMPDIR=${toml(env.TMPDIR)},PATH=${toml(runtime.safePath)},GJC_NOTIFICATIONS="0",GJC_SDK_DISABLE="1"}`, "mcp_servers={}", "apps={}", "hooks={}"]) args.push("-c", value);
   for (const feature of ["apps", "enable_mcp_apps", "hooks", "browser_use", "browser_use_external", "browser_use_full_cdp_access", "computer_use", "in_app_browser", "remote_plugin", "skill_mcp_dependency_install", "plugins"]) args.push("--disable", feature);
   args.push("-o", output);
   if (config.model !== undefined) args.push("--model", config.model);
@@ -382,6 +376,55 @@ function stopUnit(systemctl, unit) {
   });
 }
 
+function unitControlGroup(systemctl, unit) {
+  return new Promise((resolveGroup) => {
+    const show = spawn(systemctl, ["--user", "show", "--property=ControlGroup", "--value", unit], { shell: false, stdio: ["ignore", "pipe", "ignore"] });
+    let output = "";
+    show.stdout.setEncoding("utf8");
+    show.stdout.on("data", (chunk) => { output += chunk; });
+    show.once("error", () => resolveGroup(undefined));
+    show.once("close", (code) => resolveGroup(code === 0 ? output.trim() : undefined));
+  });
+}
+
+function cgroupEmpty(controlGroup) {
+  if (!/^\/(?:[^/\0]+\/)*[^/\0]*$/.test(controlGroup) || controlGroup.split("/").some((part) => part === "." || part === "..")) return false;
+  try {
+    const path = `/sys/fs/cgroup${controlGroup}/cgroup.procs`;
+    const stats = lstatSync(path);
+    return !stats.isSymbolicLink() && stats.isFile() && readFileSync(path, "utf8").trim().length === 0;
+  } catch {
+    return false;
+  }
+}
+
+async function unitDrained(systemctl, unit) {
+  const inactiveCode = await new Promise((resolveInactive) => {
+    const status = spawn(systemctl, ["--user", "is-active", "--quiet", unit], { shell: false, stdio: "ignore" });
+    status.once("error", () => resolveInactive(undefined));
+    status.once("close", resolveInactive);
+  });
+  if (inactiveCode === 4) return true;
+  if (inactiveCode !== 3) return false;
+  const controlGroup = await unitControlGroup(systemctl, unit);
+  if (controlGroup === "") return true;
+  return controlGroup !== undefined && cgroupEmpty(controlGroup);
+}
+
+function pause(milliseconds) {
+  return new Promise((resolvePause) => { setTimeout(resolvePause, milliseconds); });
+}
+
+async function stopAndConfirmUnit(systemctl, unit) {
+  await stopUnit(systemctl, unit);
+  for (let attempt = 0; attempt < UNIT_CONFIRM_ATTEMPTS; attempt += 1) {
+    if (await unitDrained(systemctl, unit)) return true;
+    await pause(50);
+  }
+  await stopUnit(systemctl, unit);
+  return unitDrained(systemctl, unit);
+}
+
 function runChild(binary, args, prompt, env, output, timeoutSeconds, supervisor) {
   return new Promise((resolveResult, reject) => {
     if (process.platform !== "linux") {
@@ -394,7 +437,7 @@ function runChild(binary, args, prompt, env, output, timeoutSeconds, supervisor)
     // whole unit cgroup at RuntimeMaxSec. The grace only matters on the failure path — normal
     // flow kills at `timeoutSeconds` via our own timer, well before this cap.
     const runtimeMaxSec = timeoutSeconds + CONTAINMENT_GRACE_SECONDS;
-    const supervisorArgs = ["--user", "--wait", "--collect", "--pipe", "--quiet", `--unit=${unit}`, "--property=KillMode=control-group", "--property=TimeoutStopSec=1s", `--property=RuntimeMaxSec=${runtimeMaxSec}`, "--", supervisor.env, "-i"];
+    const supervisorArgs = ["--user", "--wait", "--pipe", "--quiet", `--unit=${unit}`, "--property=KillMode=control-group", "--property=TimeoutStopSec=1s", `--property=RuntimeMaxSec=${runtimeMaxSec}`, "--", supervisor.env, "-i"];
     for (const [name, value] of Object.entries(env)) supervisorArgs.push(`${name}=${value}`);
     supervisorArgs.push(binary, ...args);
     const child = spawn(supervisor.systemdRun, supervisorArgs, { detached: true, env: process.env, shell: false, stdio: ["pipe", "pipe", "pipe"] });
@@ -405,6 +448,7 @@ function runChild(binary, args, prompt, env, output, timeoutSeconds, supervisor)
     let stderrBytes = 0;
     let outputMonitor;
     let timer;
+    let containment;
     const interrupt = () => stop("interrupted");
     const finish = (result) => {
       if (settled) return;
@@ -420,31 +464,34 @@ function runChild(binary, args, prompt, env, output, timeoutSeconds, supervisor)
       try { child.unref(); } catch { /* already gone */ } // no-excuse-ok: catch
       resolveResult(result);
     };
+    const confirmContainment = () => {
+      if (containment === undefined) containment = stopAndConfirmUnit(supervisor.systemctl, unit);
+      return containment;
+    };
     const stop = (reason) => {
       if (failure === undefined) failure = reason;
       void (async () => {
-        // Fail-closed containment accounting: one retry, then record the failure so the
-        // caller reports an uncertain stop instead of silently assuming the unit died.
-        if (!(await stopUnit(supervisor.systemctl, unit)) && !(await stopUnit(supervisor.systemctl, unit))) containmentStopFailed = true;
+        const inactive = await confirmContainment();
+        containmentStopFailed = !inactive;
         killGroup(child);
-        // On a failed stop the unit may still hold the relay pipes, so `close` would not fire
-        // until the RuntimeMaxSec backstop reaps it. Do not block the synchronous call on that:
-        // resolve now with the failure recorded; systemd force-terminates the cgroup at the cap.
-        if (containmentStopFailed) finish({ code: null, signal: "SIGKILL", failure, containmentStopFailed });
+        finish({ code: null, signal: "SIGKILL", failure, containmentStopFailed });
       })();
     };
     const failOverflow = () => stop("overflow");
     child.stdout.on("data", (chunk) => { stdoutBytes += chunk.length; if (stdoutBytes > OUTPUT_LIMIT) failOverflow(); });
     child.stderr.on("data", (chunk) => { stderrBytes += chunk.length; if (stderrBytes > OUTPUT_LIMIT) failOverflow(); });
     child.once("error", () => { if (settled) return; settled = true; clearInterval(outputMonitor); clearTimeout(timer); process.off("SIGINT", interrupt); process.off("SIGTERM", interrupt); reject(new CliError("worker failed to start", 127)); });
-    outputMonitor = setInterval(() => { try { if (statSync(output).size > OUTPUT_LIMIT) failOverflow(); } catch { /* close handles missing output */ } }, 10); // no-excuse-ok: catch
+    outputMonitor = setInterval(() => { try { if (statSync(output).size > OUTPUT_HARD_LIMIT) failOverflow(); } catch { /* close handles missing output */ } }, 10); // no-excuse-ok: catch
     timer = setTimeout(() => stop("timeout"), timeoutSeconds * 1000);
     process.once("SIGINT", interrupt);
     process.once("SIGTERM", interrupt);
-    child.once("close", async (code, signal) => {
-      await stopUnit(supervisor.systemctl, unit);
-      killGroup(child);
-      finish({ code, signal, failure, containmentStopFailed });
+    child.once("close", (code, signal) => {
+      void (async () => {
+        const inactive = await confirmContainment();
+        containmentStopFailed = !inactive;
+        killGroup(child);
+        finish({ code, signal, failure, containmentStopFailed });
+      })();
     });
     child.stdin.on("error", (error) => { if (error.code !== "EPIPE") stop("input"); });
     child.stdin.end(prompt);
@@ -458,11 +505,11 @@ async function main() {
   const binding = readBinding(config.binding);
   const codexHome = binding.codexHome;
   const workspaceState = workspaceStateDenyPaths(config.cwd);
-  const initialWorkspaceState = new Set(workspaceState.lexicalGjcPaths);
   const protectedPaths = [...new Set([...protectedStatePaths(config.cwd, binding.accountHome, codexHome), ...workspaceState.denyPaths])];
   const omo = resolveOmoSkill(codexHome);
   let temp;
   let childCodexHome;
+  let result;
   try {
     temp = mkdtempSync(join(tmpdir(), "lazycodex-gjc-"));
     chmodSync(temp, 0o700);
@@ -471,19 +518,22 @@ async function main() {
     const output = join(temp, "final.txt");
     writeFileSync(output, "", { mode: 0o600 });
     const env = childEnvironment(runtime, childCodexHome, temp);
-    const result = await runChild(runtime.core, childArgs({ ...config, protectedStatePaths: protectedPaths }, env, runtime, output), workerPrompt(task, omo, config.sandbox), env, output, config.timeoutSeconds, binding);
-    rejectNewWorkspaceState(config.cwd, initialWorkspaceState);
-    const stopSuffix = result.containmentStopFailed ? "; containment stop failed — the systemd user unit may still be running" : "";
-    if (result.failure === "input") throw new CliError(`worker input failed${stopSuffix}`, 1);
-    if (result.failure === "interrupted") throw new CliError(`worker interrupted${stopSuffix}`, 130);
-    if (result.failure === "timeout") throw new CliError(`worker timed out${stopSuffix}`, 124);
-    if (result.failure === "overflow" || statSync(output).size > OUTPUT_LIMIT) throw new CliError(`worker output exceeded limit${stopSuffix}`, 1);
+    result = await runChild(runtime.core, childArgs({ ...config, protectedStatePaths: protectedPaths }, env, runtime, output), workerPrompt(task, omo, config.sandbox), env, output, config.timeoutSeconds, binding);
+    if (result.failure === "input") throw new CliError("worker input failed", 1);
+    if (result.failure === "interrupted") throw new CliError("worker interrupted", 130);
+    if (result.failure === "timeout") throw new CliError("worker timed out", 124);
+    if (result.failure === "overflow" || statSync(output).size > OUTPUT_HARD_LIMIT) throw new CliError("worker output exceeded hard limit", 1);
     if (result.code !== 0) throw new CliError(result.code === null ? `worker terminated by signal ${result.signal ?? "unknown"}` : `worker exited with code ${result.code}`, result.code ?? 1);
+    if (result.containmentStopFailed) throw new CliError("worker containment was not confirmed", 1);
     const bytes = readFileSync(output);
     let finalOutput;
     try { finalOutput = new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { throw new CliError("final output is not valid UTF-8", 1); } // no-excuse-ok: catch
+    if (bytes.length > OUTPUT_HARD_LIMIT) throw new CliError("worker output exceeded hard limit", 1);
+    if (bytes.length > OUTPUT_LIMIT) throw new CliError("worker output exceeded relay limit", 1);
     if (finalOutput.trim().length === 0) throw new CliError("final output is empty", 1);
     process.stdout.write(finalOutput);
+  } catch (error) {
+    throw error;
   } finally {
     if (temp !== undefined) rmSync(temp, { recursive: true, force: true });
     if (childCodexHome !== undefined) rmSync(childCodexHome, { recursive: true, force: true });

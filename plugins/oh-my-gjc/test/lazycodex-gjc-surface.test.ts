@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -187,7 +187,7 @@ describe("lazycodex-gjc skill and command contract", () => {
 });
 
 describe("lazycodex-gjc isolated native install", () => {
-  test.each(["user", "project"] as const)("installs exactly 10 skills and 15 commands in %s scope", (scope) => {
+  test.each(["user", "project"] as const)("installs exactly 4 skills and 7 commands in %s scope", (scope) => {
     const f = fixture(scope);
     writeSentinel(join(f.nativeRoot, "skills/sentinel/SKILL.md"), "keep skill");
     writeSentinel(join(f.nativeRoot, "commands/sentinel.md"), "keep command");
@@ -200,8 +200,8 @@ describe("lazycodex-gjc isolated native install", () => {
     expect(result.status, result.stderr).toBe(0);
     const expectedSkills = parseManifest("EXPECTED_SKILLS");
     const expectedCommands = ownedCommands();
-    expect(expectedSkills).toHaveLength(10);
-    expect(expectedCommands).toHaveLength(15);
+    expect(expectedSkills).toHaveLength(4);
+    expect(expectedCommands).toHaveLength(7);
     expect(expectedSkills).toContain("lazycodex-gjc");
     expect(expectedCommands).toContain("omg:lazycodex-gjc.md");
     expect(readdirSync(join(f.nativeRoot, "skills")).sort()).toEqual([...expectedSkills, "sentinel"].sort());
@@ -223,6 +223,66 @@ describe("lazycodex-gjc isolated native install", () => {
     }
   });
 
+  test("fails preflight before partial install when the runner is missing", () => {
+    const f = fixture("project");
+    const candidate = join(f.root, "candidate");
+    cpSync(pluginRoot, candidate, { recursive: true });
+    rmSync(join(candidate, "bin/lazycodex-gjc.mjs"));
+    const result = runInstaller(f, "install", join(candidate, "bin/install-skill.sh"));
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("bin/lazycodex-gjc.mjs");
+    expect(existsSync(join(f.nativeRoot, "skills/gate-briefing/SKILL.md"))).toBe(false);
+    expect(existsSync(join(f.nativeRoot, "commands/omg.md"))).toBe(false);
+  });
+
+  test("preserves an existing runtime when digest generation fails", () => {
+    const f = fixture("user");
+    const runtime = join(f.nativeRoot, "runtimes/lazycodex-gjc");
+    const binding = join(runtime, "binding");
+    const fakeBin = join(f.root, "fake-bin");
+    writeSentinel(binding, "existing trusted binding");
+    mkdirSync(fakeBin);
+    writeFileSync(join(fakeBin, "sha256sum"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+
+    const result = spawnSync("bash", [installerPath, "lazycodex-gjc", "user"], {
+      cwd: f.project,
+      env: {
+        ...process.env,
+        HOME: f.home,
+        CODEX_HOME: process.env.CODEX_HOME ?? join(process.env.HOME ?? "", ".codex"),
+        PATH: `${fakeBin}:${process.env.PATH ?? ""}`,
+      },
+      encoding: "utf8",
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(read(binding)).toBe("existing trusted binding");
+    expect(result.stdout).not.toContain("bound runtime");
+  });
+  test.each([
+    ["absent-prerequisite cleanup", ["all", "user"]],
+    ["targeted uninstall", ["lazycodex-gjc", "uninstall", "user"]],
+  ] as const)("rejects a symlinked runtime ancestor during %s", (_label, args) => {
+    const f = fixture("user");
+    const runtimeParent = join(f.home, ".gjc/agent/runtimes");
+    const external = join(f.root, "external-runtimes");
+    const sentinel = join(external, "lazycodex-gjc/sentinel");
+    mkdirSync(dirname(runtimeParent), { recursive: true });
+    writeSentinel(sentinel, "must survive");
+    symlinkSync(external, runtimeParent);
+
+    const result = spawnSync("bash", [installerPath, ...args], {
+      cwd: f.project,
+      env: { ...process.env, HOME: f.home, CODEX_HOME: join(f.home, ".codex-absent") },
+      encoding: "utf8",
+    });
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("contains a symlink");
+    expect(lstatSync(runtimeParent).isSymbolicLink()).toBe(true);
+    expect(read(sentinel)).toBe("must survive");
+  });
   test("all-user install without a Codex home skips AND removes the runtime binding", () => {
     const f = fixture("user");
     writeSentinel(join(f.nativeRoot, "runtimes/lazycodex-gjc/binding"), "stale binding from a previous install");

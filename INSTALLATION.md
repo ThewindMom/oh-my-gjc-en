@@ -15,14 +15,14 @@ Do exactly the following in a terminal. Do not improvise other steps.
 ```sh
 curl -fsSL https://raw.githubusercontent.com/devswha/oh-my-gjc/main/install.sh | bash
 ```
-One install brings the whole v0.17.1 suite (10 skills + 15 commands: `/omg` + 14 `/omg:*`). There are no separate/optional plugins to add.
+One install brings the whole suite (4 skills + 7 commands: `/omg` + 6 `/omg:*`). There are no separate/optional plugins to add.
 
 ## Manual path (equivalent, if curl|bash is disallowed)
 ```sh
 git clone --depth 1 https://github.com/devswha/oh-my-gjc.git
 bash oh-my-gjc/install.sh
 ```
-This invokes the same hardened installer as the one-shot path: it refreshes the marketplace, binds native handoff to the plugin version reported by the current install operation, then writes one exact mode-0600 suite-root binding for the selected scope (`.gjc/runtimes/oh-my-gjc/root` for project scope or `~/.gjc/agent/runtimes/oh-my-gjc/root` for user scope). Asset consumers resolve project first, then user, then this checkout only; missing or malformed bindings fail closed. The former newest-cache sequence is historical and non-executable; never reproduce it.
+This invokes the same hardened installer as the one-shot path: it refreshes the marketplace, binds native handoff to the plugin version reported by the current install operation, then writes the exact mode-0600 user-scope suite-root binding at `~/.gjc/agent/runtimes/oh-my-gjc/root`. Asset consumers resolve a project binding when one was installed separately, then this user binding, then the checkout fallback; missing or malformed bindings fail closed. The former newest-cache sequence is historical and non-executable; never reproduce it.
 
 The native installer copies every bundled skill + command in one shot and fails loudly (with a missing list) if anything expected is absent — never a partial install.
 
@@ -31,16 +31,32 @@ The self-hosted web UI now lives in [`devswha/claudecodeui`'s canonical SELF-HOS
 
 ## Verify (report these)
 ```sh
-gjc plugin list                                   # oh-my-gjc@oh-my-gjc listed
-ls ~/.gjc/agent/skills/                            # 10 skills (easy-answer, gate-briefing, plain-layer, release-gate, lazycodex-gjc, …)
-ls ~/.gjc/agent/commands/ | grep '^omg'            # 15 commands: omg.md + 14 omg:<name>.md
-grep -A1 '^  sol:' ~/.gjc/agent/models.yml          # sol preset auto-merged at install (custom picker entry)
-ls -l ~/.gjc/agent/runtimes/oh-my-gjc/root             # -rw------- exact user-scope suite-root binding (if installed with user scope)
-ls -l ~/.gjc/agent/runtimes/lazycodex-gjc/binding      # mode-0600 sensitive runtime binding (only when Codex CLI + systemd + Codex home were present at install; otherwise the bridge is skipped fail-closed)
+gjc plugin list  # must list oh-my-gjc@oh-my-gjc
+root="$HOME/.gjc/agent"
+for skill in gate-briefing extragoal insane-review lazycodex-gjc; do
+  test -f "$root/skills/$skill/SKILL.md" || exit 1
+done
+for command in omg.md omg:setup.md omg:gate.md omg:gate-always.md omg:fable.md omg:insane-review.md omg:lazycodex-gjc.md; do
+  test -f "$root/commands/$command" || exit 1
+done
+for skill in easy-answer plain-layer branch-flow worktree gjc-bugwatch multivendor-presets release-gate; do
+  test ! -e "$root/skills/$skill" && test ! -L "$root/skills/$skill" || exit 1
+done
+for retired in easy easy-always plain branchflow-always worktree bugwatch-scan presets release; do
+  test ! -e "$root/commands/omg:$retired.md" && test ! -L "$root/commands/omg:$retired.md" || exit 1
+done
+test -f "$root/runtimes/oh-my-gjc/root"
+test "$(stat -c %a "$root/runtimes/oh-my-gjc/root" 2>/dev/null || stat -f %Lp "$root/runtimes/oh-my-gjc/root")" = 600
+if test -e "$root/runtimes/lazycodex-gjc"; then
+  test -f "$root/runtimes/lazycodex-gjc/binding"
+  test -x "$root/runtimes/lazycodex-gjc/runner.mjs"
+fi
 ```
 
 ## Finish
-Tell the human: open a **new** gjc session (or `/move .`) so the command palette rebuilds, then run `/omg` for the catalog and `/omg:setup` to finish (model-preset merge + always-on toggles — all optional). Commands are `/omg:<name>`.
+Tell the human: open a **new** gjc session (or `/move .`) so the command palette rebuilds, then run `/omg` for the catalog and `/omg:setup` for optional prerequisite checks and always-on toggles. Commands are `/omg:<name>`.
 
 ## Safety
-Idempotent — re-running only re-copies. This installs a documented plugin suite; it does not send code anywhere or change model/provider credentials. Prerequisite-gated features install with the suite but only run when their tools are present: ChatGPT subscription + Chromium for insane-review; an already installed and logged-in Codex CLI + LazyCodex/OMO for lazycodex-gjc. The installer does not install or log in to those tools. The bridge defaults to read-only, requires explicit workspace-write authorization, runs external `codex exec --ephemeral`, and does not create a child GJC session or mutate GJC config/credentials. Its sensitive runner requires the private mode-0600 SHA-256 runtime binding produced by native user-scope install; when Codex is absent it is skipped fail-closed. After installing Codex, rerun the hardened root `install.sh` to repair the binding. Project-scope installs remain valid for the rest of the suite but cannot supply this bridge binding.
+Idempotent — re-running re-copies the 4 skills and 7 commands, then removes only explicitly retired omj native surfaces. It does not send code anywhere, change model/provider credentials, or modify `models.yml`. `insane-review` needs ChatGPT+Chromium; `lazycodex-gjc` needs an existing logged-in Codex+compatible OMO and is read-only. When those runtime prerequisites are absent, its stale binding is removed and the command remains fail-closed. During user-scope upgrade, the installer also removes only well-formed retired `easy-always` blocks from `~/.gjc/agent/SYSTEM.md` and `AGENTS.md`, preserving unrelated content and `gate-always`.
+
+When run inside a git repository, upgrade/uninstall also backs up that repository's `AGENTS.md` and removes only one well-formed retired `oh-my-gjc:branchflow` marker block. It never deletes `docs/WORKFLOW.md`. Run the installer once from each repository where `/omg:branchflow-always on` was previously enabled, then review the preserved workflow document manually.

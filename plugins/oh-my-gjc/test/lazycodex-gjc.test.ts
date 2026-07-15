@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 const runner = join(import.meta.dir, "../bin/lazycodex-gjc.mjs");
 const sandboxes: string[] = [];
 
-type Mode = "success" | "success-descendant" | "create-gjc" | "create-gjc-symlink" | "nonzero" | "stderr-secret" | "empty" | "invalid" | "oversized" | "stdout" | "stdout-infinite" | "final-infinite" | "timeout";
+type Mode = "success" | "success-write" | "success-descendant" | "create-gjc" | "create-gjc-nonzero" | "create-gjc-symlink" | "nonzero" | "symlink-mutate" | "stderr-secret" | "empty" | "invalid" | "oversized" | "oversized-write" | "hard-oversized" | "stdout" | "stdout-infinite" | "final-infinite" | "timeout";
 
 type OmoMode = "valid" | "missing" | "stale" | "incompatible" | "symlinked" | "writable";
 
@@ -96,14 +96,36 @@ process.stdin.on("end", () => {
   const childAuth = path.join(process.env.CODEX_HOME, "auth.json");
   fs.writeFileSync(${JSON.stringify(join(record, "auth-is-symlink"))}, String(fs.lstatSync(childAuth).isSymbolicLink()));
   fs.writeFileSync(${JSON.stringify(join(record, "auth-target"))}, fs.realpathSync(childAuth));
+  const workspaceWrite = args.some(value => value.includes('":workspace_roots"={"."="write"}'));
+  if (workspaceWrite && ["nonzero", "stderr-secret", "empty", "invalid", "oversized", "oversized-write", "hard-oversized", "stdout", "stdout-infinite", "final-infinite", "timeout"].includes(${JSON.stringify(mode)})) {
+    fs.writeFileSync(path.join(${JSON.stringify(cwd)}, "worker-change.txt"), "created");
+    const modified = path.join(${JSON.stringify(cwd)}, "modified-by-worker.txt");
+    const deleted = path.join(${JSON.stringify(cwd)}, "deleted-by-worker.txt");
+    if (fs.existsSync(modified)) fs.writeFileSync(modified, "worker-modified");
+    if (fs.existsSync(deleted)) fs.rmSync(deleted);
+  }
   if (${JSON.stringify(mode)} === "nonzero") process.exit(23);
+  if (${JSON.stringify(mode)} === "symlink-mutate") {
+    fs.chmodSync(path.join(${JSON.stringify(cwd)}, "mode-target.txt"), 0o600);
+    const link = path.join(${JSON.stringify(cwd)}, "external-link");
+    fs.rmSync(link);
+    fs.symlinkSync(path.join(${JSON.stringify(root)}, "replacement-target"), link);
+    process.exit(23);
+  }
   if (${JSON.stringify(mode)} === "stderr-secret") {
     process.stderr.write(input + "\\nFILE-CANARY-7d321\\n");
     process.exit(23);
   }
   if (${JSON.stringify(mode)} === "invalid") fs.writeFileSync(out, Buffer.from([0xff]));
-  else if (${JSON.stringify(mode)} === "oversized") fs.writeFileSync(out, Buffer.alloc(1024 * 1024 + 1, 65));
-  else if (["success", "success-descendant", "create-gjc", "create-gjc-symlink"].includes(${JSON.stringify(mode)})) fs.writeFileSync(out, "worker-result");
+  else if (["oversized", "oversized-write"].includes(${JSON.stringify(mode)})) {
+    if (${JSON.stringify(mode)} === "oversized-write") fs.writeFileSync(path.join(${JSON.stringify(cwd)}, "worker-change.txt"), "preserved");
+    fs.writeFileSync(out, Buffer.alloc(1024 * 1024 + 1, 65));
+  }
+  else if (${JSON.stringify(mode)} === "hard-oversized") fs.writeFileSync(out, Buffer.alloc(8 * 1024 * 1024 + 1, 65));
+  else if (["success", "success-write", "success-descendant", "create-gjc", "create-gjc-symlink"].includes(${JSON.stringify(mode)})) {
+    if (${JSON.stringify(mode)} === "success-write") fs.writeFileSync(path.join(${JSON.stringify(cwd)}, "worker-change.txt"), "persisted");
+    fs.writeFileSync(out, "worker-result");
+  }
   else if (${JSON.stringify(mode)} === "stdout") {
     fs.writeFileSync(out, "must-not-succeed");
     for (let index = 0; index < 2049; index += 1) process.stdout.write(Buffer.alloc(512, 65));
@@ -128,11 +150,12 @@ process.stdin.on("end", () => {
     child.unref();
     fs.writeFileSync(${JSON.stringify(join(record, "descendant"))}, String(child.pid));
   }
-  if (${JSON.stringify(mode)} === "create-gjc") {
+  if (["create-gjc", "create-gjc-nonzero"].includes(${JSON.stringify(mode)})) {
     const state = path.join(${JSON.stringify(cwd)}, "new/subtree/.gjc");
     fs.mkdirSync(state, { recursive: true });
     fs.writeFileSync(path.join(state, "config.toml"), "malicious = true\\n");
   }
+  if (${JSON.stringify(mode)} === "create-gjc-nonzero") process.exit(23);
   if (${JSON.stringify(mode)} === "create-gjc-symlink") {
     const state = path.join(${JSON.stringify(root)}, "victim/.gjc");
     const link = path.join(${JSON.stringify(cwd)}, "x/.gjc");
@@ -278,7 +301,7 @@ describe("lazycodex-gjc isolated runner", () => {
 
   test("isolates child CODEX_HOME while keeping real auth and Codex state protected", () => {
     const f = fixture();
-    const result = run(f, ["--sandbox", "workspace-write"]);
+    const result = run(f);
     const args = stringArray(parsedRecord(join(f.record, "args.json")));
     const env = stringRecord(parsedRecord(join(f.record, "env.json")));
     const childCodexHome = readFileSync(join(f.record, "codex-home"), "utf8");
@@ -304,7 +327,7 @@ describe("lazycodex-gjc isolated runner", () => {
   test("passes an exact restrictive argv, isolated env, and raw task payload", () => {
     const f = fixture();
     const task = "line one\n$(touch /tmp/nope) --model injected\nline three";
-    const result = run(f, ["--model", "gpt-5.6-sol", "--sandbox", "workspace-write"], task);
+    const result = run(f, ["--model", "gpt-5.6-sol"], task);
     const args = stringArray(parsedRecord(join(f.record, "args.json")));
     const env = stringRecord(parsedRecord(join(f.record, "env.json")));
     const outputPath = args[args.indexOf("-o") + 1];
@@ -318,9 +341,9 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(args).not.toContain('sandbox_workspace_write.network_access=false');
     expect(args).toContain('web_search="disabled"');
     expect(args).toContain('default_permissions="lazycodex_gjc"');
-    expect(args).toContain('permissions.lazycodex_gjc.extends=":workspace"');
+    expect(args).toContain('permissions.lazycodex_gjc.extends=":read-only"');
     expect(args).toContain('permissions.lazycodex_gjc.network.enabled=false');
-    expect(filesystem).toContain('":workspace_roots"={"."="write"}');
+    expect(filesystem).toContain('":workspace_roots"={"."="read"}');
     expect(filesystem).toContain('":tmpdir"="write"');
     for (const path of [join(f.cwd, ".gjc"), join(f.home, ".gjc"), join(f.home, ".codex"), f.env.CODEX_HOME]) {
       expect(filesystem).toContain(JSON.stringify(realpathSync(path)) + '="deny"');
@@ -331,6 +354,8 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(filesystem).toContain(`${JSON.stringify(realpathSync(join(f.root, "bin/codex")))}="read"`);
     expect(filesystem).toContain('helpers"="read"');
     expect(args).toContain('shell_environment_policy.inherit="none"');
+    expect(args.find((arg) => arg.startsWith("shell_environment_policy.set="))).toContain('GJC_NOTIFICATIONS="0"');
+    expect(args.find((arg) => arg.startsWith("shell_environment_policy.set="))).toContain('GJC_SDK_DISABLE="1"');
     expect(args).toContain("mcp_servers={}");
     expect(args).toContain("apps={}");
     expect(args).toContain("hooks={}");
@@ -342,9 +367,7 @@ describe("lazycodex-gjc isolated runner", () => {
     const prompt = readFileSync(join(f.record, "stdin"), "utf8");
     expect(prompt).toStartWith("$omo:ultrawork\n");
     expect(prompt).toContain("<validated-omo-ultrawork");
-    expect(prompt).toContain("The built-in `file_change` route is broken under this custom permission profile; do not use it.");
-    expect(prompt).toContain("through the shell tool, using the existing `apply_patch` command");
-    expect(prompt).toContain("Verify every edit before finishing.");
+    expect(prompt).toContain("This worker is read-only; do not create, edit, delete, rename, or move files.");
     expect(prompt.split("<lazycodex-gjc-task>\n")[1]?.split("\n</lazycodex-gjc-task>")[0]).toBe(task);
     expect(args).not.toContain(task);
     expect(readFileSync(join(f.record, "mode"), "utf8")).toBe("384");
@@ -380,6 +403,7 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(env.PATH).not.toContain(f.cwd);
     expect(env.PATH).not.toContain(".gjc");
     expect(env.GJC_NOTIFICATIONS).toBe("0");
+    expect(env.GJC_SDK_DISABLE).toBe("1");
     expect(env.LAZYCODEX_AUTO_UPDATE_DISABLED).toBe("1");
     expect(env.LAZYCODEX_CONFIG_MIGRATION_DISABLED).toBe("1");
     expect(env.OMO_CODEX_DISABLE_POSTHOG).toBe("1");
@@ -538,15 +562,17 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(result.stdout).toBe("worker-result");
   });
 
-  test("removes and rejects a nested .gjc created during workspace-write", () => {
-    const f = fixture("create-gjc");
+  test("preserves concurrently created .gjc state after a read-only worker failure", () => {
+    const f = fixture("create-gjc-nonzero");
     const state = join(f.cwd, "new/subtree/.gjc");
-    const result = run(f, ["--sandbox", "workspace-write"]);
-    expect(result.status).toBe(1);
-    expect(result.stderr).toBe("lazycodex-gjc: worker created forbidden workspace .gjc state\n");
-    expect(existsSync(state)).toBe(false);
+
+    const result = run(f);
+
+    expect(result.status).toBe(23);
+    expect(result.stderr).toBe("lazycodex-gjc: worker exited with code 23\n");
+    expect(readFileSync(join(state, "config.toml"), "utf8")).toBe("malicious = true\n");
   });
-  test("unlinks and rejects an external .gjc symlink without deleting its target", () => {
+  test("preserves a concurrently created external .gjc symlink and its target", () => {
     const f = fixture("create-gjc-symlink");
     const victim = join(f.root, "victim/.gjc");
     const sentinel = join(victim, "sentinel");
@@ -554,12 +580,12 @@ describe("lazycodex-gjc isolated runner", () => {
     mkdirSync(victim, { recursive: true });
     writeFileSync(sentinel, "must-survive");
 
-    const result = run(f, ["--sandbox", "workspace-write"]);
+    const result = run(f);
 
-    expect(result.status).toBe(1);
-    expect(result.stderr).toBe("lazycodex-gjc: worker created forbidden workspace .gjc state\n");
-    expect(existsSync(link)).toBe(false);
-    expect(existsSync(victim)).toBe(true);
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toBe("worker-result");
+    expect(lstatSync(link).isSymbolicLink()).toBe(true);
+    expect(realpathSync(link)).toBe(realpathSync(victim));
     expect(readFileSync(sentinel, "utf8")).toBe("must-survive");
   });
 
@@ -574,13 +600,20 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(`${result.stdout}${result.stderr}`).not.toContain("FILE-CANARY-7d321");
   });
 
-  test.each([["nonzero", 23], ["empty", 1], ["invalid", 1], ["oversized", 1], ["stdout", 1]] as const)("fails closed for %s child output", (mode, status) => {
+  test.each([["nonzero", 23], ["empty", 1], ["invalid", 1], ["stdout", 1]] as const)("fails closed for %s child output", (mode, status) => {
     const f = fixture(mode);
     const result = run(f);
     expect(result.status).toBe(status);
     expect(result.stdout).toBe("");
     expect(existsSync(readFileSync(join(f.record, "temp"), "utf8"))).toBe(false);
     expect(existsSync(readFileSync(join(f.record, "codex-home"), "utf8"))).toBe(false);
+  });
+  test("rejects workspace-write before spawning a worker", () => {
+    const f = fixture();
+    const result = run(f, ["--sandbox", "workspace-write"]);
+    expect(result.status).toBe(2);
+    expect(result.stderr).toBe("lazycodex-gjc: invalid --sandbox\n");
+    expect(existsSync(join(f.record, "args.json"))).toBe(false);
   });
 
   test("kills the process group and cleans temporary output on timeout", () => {
@@ -593,27 +626,6 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(existsSync(readFileSync(join(f.record, "temp"), "utf8"))).toBe(false);
   });
 
-  test("surfaces a failed containment stop and lets the manager backstop reap the worker", async () => {
-    const f = fixture("timeout");
-    // A trusted-but-failing systemctl: passes the binding trust walk (private 0700 root,
-    // 0755 non-writable file, owned by uid) yet exits non-zero on every kill attempt.
-    const failingSystemctl = join(f.root, "failing-systemctl");
-    writeFileSync(failingSystemctl, "#!/bin/sh\nexit 1\n");
-    chmodSync(failingSystemctl, 0o755);
-    updateBinding(f, { 12: digest(failingSystemctl), 13: failingSystemctl });
-    const result = run(f, ["--timeout-seconds", "1"]);
-    const pid = Number.parseInt(readFileSync(join(f.record, "descendant"), "utf8"), 10);
-    expect(result.status).toBe(124);
-    expect(result.stderr).toContain("containment stop failed");
-    // RuntimeMaxSec (timeout + 5s grace) force-reaps the transient unit and its descendants.
-    let procState: string | undefined;
-    for (let attempt = 0; attempt < 100; attempt += 1) {
-      procState = existsSync(`/proc/${pid}/stat`) ? readFileSync(`/proc/${pid}/stat`, "utf8").split(" ")[2] : undefined;
-      if (procState === undefined || procState === "Z") break;
-      await Bun.sleep(200);
-    }
-    expect(procState === undefined || procState === "Z").toBe(true);
-  }, 20_000);
 
   test("kills detached descendants after a successful worker result", () => {
     const f = fixture("success-descendant");
@@ -655,7 +667,7 @@ describe("lazycodex-gjc isolated runner", () => {
     const procState = existsSync(`/proc/${pid}/stat`) ? readFileSync(`/proc/${pid}/stat`, "utf8").split(" ")[2] : undefined;
     expect(result.status).toBe(1);
     expect(Date.now() - started).toBeLessThan(2_000);
-    expect(result.stderr).toBe("lazycodex-gjc: worker output exceeded limit\n");
+    expect(result.stderr).toBe("lazycodex-gjc: worker output exceeded hard limit\n");
     expect(procState === undefined || procState === "Z").toBe(true);
   });
 
@@ -664,7 +676,8 @@ describe("lazycodex-gjc isolated runner", () => {
     expect(run(f, [], Uint8Array.from([0xff])).status).toBe(2);
     const help = spawnSync(process.execPath, [runner, "--help"], { env: f.env, encoding: "utf8" });
     expect(help.status).toBe(0);
-    expect(help.stdout).toContain("--sandbox read-only|workspace-write");
+    expect(help.stdout).toContain("--sandbox read-only");
+    expect(help.stdout).toContain("write mode disabled");
     expect(existsSync(join(f.record, "args.json"))).toBe(false);
   });
 });
