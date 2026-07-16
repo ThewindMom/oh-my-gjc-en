@@ -68,6 +68,10 @@ bash oh-my-gjc/install.sh
 바꾼다. 코드 식별자·명령·경로·파일명·API 이름·오류 원문·정확한 라벨은 그대로 보존하며,
 번역이 기술적 의미나 검색 가능성을 해치면 첫 등장에 원어를 병기한다.
 
+- GJC 정식 이름은 번역·음역하지 않는다. `ultragoal`, `ralplan`, `deep-interview`, `team`,
+  `workflow-eta`, `adaptive-response`, `/omg:fable`을 그대로 쓴다.
+- 따라서 “울트라고울”, “울트라골”, “랄플랜”, “딥 인터뷰”처럼 바꾸지 않는다.
+
 - 원문: [`plugins/oh-my-gjc/skills/korean-first/SKILL.md`](./plugins/oh-my-gjc/skills/korean-first/SKILL.md)
 
 ### `extragoal` — 외부 최종 리뷰 게이트

@@ -23,6 +23,9 @@ bash oh-my-gjc/install.sh
 ### 스킬 (자연어 트리거 자동활성화)
 `adaptive-response` · `korean-first` · `workflow-eta` · `extragoal` · `insane-review` · `lazycodex-gjc`
 
+`korean-first`는 일반 한국어 설명만 다듬으며 `ultragoal`, `ralplan`, `deep-interview`, `team` 같은
+GJC 정식 이름과 코드·명령·경로·API 이름은 번역하거나 한글로 음역하지 않는다.
+
 ### 커맨드
 
 | 커맨드 | 기능 | 전제 |
