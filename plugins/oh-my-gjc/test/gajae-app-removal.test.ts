@@ -62,13 +62,14 @@ describe("removed capability manifests", () => {
     const expectedCommands = parseManifest("EXPECTED_COMMANDS");
     const removedSkills = parseManifest("REMOVED_SKILLS");
     const removedCommands = parseManifest("REMOVED_COMMANDS");
-    expect(expectedSkills).toHaveLength(5);
+    expect(expectedSkills).toHaveLength(6);
     expect(expectedCommands).toHaveLength(7);
     expect(expectedSkills).not.toContain("gajae-app");
     expect(expectedCommands).not.toContain("gajae-app");
 
     expect(expectedSkills).toEqual([
       "adaptive-response",
+      "korean-first",
       "workflow-eta",
       "extragoal",
       "insane-review",

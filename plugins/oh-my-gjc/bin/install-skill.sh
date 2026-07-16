@@ -42,7 +42,7 @@ done
 PLUGIN_ROOT="$(cd -P "$(dirname "$0")/.." && pwd -P)"
 
 # ── EXPECTED manifest (the single source of truth for a complete install) ────────────
-EXPECTED_SKILLS=(adaptive-response workflow-eta extragoal insane-review lazycodex-gjc)
+EXPECTED_SKILLS=(adaptive-response korean-first workflow-eta extragoal insane-review lazycodex-gjc)
 EXPECTED_COMMANDS=(omg setup gate gate-always fable insane-review lazycodex-gjc)
 EXPECTED_RUNTIMES=(bin/lazycodex-gjc.mjs tools/sdk-lab/package.json tools/sdk-lab/bun.lock tools/sdk-lab/src/inspect.ts tools/sdk-lab/src/eta.ts)
 # Capabilities REMOVED (관제탑 발주, 하코 승인). 0.11.0: codex-deepwork(실사용 0회, lazycodex와 중복) +

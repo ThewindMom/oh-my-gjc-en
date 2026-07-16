@@ -8,7 +8,7 @@
 #                                explicit dev ref) for release-candidate provenance testing.
 #                                Default is the published marketplace (devswha/oh-my-gjc).
 #
-# One install brings ALL 5 skills + 7 commands (/omg + 6 /omg:*) — there are no separate/optional plugins. Legacy
+# One install brings ALL 6 skills + 7 commands (/omg + 6 /omg:*) — there are no separate/optional plugins. Legacy
 # args (--core, tower, insane-review, codex-*, lazycodex, gjc-bugwatch) are accepted only
 # to print a migration note; they NEVER add extra plugin installs.
 #
@@ -195,7 +195,7 @@ fi
 
 cat <<DONE
 
-✓ oh-my-gajaecode installed — one plugin, 5 skills + 7 commands (/omg + 6 /omg:*), all native surfaces installed.
+✓ oh-my-gajaecode installed — one plugin, 6 skills + 7 commands (/omg + 6 /omg:*), all native surfaces installed.
   Open a NEW gjc session (or run /move .).
     /omg   → catalog of everything you got
   workflow-eta's SDK runtime is bound when Bun >=1.3.14 and locked-package installation succeed; otherwise it remains fail-closed until this installer is rerun.
