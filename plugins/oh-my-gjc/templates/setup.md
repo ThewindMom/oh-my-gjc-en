@@ -25,7 +25,7 @@ done
 for command in omg.md omg:setup.md omg:gate.md omg:gate-always.md omg:fable.md omg:insane-review.md omg:lazycodex-gjc.md; do
   test -f "$root/commands/$command" || exit 1
 done
-for skill in gate-briefing codex-deepwork codex-app-launch codex-app-cdp codex-cli-ask lazycodex tower worktree gajae-app multivendor-presets release-gate easy-answer plain-layer branch-flow gjc-bugwatch; do
+for skill in gate-briefing korean-first workflow-eta codex-deepwork codex-app-launch codex-app-cdp codex-cli-ask lazycodex tower worktree gajae-app multivendor-presets release-gate easy-answer plain-layer branch-flow gjc-bugwatch; do
   test ! -e "$root/skills/$skill" && test ! -L "$root/skills/$skill" || exit 1
 done
 for command in codex-run codex-app-launch codex-app-ask codex-ask lazycodex-setup lazycodex-work tower-setup gajae-app presets release easy easy-always plain branchflow-always worktree bugwatch-scan; do
@@ -69,7 +69,9 @@ payload를 실행할 수 있으므로 금지한다. 설치 후 **새 세션**을
   public `gjc-bugwatch`, `multivendor-presets`, `release-gate`의 native 스킬·커맨드를 제거한다.
 - 0.19.0 업그레이드는 이름이 바뀐 `gate-briefing` 디렉터리를 제거하고 `adaptive-response`,
   `no-english`를 설치하고 이전 이름인 `korean-first` 디렉터리를 제거한다.
-  `time-left` SDK runtime은 exact lockfile로 원자적으로 교체하며 실패하면 스킬을 fail-closed로 둔다.
+- 0.19.1 업그레이드는 `workflow-eta`를 `time-left`로 바꾸며, 전체 설치와 `time-left` 단독 설치 모두
+  이전 `workflow-eta` 디렉터리를 제거한다. SDK runtime은 exact lockfile로 원자적으로 교체하며 실패하면
+  스킬을 fail-closed로 둔다.
 - `lazycodex-gjc`는 유지하고, user runtime 전제조건이 없을 때만 stale binding을 제거한다.
   기존 `models.yml`과 과거 병합된 프로필은 수정하지 않는다.
 - 현재 작업 디렉터리가 git 레포라면, 과거 `/omg:branchflow-always`가 `AGENTS.md`에 쓴

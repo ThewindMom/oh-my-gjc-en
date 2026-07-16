@@ -750,6 +750,10 @@ case "$mode" in
         else
           echo "! project time-left skill installed; its executable SDK runtime is user-scope only" >&2
         fi
+        old_skill="$(skills_dir "$mode")/workflow-eta"
+        if [ -e "$old_skill" ] || [ -L "$old_skill" ]; then
+          uninstall_skill workflow-eta "$mode"
+        fi
       fi
       install_suite_root_binding "$mode"
       if [ -d "$PLUGIN_ROOT/skills/$target" ];       then install_skill   "$target" "$mode"; fi

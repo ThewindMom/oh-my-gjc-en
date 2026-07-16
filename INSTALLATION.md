@@ -39,7 +39,7 @@ done
 for command in omg.md omg:setup.md omg:gate.md omg:gate-always.md omg:fable.md omg:insane-review.md omg:lazycodex-gjc.md; do
   test -f "$root/commands/$command" || exit 1
 done
-for skill in easy-answer plain-layer branch-flow worktree gjc-bugwatch multivendor-presets release-gate; do
+for skill in workflow-eta easy-answer plain-layer branch-flow worktree gjc-bugwatch multivendor-presets release-gate; do
   test ! -e "$root/skills/$skill" && test ! -L "$root/skills/$skill" || exit 1
 done
 for retired in easy easy-always plain branchflow-always worktree bugwatch-scan presets release; do

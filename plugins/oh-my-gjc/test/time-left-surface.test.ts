@@ -96,6 +96,9 @@ describe("time-left public skill", () => {
     mkdirSync(home);
     mkdirSync(project);
     mkdirSync(fakeBin);
+    const retiredSkill = join(home, ".gjc/agent/skills/workflow-eta");
+    mkdirSync(retiredSkill, { recursive: true });
+    write(join(retiredSkill, "SKILL.md"), "retired");
     const bun = join(fakeBin, "bun");
     write(
       bun,
@@ -127,6 +130,7 @@ exit 64
     expect(existsSync(join(runtime, "node_modules/@gajae-code/bridge-client/package.json"))).toBe(true);
     expect(statSync(join(home, ".gjc/agent/runtimes/oh-my-gjc/.sdk-lab.lock")).mode & 0o777).toBe(0o600);
     expect(existsSync(join(home, ".gjc/agent/skills/time-left/SKILL.md"))).toBe(true);
+    expect(existsSync(retiredSkill)).toBe(false);
   });
 
   test("fails targeted installation without silently replacing a prior runtime", () => {
