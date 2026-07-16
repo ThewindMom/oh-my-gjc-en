@@ -71,7 +71,7 @@ Do **not** fork, vendor, subtree, or submodule GJC merely to consume or inspect 
 
 Create a GitHub fork only when a reproducible defect requires an upstream patch. That contribution checkout must be separate from OMG, branch from current upstream `dev`, and target an upstream `dev` pull request. OMG must never depend on the fork branch.
 
-The SDK does not install OMG's independent top-level skills or `/omg:*` commands. The hardened native installer remains authoritative for the 6-skill/7-command surface and creates the private exact-lock SDK runtime used by `time-left`.
+The SDK does not install OMG's independent top-level skills or `/omg:*` commands. The hardened native installer remains authoritative for the 6-skill/9-command surface and creates the private exact-lock SDK runtime used by `time-left`.
 
 ## Adoption milestones
 

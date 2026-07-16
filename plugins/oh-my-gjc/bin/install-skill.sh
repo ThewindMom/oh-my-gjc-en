@@ -43,7 +43,7 @@ PLUGIN_ROOT="$(cd -P "$(dirname "$0")/.." && pwd -P)"
 
 # ── EXPECTED manifest (the single source of truth for a complete install) ────────────
 EXPECTED_SKILLS=(adaptive-response no-english time-left extragoal insane-review lazycodex-gjc)
-EXPECTED_COMMANDS=(omg setup gate gate-always fable insane-review lazycodex-gjc)
+EXPECTED_COMMANDS=(omg setup gate gate-always no-english time-left fable insane-review lazycodex-gjc)
 EXPECTED_RUNTIMES=(bin/lazycodex-gjc.mjs tools/sdk-lab/package.json tools/sdk-lab/bun.lock tools/sdk-lab/src/inspect.ts tools/sdk-lab/src/eta.ts)
 # Capabilities REMOVED (관제탑 발주, 하코 승인). 0.11.0: codex-deepwork(실사용 0회, lazycodex와 중복) +
 # codex-app 짝(대상 앱 빌드 트랙 07-03 아카이브; Pro 리뷰는 insane-review 전담). 0.12.0: codex-cli-ask·
@@ -762,7 +762,7 @@ case "$mode" in
       report_missing
     fi
     if [ "$mode" = "user" ]; then
-      echo "  → skills auto-activate by trigger words; commands are /omg:<name>. Type /omg for the catalog."
+      echo "  → adaptive-response, no-english, and time-left require their explicit /omg:* commands; other skills keep their documented triggers."
       echo "  → open a NEW gjc session (or run /move .) to load newly installed commands. Re-run after upgrades."
     else
       echo "  → installed for this repo. A new gjc session in this dir will pick them up."

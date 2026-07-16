@@ -22,7 +22,7 @@ root="$HOME/.gjc/agent"
 for skill in adaptive-response no-english time-left extragoal insane-review lazycodex-gjc; do
   test -f "$root/skills/$skill/SKILL.md" || exit 1
 done
-for command in omg.md omg:setup.md omg:gate.md omg:gate-always.md omg:fable.md omg:insane-review.md omg:lazycodex-gjc.md; do
+for command in omg.md omg:setup.md omg:gate.md omg:gate-always.md omg:no-english.md omg:time-left.md omg:fable.md omg:insane-review.md omg:lazycodex-gjc.md; do
   test -f "$root/commands/$command" || exit 1
 done
 for skill in gate-briefing korean-first workflow-eta codex-deepwork codex-app-launch codex-app-cdp codex-cli-ask lazycodex tower worktree gajae-app multivendor-presets release-gate easy-answer plain-layer branch-flow gjc-bugwatch; do
@@ -88,7 +88,7 @@ payload를 실행할 수 있으므로 금지한다. 설치 후 **새 세션**을
 
 | 감지 | 확인 | 바로 쓸 수 있는 기능 |
 |---|---|---|
-| GJC SDK workflow ETA | Linux + Bun 1.3.14+ + private `oh-my-gjc/sdk-lab` runtime | `ralplan/ultragoal 언제 끝나?` 자연어 질문 |
+| GJC SDK workflow ETA | Linux + Bun 1.3.14+ + private `oh-my-gjc/sdk-lab` runtime | `/omg:time-left [ralplan\|ultragoal]` |
 | Chrome + ChatGPT | 크롬 프로필 존재 | `/omg:insane-review` |
 | Codex + LazyCodex | `codex`가 PATH에 있고 호환 OMO + user-scope runtime binding 설치됨 | `/omg:lazycodex-gjc` (읽기 전용) |
 
