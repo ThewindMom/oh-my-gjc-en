@@ -102,6 +102,8 @@ describe("suite root runtime binding", () => {
       "omg:setup.md",
       "omg:gate.md",
       "omg:gate-always.md",
+      "omg:no-english.md",
+      "omg:time-left.md",
       "omg:fable.md",
       "omg:insane-review.md",
       "omg:lazycodex-gjc.md",

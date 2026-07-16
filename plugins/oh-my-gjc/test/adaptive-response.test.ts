@@ -38,6 +38,13 @@ describe("adaptive response contract", () => {
     expect(skill).toContain("정확성 > 개인화 > 쉬움");
   });
 
+  test("activates only through explicit gate commands", () => {
+    const skill = read(join(pluginRoot, "skills/adaptive-response/SKILL.md"));
+    expect(skill).toContain("`/omg:gate` 또는 `/omg:gate-always`가 명시적으로 요청했을 때만");
+    expect(skill).toContain("`/omg:gate on` 또는 활성 상태의 `/omg:gate-always on`");
+    expect(skill).not.toContain("스킬이 자동 활성화되거나");
+  });
+
   test("limits evidence across every activation surface", () => {
     const skill = read(join(pluginRoot, "skills/adaptive-response/SKILL.md"));
     const gate = read(join(pluginRoot, "templates/gate.md"));
