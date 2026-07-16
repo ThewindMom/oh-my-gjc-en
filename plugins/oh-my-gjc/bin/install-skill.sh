@@ -42,7 +42,7 @@ done
 PLUGIN_ROOT="$(cd -P "$(dirname "$0")/.." && pwd -P)"
 
 # ── EXPECTED manifest (the single source of truth for a complete install) ────────────
-EXPECTED_SKILLS=(adaptive-response no-english workflow-eta extragoal insane-review lazycodex-gjc)
+EXPECTED_SKILLS=(adaptive-response no-english time-left extragoal insane-review lazycodex-gjc)
 EXPECTED_COMMANDS=(omg setup gate gate-always fable insane-review lazycodex-gjc)
 EXPECTED_RUNTIMES=(bin/lazycodex-gjc.mjs tools/sdk-lab/package.json tools/sdk-lab/bun.lock tools/sdk-lab/src/inspect.ts tools/sdk-lab/src/eta.ts)
 # Capabilities REMOVED (관제탑 발주, 하코 승인). 0.11.0: codex-deepwork(실사용 0회, lazycodex와 중복) +
@@ -52,9 +52,10 @@ EXPECTED_RUNTIMES=(bin/lazycodex-gjc.mjs tools/sdk-lab/package.json tools/sdk-la
 # 0.12.0: obsolete control/worker surfaces; 0.14.0: gajae-app ownership transfer.
 # Post-v0.17.1 prune: multivendor-presets, release-gate, easy-answer, plain-layer,
 # branch-flow/worktree, and public gjc-bugwatch. lazycodex-gjc remains supported.
-# gate-briefing was renamed to adaptive-response, and korean-first to no-english; upgrades remove retired native directories.
+# gate-briefing was renamed to adaptive-response, korean-first to no-english, and workflow-eta to time-left;
+# upgrades remove retired native directories.
 # Upgrades sweep only their native skill/command files plus explicitly owned retired state.
-REMOVED_SKILLS=(gate-briefing korean-first codex-deepwork codex-app-launch codex-app-cdp codex-cli-ask lazycodex tower worktree gajae-app multivendor-presets release-gate easy-answer plain-layer branch-flow gjc-bugwatch)
+REMOVED_SKILLS=(gate-briefing korean-first workflow-eta codex-deepwork codex-app-launch codex-app-cdp codex-cli-ask lazycodex tower worktree gajae-app multivendor-presets release-gate easy-answer plain-layer branch-flow gjc-bugwatch)
 REMOVED_COMMANDS=(codex-run codex-app-launch codex-app-ask codex-ask lazycodex-setup lazycodex-work tower-setup gajae-app presets release easy easy-always plain branchflow-always worktree bugwatch-scan)
 # Pre-0.8.1 native files that upgrades must sweep away: the 17 one-release deprecation
 # tombstones shipped by 0.8.0 (removed in 0.8.1). Old `oh-my-gjc:<name>.md` aliases are
@@ -174,10 +175,12 @@ uninstall_suite_root_binding() { # $1=scope — remove only this suite's root bi
 }
 
 sdk_runtime_requested() {
-  case "${OMG_WORKFLOW_ETA_RUNTIME:-1}" in
+  local value
+  value="${OMG_TIME_LEFT_RUNTIME:-${OMG_WORKFLOW_ETA_RUNTIME:-1}}"
+  case "$value" in
     1) return 0 ;;
     0) return 1 ;;
-    *) echo "❌ OMG_WORKFLOW_ETA_RUNTIME must be 0 or 1" >&2; exit 2 ;;
+    *) echo "❌ OMG_TIME_LEFT_RUNTIME must be 0 or 1" >&2; exit 2 ;;
   esac
 }
 
@@ -199,23 +202,23 @@ prepare_sdk_runtime() ( # $1=scope — exact bridge-client lock, scripts disable
   local scope="$1" parent root temp previous="" lock
   parent="$(prepare_suite_runtime_parent "$scope")" || return 1
   if [ ! -O "$parent" ] || ! chmod 700 "$parent" || [ -n "$(find "$parent" -maxdepth 0 -perm /077)" ]; then
-    echo "❌ workflow-eta SDK runtime parent is not current-user private: $parent" >&2
+    echo "❌ time-left SDK runtime parent is not current-user private: $parent" >&2
     return 1
   fi
   root="$(sdk_runtime "$scope")"
   lock="$parent/.sdk-lab.lock"
   if [ -L "$lock" ] || { [ -e "$lock" ] && [ ! -f "$lock" ]; }; then
-    echo "❌ workflow-eta SDK runtime lock is malformed: $lock" >&2
+    echo "❌ time-left SDK runtime lock is malformed: $lock" >&2
     return 1
   fi
   : >>"$lock"
   chmod 600 "$lock"
-  [ -O "$lock" ] || { echo "❌ workflow-eta SDK runtime lock is not owned by the current user: $lock" >&2; return 1; }
+  [ -O "$lock" ] || { echo "❌ time-left SDK runtime lock is not owned by the current user: $lock" >&2; return 1; }
   exec 9<>"$lock"
   flock -x 9 || return 1
   reject_symlinked_components "$root" || return 1
   if [ -e "$root" ] && { [ ! -d "$root" ] || [ -L "$root" ]; }; then
-    echo "❌ workflow-eta SDK runtime is malformed: $root" >&2
+    echo "❌ time-left SDK runtime is malformed: $root" >&2
     return 1
   fi
   temp="$(mktemp -d "$parent/.sdk-lab.XXXXXX")" || return 1
@@ -226,12 +229,12 @@ prepare_sdk_runtime() ( # $1=scope — exact bridge-client lock, scripts disable
      ! cp "$PLUGIN_ROOT/tools/sdk-lab/src/inspect.ts" "$PLUGIN_ROOT/tools/sdk-lab/src/eta.ts" "$temp/src/" ||
      ! chmod 600 "$temp/package.json" "$temp/bun.lock" "$temp/src/inspect.ts" "$temp/src/eta.ts"; then
     rm -rf "$temp"
-    echo "❌ workflow-eta SDK runtime staging failed" >&2
+    echo "❌ time-left SDK runtime staging failed" >&2
     return 1
   fi
   if ! (cd "$temp" && bun install --frozen-lockfile --production --ignore-scripts >/dev/null); then
     rm -rf "$temp"
-    echo "❌ workflow-eta SDK dependency install failed" >&2
+    echo "❌ time-left SDK dependency install failed" >&2
     return 1
   fi
   if [ ! -f "$temp/node_modules/@gajae-code/bridge-client/package.json" ] ||
@@ -240,7 +243,7 @@ prepare_sdk_runtime() ( # $1=scope — exact bridge-client lock, scripts disable
        if (pkg.name !== "@gajae-code/bridge-client" || pkg.version !== "0.11.0") process.exit(1);
      '); then
     rm -rf "$temp"
-    echo "❌ workflow-eta SDK dependency verification failed" >&2
+    echo "❌ time-left SDK dependency verification failed" >&2
     return 1
   fi
   if [ -e "$root" ]; then
@@ -248,14 +251,14 @@ prepare_sdk_runtime() ( # $1=scope — exact bridge-client lock, scripts disable
     rmdir "$previous"
     if ! mv "$root" "$previous"; then
       rm -rf "$temp"
-      echo "❌ workflow-eta SDK runtime replacement failed" >&2
+      echo "❌ time-left SDK runtime replacement failed" >&2
       return 1
     fi
   fi
   if ! mv "$temp" "$root"; then
     [ -z "$previous" ] || mv "$previous" "$root"
     rm -rf "$temp"
-    echo "❌ workflow-eta SDK runtime publication failed" >&2
+    echo "❌ time-left SDK runtime publication failed" >&2
     return 1
   fi
   [ -z "$previous" ] || rm -rf "$previous"
@@ -266,27 +269,27 @@ uninstall_sdk_runtime() ( # $1=scope
   local parent root lock
   parent="$(prepare_suite_runtime_parent "$1")" || return 1
   if [ ! -O "$parent" ] || ! chmod 700 "$parent" || [ -n "$(find "$parent" -maxdepth 0 -perm /077)" ]; then
-    echo "❌ uninstall FAILED — workflow-eta SDK runtime parent is not current-user private: $parent" >&2
+    echo "❌ uninstall FAILED — time-left SDK runtime parent is not current-user private: $parent" >&2
     return 1
   fi
   lock="$parent/.sdk-lab.lock"
   if [ -L "$lock" ] || { [ -e "$lock" ] && [ ! -f "$lock" ]; }; then
-    echo "❌ uninstall FAILED — workflow-eta SDK runtime lock is malformed: $lock" >&2
+    echo "❌ uninstall FAILED — time-left SDK runtime lock is malformed: $lock" >&2
     return 1
   fi
   : >>"$lock"
   chmod 600 "$lock"
-  [ -O "$lock" ] || { echo "❌ uninstall FAILED — workflow-eta SDK runtime lock is not owned by the current user: $lock" >&2; return 1; }
+  [ -O "$lock" ] || { echo "❌ uninstall FAILED — time-left SDK runtime lock is not owned by the current user: $lock" >&2; return 1; }
   exec 9<>"$lock"
   flock -x 9 || return 1
   root="$(sdk_runtime "$1")"
   reject_symlinked_components "$root" || return 1
   if [ -L "$root" ] || { [ -e "$root" ] && [ ! -d "$root" ]; }; then
-    echo "❌ uninstall FAILED — workflow-eta SDK runtime is malformed: $root" >&2
+    echo "❌ uninstall FAILED — time-left SDK runtime is malformed: $root" >&2
     return 1
   fi
   rm -rf "$root"
-  echo "✓ removed SDK runtime: workflow-eta ($1)"
+  echo "✓ removed SDK runtime: time-left ($1)"
 )
 
 sha256_file() {
@@ -685,7 +688,7 @@ case "$mode" in
       if [ -d "$PLUGIN_ROOT/skills/$target" ];       then uninstall_skill   "$target" "$scope"; fi
       if [ -f "$PLUGIN_ROOT/templates/$target.md" ]; then uninstall_command "$target" "$scope"; fi
       if [ "$target" = "lazycodex-gjc" ] && [ "$scope" = "user" ]; then uninstall_runtime_binding; fi
-      if [ "$target" = "workflow-eta" ] && [ "$scope" = "user" ]; then uninstall_sdk_runtime user; fi
+      if [ "$target" = "time-left" ] && [ "$scope" = "user" ]; then uninstall_sdk_runtime user; fi
     fi
     ;;
   user|project)
@@ -705,18 +708,18 @@ case "$mode" in
       fi
       if [ "$mode" = "user" ]; then
         if ! sdk_runtime_requested; then
-          echo "! workflow-eta SDK runtime disabled by OMG_WORKFLOW_ETA_RUNTIME=0 — skill remains installed but fails closed." >&2
+          echo "! time-left SDK runtime disabled by OMG_TIME_LEFT_RUNTIME=0 — skill remains installed but fails closed." >&2
           if [ -e "$(sdk_runtime user)" ] || [ -L "$(sdk_runtime user)" ]; then uninstall_sdk_runtime user; fi
         elif sdk_runtime_available; then
           if ! prepare_sdk_runtime user; then
             if [ -e "$(sdk_runtime user)" ]; then
-              echo "❌ workflow-eta SDK refresh failed; prior runtime and native surfaces were preserved" >&2
+              echo "❌ time-left SDK refresh failed; prior runtime and native surfaces were preserved" >&2
               exit 1
             fi
-            echo "! workflow-eta SDK runtime not bound — skill remains installed but fails closed. Rerun the hardened installer with Bun >=1.3.14 and npm access." >&2
+            echo "! time-left SDK runtime not bound — skill remains installed but fails closed. Rerun the hardened installer with Bun >=1.3.14 and npm access." >&2
           fi
         else
-          echo "! workflow-eta SDK runtime not bound (Bun >=1.3.14 or flock missing) — skill remains installed but fails closed." >&2
+          echo "! time-left SDK runtime not bound (Bun >=1.3.14 or flock missing) — skill remains installed but fails closed." >&2
           if [ -e "$(sdk_runtime user)" ] || [ -L "$(sdk_runtime user)" ]; then uninstall_sdk_runtime user; fi
         fi
       fi
@@ -735,17 +738,17 @@ case "$mode" in
         report_missing
         if [ "$mode" = "user" ]; then prepare_runtime_binding; fi
       fi
-      if [ "$target" = "workflow-eta" ]; then
+      if [ "$target" = "time-left" ]; then
         for r in tools/sdk-lab/package.json tools/sdk-lab/bun.lock tools/sdk-lab/src/inspect.ts tools/sdk-lab/src/eta.ts; do
           [ -f "$PLUGIN_ROOT/$r" ] && [ ! -L "$PLUGIN_ROOT/$r" ] || MISSING+=("$r")
         done
         report_missing
         if [ "$mode" = "user" ]; then
-          sdk_runtime_requested || { echo "❌ targeted workflow-eta install cannot disable its SDK runtime" >&2; exit 1; }
-          sdk_runtime_available || { echo "❌ workflow-eta requires Bun >=1.3.14 and flock" >&2; exit 1; }
+          sdk_runtime_requested || { echo "❌ targeted time-left install cannot disable its SDK runtime" >&2; exit 1; }
+          sdk_runtime_available || { echo "❌ time-left requires Bun >=1.3.14 and flock" >&2; exit 1; }
           prepare_sdk_runtime user
         else
-          echo "! project workflow-eta skill installed; its executable SDK runtime is user-scope only" >&2
+          echo "! project time-left skill installed; its executable SDK runtime is user-scope only" >&2
         fi
       fi
       install_suite_root_binding "$mode"

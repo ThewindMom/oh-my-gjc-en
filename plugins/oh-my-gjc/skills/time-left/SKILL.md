@@ -1,5 +1,5 @@
 ---
-name: workflow-eta
+name: time-left
 description: 실행 중인 GJC ralplan 또는 ultragoal이 얼마나 남았는지, 언제쯤 끝날지 묻는 요청을 GJC v0.11 SDK의 현재 세션 텔레메트리로 추정한다. "ralplan 언제 끝나?", "ultragoal 얼마나 남았어?", "완료까지 몇 분?", "ETA 보여줘", "현재 진행률과 예상 시간" 같은 질문에서 활성화한다. 읽기 전용 SDK 상태와 현재 워크플로 상태만 사용하며 완료 시각을 보장하거나 제어 명령을 보내지 않는다.
 ---
 
@@ -50,30 +50,30 @@ SDK_RUNTIME="$RUNTIME_PARENT/sdk-lab"
 LOCK="$RUNTIME_PARENT/.sdk-lab.lock"
 
 command -v bun >/dev/null 2>&1 && command -v flock >/dev/null 2>&1 || {
-  printf '%s\n' 'workflow-eta requires Bun >=1.3.14 and flock' >&2
+  printf '%s\n' 'time-left requires Bun >=1.3.14 and flock' >&2
   exit 78
 }
 case "$SESSION_ID" in
   ''|[!A-Za-z0-9]*|*[!A-Za-z0-9._-]*)
-    printf '%s\n' 'workflow-eta requires the exact canonical workflow session_id' >&2
+    printf '%s\n' 'time-left requires the exact canonical workflow session_id' >&2
     exit 78 ;;
 esac
 [ -d "$RUNTIME_PARENT" ] && [ ! -L "$RUNTIME_PARENT" ] &&
 [ "$(realpath -e "$RUNTIME_PARENT")" = "$RUNTIME_PARENT" ] &&
 [ "$(stat -c %u "$RUNTIME_PARENT")" = "$(id -u)" ] &&
 [ -z "$(find "$RUNTIME_PARENT" -maxdepth 0 -perm /077)" ] || {
-  printf '%s\n' 'workflow-eta runtime parent is not private and canonical' >&2
+  printf '%s\n' 'time-left runtime parent is not private and canonical' >&2
   exit 78
 }
 [ -f "$LOCK" ] && [ ! -L "$LOCK" ] &&
 [ "$(stat -c %u "$LOCK")" = "$(id -u)" ] &&
 [ "$(stat -c %a "$LOCK")" = 600 ] || {
-  printf '%s\n' 'workflow-eta runtime lock is unavailable or untrusted' >&2
+  printf '%s\n' 'time-left runtime lock is unavailable or untrusted' >&2
   exit 78
 }
 exec 9<>"$LOCK"
 flock -s -w 5 9 || {
-  printf '%s\n' 'workflow-eta SDK runtime is being refreshed; retry shortly' >&2
+  printf '%s\n' 'time-left SDK runtime is being refreshed; retry shortly' >&2
   exit 75
 }
 [ -d "$SDK_RUNTIME" ] && [ ! -L "$SDK_RUNTIME" ] &&
@@ -83,7 +83,7 @@ flock -s -w 5 9 || {
 [ -f "$SDK_RUNTIME/src/eta.ts" ] && [ ! -L "$SDK_RUNTIME/src/eta.ts" ] &&
 [ "$(stat -c %u "$SDK_RUNTIME/src/eta.ts")" = "$(id -u)" ] &&
 [ "$(stat -c %a "$SDK_RUNTIME/src/eta.ts")" = 600 ] || {
-  printf '%s\n' 'workflow-eta SDK runtime unavailable or untrusted; rerun the hardened installer' >&2
+  printf '%s\n' 'time-left SDK runtime unavailable or untrusted; rerun the hardened installer' >&2
   exit 78
 }
 bun run "$SDK_RUNTIME/src/eta.ts" --workflow "$WORKFLOW" --session-id "$SESSION_ID"

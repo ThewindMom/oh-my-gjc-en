@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 
 const pluginRoot = join(import.meta.dir, "..");
 const installer = join(pluginRoot, "bin/install-skill.sh");
-const skill = join(pluginRoot, "skills/workflow-eta/SKILL.md");
+const skill = join(pluginRoot, "skills/time-left/SKILL.md");
 const sdkRoot = join(pluginRoot, "tools/sdk-lab");
 const sandboxes: string[] = [];
 
@@ -23,10 +23,10 @@ afterEach(() => {
   for (const sandbox of sandboxes.splice(0)) rmSync(sandbox, { recursive: true, force: true });
 });
 
-describe("workflow-eta public skill", () => {
+describe("time-left public skill", () => {
   test("uses only the fixed read-only SDK and state-read surfaces", () => {
     const content = read(skill);
-    expect(content).toMatch(/^---\nname: workflow-eta\ndescription: .*ralplan.*ultragoal/m);
+    expect(content).toMatch(/^---\nname: time-left\ndescription: .*ralplan.*ultragoal/m);
     for (const query of [
       "session.metadata",
       "goal.list/get",
@@ -59,14 +59,14 @@ describe("workflow-eta public skill", () => {
     const packageJson = JSON.parse(read(join(sdkRoot, "package.json"))) as { dependencies: Record<string, string> };
     const installScript = read(installer);
     expect(packageJson.dependencies["@gajae-code/bridge-client"]).toBe("0.11.0");
-    expect(installScript).toContain("EXPECTED_SKILLS=(adaptive-response no-english workflow-eta extragoal insane-review lazycodex-gjc)");
+    expect(installScript).toContain("EXPECTED_SKILLS=(adaptive-response no-english time-left extragoal insane-review lazycodex-gjc)");
     expect(installScript).toContain("REMOVED_SKILLS=(gate-briefing ");
     expect(installScript).toContain("bun install --frozen-lockfile --production --ignore-scripts");
-    expect(installScript).toContain("OMG_WORKFLOW_ETA_RUNTIME");
+    expect(installScript).toContain("OMG_TIME_LEFT_RUNTIME");
   });
 
   test("never authorizes or executes a project-local SDK runtime", () => {
-    const sandbox = mkdtempSync(join(tmpdir(), "omg-workflow-eta-project-"));
+    const sandbox = mkdtempSync(join(tmpdir(), "omg-time-left-project-"));
     sandboxes.push(sandbox);
     const home = join(sandbox, "home");
     const project = join(sandbox, "project");
@@ -75,7 +75,7 @@ describe("workflow-eta public skill", () => {
     mkdirSync(project, { recursive: true });
     write(malicious, "malicious-project-runtime");
 
-    const result = spawnSync("bash", [installer, "workflow-eta", "project"], {
+    const result = spawnSync("bash", [installer, "time-left", "project"], {
       cwd: project,
       env: { ...process.env, HOME: home },
       encoding: "utf8",
@@ -88,7 +88,7 @@ describe("workflow-eta public skill", () => {
   });
 
   test("installs a private exact-lock SDK runtime with a compatible Bun", () => {
-    const sandbox = mkdtempSync(join(tmpdir(), "omg-workflow-eta-"));
+    const sandbox = mkdtempSync(join(tmpdir(), "omg-time-left-"));
     sandboxes.push(sandbox);
     const home = join(sandbox, "home");
     const project = join(sandbox, "project");
@@ -114,7 +114,7 @@ exit 64
     );
     chmodSync(bun, 0o755);
 
-    const result = spawnSync("bash", [installer, "workflow-eta", "user"], {
+    const result = spawnSync("bash", [installer, "time-left", "user"], {
       cwd: project,
       env: { ...process.env, HOME: home, PATH: `${fakeBin}:${process.env.PATH ?? ""}` },
       encoding: "utf8",
@@ -126,11 +126,11 @@ exit 64
     expect(statSync(join(runtime, "src/eta.ts")).mode & 0o777).toBe(0o600);
     expect(existsSync(join(runtime, "node_modules/@gajae-code/bridge-client/package.json"))).toBe(true);
     expect(statSync(join(home, ".gjc/agent/runtimes/oh-my-gjc/.sdk-lab.lock")).mode & 0o777).toBe(0o600);
-    expect(existsSync(join(home, ".gjc/agent/skills/workflow-eta/SKILL.md"))).toBe(true);
+    expect(existsSync(join(home, ".gjc/agent/skills/time-left/SKILL.md"))).toBe(true);
   });
 
   test("fails targeted installation without silently replacing a prior runtime", () => {
-    const sandbox = mkdtempSync(join(tmpdir(), "omg-workflow-eta-fail-"));
+    const sandbox = mkdtempSync(join(tmpdir(), "omg-time-left-fail-"));
     sandboxes.push(sandbox);
     const home = join(sandbox, "home");
     const project = join(sandbox, "project");
@@ -141,7 +141,7 @@ exit 64
     write(join(runtime, "sentinel"), "keep");
     write(join(fakeBin, "bun"), "#!/bin/sh\n[ \"${1:-}\" = --version ] && { echo 1.3.14; exit 0; }\nexit 9\n", 0o755);
 
-    const result = spawnSync("bash", [installer, "workflow-eta", "user"], {
+    const result = spawnSync("bash", [installer, "time-left", "user"], {
       cwd: project,
       env: { ...process.env, HOME: home, PATH: `${fakeBin}:${process.env.PATH ?? ""}` },
       encoding: "utf8",
@@ -152,7 +152,7 @@ exit 64
     expect(result.stderr).toContain("SDK dependency install failed");
   });
   test("aborts an upgrade and preserves prior runtime and native surfaces when refresh fails", () => {
-    const sandbox = mkdtempSync(join(tmpdir(), "omg-workflow-eta-upgrade-"));
+    const sandbox = mkdtempSync(join(tmpdir(), "omg-time-left-upgrade-"));
     sandboxes.push(sandbox);
     const home = join(sandbox, "home");
     const project = join(sandbox, "project");

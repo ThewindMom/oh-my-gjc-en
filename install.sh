@@ -198,6 +198,6 @@ cat <<DONE
 ✓ oh-my-gajaecode installed — one plugin, 6 skills + 7 commands (/omg + 6 /omg:*), all native surfaces installed.
   Open a NEW gjc session (or run /move .).
     /omg   → catalog of everything you got
-  workflow-eta's SDK runtime is bound when Bun >=1.3.14 and locked-package installation succeed; otherwise it remains fail-closed until this installer is rerun.
+  time-left's SDK runtime is bound when Bun >=1.3.14 and locked-package installation succeed; otherwise it remains fail-closed until this installer is rerun.
   (Optional: /omg:setup checks prerequisites / explains the gate always-on mode.)
 DONE

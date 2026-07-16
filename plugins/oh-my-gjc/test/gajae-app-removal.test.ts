@@ -11,7 +11,7 @@ import { spawnSync } from "child_process";
 const pluginRoot = join(import.meta.dir, "..");
 const installSh = join(pluginRoot, "bin/install-skill.sh");
 const installer = readFileSync(installSh, "utf8");
-const sdkRuntimeDisabled = { OMG_WORKFLOW_ETA_RUNTIME: "0" };
+const sdkRuntimeDisabled = { OMG_TIME_LEFT_RUNTIME: "0" };
 
 function parseManifest(name: string): string[] {
   const match = installer.match(new RegExp(`^${name}=\\(([^)]*)\\)`, "m"));
@@ -34,6 +34,8 @@ function intersection(left: string[], right: string[]): string[] {
 
 const retiredSkills = [
   "gate-briefing",
+  "korean-first",
+  "workflow-eta",
   "gajae-app",
   "multivendor-presets",
   "release-gate",
@@ -70,7 +72,7 @@ describe("removed capability manifests", () => {
     expect(expectedSkills).toEqual([
       "adaptive-response",
       "no-english",
-      "workflow-eta",
+      "time-left",
       "extragoal",
       "insane-review",
       "lazycodex-gjc",

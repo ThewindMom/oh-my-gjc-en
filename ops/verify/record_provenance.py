@@ -54,7 +54,7 @@ MARKERS = [
     "skills/insane-review/SKILL.md",
     "skills/adaptive-response/SKILL.md",
     "skills/no-english/SKILL.md",
-    "skills/workflow-eta/SKILL.md",
+    "skills/time-left/SKILL.md",
     "skills/extragoal/SKILL.md",
     "skills/lazycodex-gjc/SKILL.md",
     "tools/sdk-lab/package.json",

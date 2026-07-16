@@ -1,6 +1,6 @@
 # GJC SDK lab
 
-Read-only GJC v0.11 SDK runtime for OMG. It inspects a running top-level session and powers `workflow-eta` without sending prompts, replies, controls, configuration changes, transcript queries, or arbitrary SDK queries.
+Read-only GJC v0.11 SDK runtime for OMG. It inspects a running top-level session and powers `time-left` without sending prompts, replies, controls, configuration changes, transcript queries, or arbitrary SDK queries.
 
 ## Canonical source
 
@@ -71,7 +71,7 @@ Do **not** fork, vendor, subtree, or submodule GJC merely to consume or inspect 
 
 Create a GitHub fork only when a reproducible defect requires an upstream patch. That contribution checkout must be separate from OMG, branch from current upstream `dev`, and target an upstream `dev` pull request. OMG must never depend on the fork branch.
 
-The SDK does not install OMG's independent top-level skills or `/omg:*` commands. The hardened native installer remains authoritative for the 6-skill/7-command surface and creates the private exact-lock SDK runtime used by `workflow-eta`.
+The SDK does not install OMG's independent top-level skills or `/omg:*` commands. The hardened native installer remains authoritative for the 6-skill/7-command surface and creates the private exact-lock SDK runtime used by `time-left`.
 
 ## Adoption milestones
 

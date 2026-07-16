@@ -57,7 +57,7 @@ function runInstaller(f: Fixture, action: "install" | "uninstall", path = instal
   const args = action === "install" ? [path, "all", f.scope] : [path, "all", "uninstall", f.scope];
   return spawnSync("bash", args, {
     cwd: f.project,
-    env: { ...process.env, HOME: f.home, CODEX_HOME: process.env.CODEX_HOME ?? join(process.env.HOME ?? "", ".codex"), OMG_WORKFLOW_ETA_RUNTIME: "0" },
+    env: { ...process.env, HOME: f.home, CODEX_HOME: process.env.CODEX_HOME ?? join(process.env.HOME ?? "", ".codex"), OMG_TIME_LEFT_RUNTIME: "0" },
     encoding: "utf8",
   });
 }
@@ -288,7 +288,7 @@ describe("lazycodex-gjc isolated native install", () => {
     writeSentinel(join(f.nativeRoot, "runtimes/lazycodex-gjc/binding"), "stale binding from a previous install");
     const result = spawnSync("bash", [installerPath, "all", "user"], {
       cwd: f.project,
-      env: { ...process.env, HOME: f.home, CODEX_HOME: join(f.home, ".codex-absent"), OMG_WORKFLOW_ETA_RUNTIME: "0" },
+      env: { ...process.env, HOME: f.home, CODEX_HOME: join(f.home, ".codex-absent"), OMG_TIME_LEFT_RUNTIME: "0" },
       encoding: "utf8",
     });
 
