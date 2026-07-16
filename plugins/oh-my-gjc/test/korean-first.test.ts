@@ -32,6 +32,19 @@ describe("korean-first skill contract", () => {
     ]) {
       expect(skill).toContain(boundary);
     }
+    for (const canonical of [
+      "`ultragoal`",
+      "`ralplan`",
+      "`deep-interview`",
+      "`team`",
+      "`workflow-eta`",
+      "`adaptive-response`",
+      "`/omg:fable`",
+    ]) {
+      expect(skill).toContain(canonical);
+    }
+    expect(skill).toContain("일반 문장 안에서도 번역하거나 한글로 음역하지 않는다");
+    expect(skill).toContain("“울트라고울”, “울트라골”, “랄플랜”, “딥 인터뷰”처럼");
     expect(skill).toContain("코드나 명령 자체를 번역하지 않는다");
     for (const exact of [
       "`gjc state ralplan read --json`",
