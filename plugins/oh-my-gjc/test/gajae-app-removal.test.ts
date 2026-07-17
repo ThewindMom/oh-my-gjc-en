@@ -64,8 +64,8 @@ describe("removed capability manifests", () => {
     const expectedCommands = parseManifest("EXPECTED_COMMANDS");
     const removedSkills = parseManifest("REMOVED_SKILLS");
     const removedCommands = parseManifest("REMOVED_COMMANDS");
-    expect(expectedSkills).toHaveLength(6);
-    expect(expectedCommands).toHaveLength(9);
+    expect(expectedSkills).toHaveLength(7);
+    expect(expectedCommands).toHaveLength(10);
     expect(expectedSkills).not.toContain("gajae-app");
     expect(expectedCommands).not.toContain("gajae-app");
 
@@ -76,6 +76,7 @@ describe("removed capability manifests", () => {
       "extragoal",
       "insane-review",
       "lazycodex-gjc",
+      "deep-onboarding",
     ]);
     expect(expectedCommands).toEqual([
       "omg",
@@ -87,6 +88,7 @@ describe("removed capability manifests", () => {
       "fable",
       "insane-review",
       "lazycodex-gjc",
+      "deep-onboarding",
     ]);
     for (const skill of retiredSkills) expect(removedSkills).toContain(skill);
     for (const command of retiredCommands) expect(removedCommands).toContain(command);

@@ -187,7 +187,7 @@ describe("lazycodex-gjc skill and command contract", () => {
 });
 
 describe("lazycodex-gjc isolated native install", () => {
-  test.each(["user", "project"] as const)("installs exactly 6 skills and 9 commands in %s scope", (scope) => {
+  test.each(["user", "project"] as const)("installs exactly 7 skills and 10 commands in %s scope", (scope) => {
     const f = fixture(scope);
     writeSentinel(join(f.nativeRoot, "skills/sentinel/SKILL.md"), "keep skill");
     writeSentinel(join(f.nativeRoot, "commands/sentinel.md"), "keep command");
@@ -200,10 +200,12 @@ describe("lazycodex-gjc isolated native install", () => {
     expect(result.status, result.stderr).toBe(0);
     const expectedSkills = parseManifest("EXPECTED_SKILLS");
     const expectedCommands = ownedCommands();
-    expect(expectedSkills).toHaveLength(6);
-    expect(expectedCommands).toHaveLength(9);
+    expect(expectedSkills).toHaveLength(7);
+    expect(expectedCommands).toHaveLength(10);
     expect(expectedSkills).toContain("lazycodex-gjc");
+    expect(expectedSkills).toContain("deep-onboarding");
     expect(expectedCommands).toContain("omg:lazycodex-gjc.md");
+    expect(expectedCommands).toContain("omg:deep-onboarding.md");
     expect(readdirSync(join(f.nativeRoot, "skills")).sort()).toEqual([...expectedSkills, "sentinel"].sort());
     expect(readdirSync(join(f.nativeRoot, "commands")).sort()).toEqual([...expectedCommands, "sentinel.md"].sort());
     expect(existsSync(join(f.nativeRoot, "skills/lazycodex"))).toBe(false);
