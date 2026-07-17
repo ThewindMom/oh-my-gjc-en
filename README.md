@@ -138,6 +138,12 @@ SDK v3 bus에서 todo·goal·job·gate 상태를 읽고,
 일시정지, 실패·차단, 근거 부족 상태에서는 숫자 대신 재산정 조건을 보여준다.
 일반 자연어 ETA 질문에는 자동 발동하지 않으며 `/omg:time-left`를 명시적으로 실행해야 한다.
 
+실행 중인 ralplan 또는 ultragoal을 조회하려면 그 workflow를 돌리는 **같은 세션**에서 `/omg:time-left`를
+실행한다. skill은 session identity 일치를 강제한다. 세션이 mid-turn이어도 명령을 입력하고 Enter를 누르면
+GJC 기본 `promptWhileBusy`가 다음 turn boundary에 실행하도록 대기열에 넣으므로 steering은 필요 없다.
+steering은 활성 turn을 중단하므로 정말 긴급할 때만 쓴다. `/btw`는 tools를 금지하는 contract라 skill을
+실행할 수 없고 모델이 추측하게 되므로 이 용도에 적합하지 않다.
+
 - 읽기 전용 query만 사용하며 prompt/reply/control/config를 보내지 않는다.
 - transcript나 다른 세션을 읽지 않고 실행 기록을 사용자 속도 프로필로 저장하지 않는다.
 - 전제: Linux, Bun 1.3.14+, GJC SDK hosting이 켜진 현재 top-level 세션.

@@ -52,6 +52,11 @@ workflow gate, runtime job을
 보내지 않고, 사람 승인·일시정지·실패·근거 부족 상태에서는 숫자를 내지 않는다. installer가 exact
 lockfile로 user-scope 전용 private runtime을 만들며 Bun/패키지 설치/endpoint가 없으면 fail-closed다.
 
+실행 중인 ralplan·ultragoal의 시간을 보려면 workflow와 **같은 세션**에서 `/omg:time-left`를 실행한다.
+skill은 session identity 일치를 강제한다. mid-turn에는 그대로 입력하고 Enter를 누르면 기본
+`promptWhileBusy`가 다음 turn boundary에 대기 실행하므로 steering은 필요 없고, 활성 turn을 끊어야 할
+정도로 긴급할 때만 steering을 쓴다. `/btw`는 tools 금지 contract 때문에 skill을 실행하지 못해 모델이
+추측하게 되므로 이 용도에는 쓰지 않는다.
 
 ### `lazycodex-gjc` 격리 경계
 
