@@ -53,19 +53,18 @@ Merge only when the latest verdict is `APPROVE` **and** all findings are fixed o
 
 ## Reviewer lanes (omj connections)
 
-- **Default — native cross-session GJC (recommended, free-tier)**: stateless session + read-only tool allowlist.
-  ```sh
-  # Claude-authored code (general case for the recommended authoring profile) → cross-family gpt verdict:
-  GJC_NOTIFICATIONS=0 GJC_SDK_DISABLE=1 gjc -p --no-session --model openai-codex/gpt-5.5:xhigh --tools read,search,find "<bundle path + verdict contract>"
-  ```
-  ⚠ One-shot means the **default model is the verdict author** (task not allowed, so it does not take the critic/architect seat) → specifying `--model` for cross-family is itself the provenance. OMG does not install a reviewer preset.
-  ⚠ **`goal` tool must be disabled** (injected outside the allowlist): run from a dedicated gate directory outside the repo (with `goal: enabled: false` in its `.gjc/config.yml`) and read the repo by absolute path — so the review-target checkout is not dirtied. `generate_image` cannot use the repo/`.gjc`, but calling read/search/find outside the contract is a contract violation → round failure + report.
-- **Custom — user-provided external reviewer command**: if the same contract (no-shared, cross-family, full-code, fail-closed) is met, models GJC cannot call are also allowed. **The bundle leaves the machine → secret scan is non-negotiable + private-repo egress policy is the operator's responsibility.**
-- **Maximalist — N-of-N (optional, operator-local)**: run multiple independent reviewers on the same immutable bundle simultaneously → wait for all → parse each last line → **mechanical AND gate** (all valid APPROVE + all findings disposed). Zero checked reviewers → malformed → fail-closed. omj adapters:
-  - `openai-codex/gpt-5.5:xhigh` (native, default ON)
-  - `/omg:fable` (anthropic/claude-fable-5:xhigh) — expensive, per-run opt-in. ⚠ Defender framing required (refusal on attack phrasing), `:max` forbidden.
-  - `insane-review` (GPT-5.6 Sol Pro web, operator-owned ToS lane) — default OFF, reference adapter. Bundle goes to the web, so secret scan is non-negotiable.
-  Finding merge normalizes and dedupes by file:line, severity, message, but preserves original text and provenance (which reviewer reported it).
+- **Default — two-lane N-of-N gate**: run both independent reviewers on the same immutable bundle, wait for both, parse each last line, and apply a **mechanical AND gate**. Both must return valid `APPROVE` verdicts and every finding must be disposed. A missing, malformed, refused, or timed-out lane blocks merge.
+  1. **Native cross-session GJC**: stateless session + read-only tool allowlist.
+     ```sh
+     # Claude-authored code (general case for the recommended authoring profile) → cross-family gpt verdict:
+     GJC_NOTIFICATIONS=0 GJC_SDK_DISABLE=1 gjc -p --no-session --model openai-codex/gpt-5.5:xhigh --tools read,search,find "<bundle path + verdict contract>"
+     ```
+     ⚠ One-shot means the specified model is the verdict author (task is not allowed, so it does not take the critic/architect seat). OMG does not install a reviewer preset.
+     ⚠ **`goal` tool must be disabled** (injected outside the allowlist): run from a dedicated gate directory outside the repo (with `goal: enabled: false` in its `.gjc/config.yml`) and read the repo by absolute path. Calling tools outside the contract is a round failure.
+  2. **`insane-review` GPT-5.6 Sol Pro web lane — default ON**: invoke the installed insane-review adapter against the same bundle and verdict contract. The bundle leaves the machine, so the mandatory secret scan and private-repository egress policy apply. Missing browser/login/model verification, refusal, malformed output, or timeout blocks the gate; it never falls back to one-lane approval.
+- **Optional third lane — `/omg:fable`** (`anthropic/claude-fable-5:xhigh`): expensive, per-run opt-in. Defender framing is required (refusal on attack phrasing), and `:max` is forbidden. When enabled, all three lanes form the N-of-N AND gate.
+- **Custom replacement/additional reviewer**: a user-provided external command is allowed only when it meets the same no-shared-context, cross-family, full-code, fail-closed verdict contract. External egress still requires the mandatory secret scan and operator-approved private-repository policy.
+- Finding merge normalizes and deduplicates by file:line, severity, and message while preserving original text and provenance.
 
 ## Artifacts and guards
 - Per-round `.gjc/_session-<id>/extragoal/gate-<round>.md` (bundle evidence diff stat+head SHA, original reviewer output, findings, triage table). Final report appends to ultragoal completion evidence. ⚠ Gate artifacts inherit bundle contents → handle as sensitive; never commit `.gjc/_session-*`.

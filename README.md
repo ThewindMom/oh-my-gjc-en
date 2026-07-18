@@ -72,7 +72,7 @@ Builds a **temporary response persona** from the domain proficiency, explanation
 
 Before merge, completed work is re-examined by **a different model that has not seen the work process**, judging only the completed diff. Not in-session review — like a real PR review: no-shared, cross-family verdict → approve/request-changes verdict → triaged findings → fix and re-sign until a clean candidate → mechanical merge.
 
-- Reviewer lanes: native cross-session gjc (default) / `/omg:fable` / `insane-review` (GPT-5.6 Sol Pro web) — combined with an AND gate.
+- Default reviewer lanes: native cross-session GJC **and** `insane-review` (GPT-5.6 Sol Pro web) — both must approve under a fail-closed N-of-N AND gate. `/omg:fable` is an optional third lane.
 - fail-closed: missing, malformed, or timeout verdicts are never treated as approval. Secret scanning is non-negotiable on lanes where the bundle leaves the machine.
 - Turn on: activated by skill trigger. Uses GJC's default model config for cross-session review with no separate reviewer preset. Source: [`plugins/oh-my-gjc/skills/extragoal/SKILL.md`](./plugins/oh-my-gjc/skills/extragoal/SKILL.md)
 

@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "oh-my-gajaecode (English fork) — focused Gajae Code suite: 7 skills + 10 commands. Explicit presentation and ETA controls, external review, read-only Codex delegation, and confirmation-gated deep onboarding. The no-english Korean-first skill is removed.",
-    "version": "0.20.0-en"
+    "version": "0.20.0-en.1"
   },
   "plugins": [
     {
       "name": "oh-my-gjc",
       "source": "./plugins/oh-my-gjc",
       "description": "oh-my-gajaecode (English fork) — focused Gajae Code suite. Skills: adaptive-response, time-left, extragoal, insane-review, lazycodex-gjc, deep-onboarding, session-observer. Commands: /omg, /omg:setup, /omg:gate, /omg:gate-always, /omg:time-left, /omg:fable, /omg:insane-review, /omg:lazycodex-gjc, /omg:deep-onboarding, /omg:session-observer. Deep onboarding analyzes first, interviews for missing context, and writes project-map/ADR/handoff documents only to an explicitly confirmed output path. models.yml remains untouched.",
-      "version": "0.20.0-en",
+      "version": "0.20.0-en.1",
       "category": "core"
     }
   ]
