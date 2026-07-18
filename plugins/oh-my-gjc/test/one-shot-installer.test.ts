@@ -183,7 +183,7 @@ describe("one-shot installer", () => {
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("✔ Installed oh-my-gjc from oh-my-gjc (1.2.3)");
     expect(calls).toEqual([
-      "plugin marketplace add devswha/oh-my-gjc",
+      "plugin marketplace add ThewindMom/oh-my-gjc-en",
       "plugin marketplace update oh-my-gjc",
       "plugin install oh-my-gjc@oh-my-gjc --force",
       nativeCall(selectedRoot),
@@ -202,9 +202,9 @@ describe("one-shot installer", () => {
 
     expect(result.status, result.stderr).toBe(0);
     expect(calls).toEqual([
-      "plugin marketplace add devswha/oh-my-gjc",
+      "plugin marketplace add ThewindMom/oh-my-gjc-en",
       "plugin marketplace remove oh-my-gjc",
-      "plugin marketplace add devswha/oh-my-gjc",
+      "plugin marketplace add ThewindMom/oh-my-gjc-en",
       "plugin marketplace update oh-my-gjc",
       "plugin install oh-my-gjc@oh-my-gjc --force",
       nativeCall(selectedRoot),
@@ -216,7 +216,7 @@ describe("one-shot installer", () => {
 
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("refusing to use an unverified existing source");
-    expect(calls).toEqual(["plugin marketplace add devswha/oh-my-gjc"]);
+    expect(calls).toEqual(["plugin marketplace add ThewindMom/oh-my-gjc-en"]);
   });
 
   test("fails closed when the mandatory marketplace refresh fails", () => {
@@ -225,7 +225,7 @@ describe("one-shot installer", () => {
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("refusing to install from a possibly-stale catalog");
     expect(calls).toEqual([
-      "plugin marketplace add devswha/oh-my-gjc",
+      "plugin marketplace add ThewindMom/oh-my-gjc-en",
       "plugin marketplace update oh-my-gjc",
     ]);
   });
@@ -287,7 +287,7 @@ describe("one-shot installer", () => {
     expect(result.stdout).not.toContain("unknown option");
     expect(result.stderr).not.toContain("unknown option");
     expect(calls).toEqual([
-      "plugin marketplace add devswha/oh-my-gjc",
+      "plugin marketplace add ThewindMom/oh-my-gjc-en",
       "plugin marketplace update oh-my-gjc",
       "plugin install oh-my-gjc@oh-my-gjc --force",
       "plugin install oh-my-gjc@oh-my-gjc",
@@ -302,7 +302,7 @@ describe("one-shot installer", () => {
     expect(result.stderr).toContain("refusing an unforced fallback");
     expect(result.stderr).not.toContain("should-not-leak");
     expect(calls).toEqual([
-      "plugin marketplace add devswha/oh-my-gjc",
+      "plugin marketplace add ThewindMom/oh-my-gjc-en",
       "plugin marketplace update oh-my-gjc",
       "plugin install oh-my-gjc@oh-my-gjc --force",
     ]);
@@ -315,7 +315,7 @@ describe("one-shot installer", () => {
     expect(result.stderr).toContain("refusing an unforced fallback");
     expect(result.stderr).not.toContain("forceful");
     expect(calls).toEqual([
-      "plugin marketplace add devswha/oh-my-gjc",
+      "plugin marketplace add ThewindMom/oh-my-gjc-en",
       "plugin marketplace update oh-my-gjc",
       "plugin install oh-my-gjc@oh-my-gjc --force",
     ]);
@@ -328,7 +328,7 @@ describe("one-shot installer", () => {
       expect(result.status).not.toBe(0);
       expect(result.stderr).toContain("could not identify the just-installed");
       expect(calls).toEqual([
-        "plugin marketplace add devswha/oh-my-gjc",
+        "plugin marketplace add ThewindMom/oh-my-gjc-en",
         "plugin marketplace update oh-my-gjc",
         "plugin install oh-my-gjc@oh-my-gjc --force",
       ]);
@@ -346,7 +346,7 @@ describe("one-shot installer", () => {
     expect(result.stdout).not.toContain("✔ Installed oh-my-gjc from oh-my-gjc (99.0.0)");
     expect(result.stderr).not.toContain("✔ Installed oh-my-gjc from oh-my-gjc (99.0.0)");
     expect(calls).toEqual([
-      "plugin marketplace add devswha/oh-my-gjc",
+      "plugin marketplace add ThewindMom/oh-my-gjc-en",
       "plugin marketplace update oh-my-gjc",
       "plugin install oh-my-gjc@oh-my-gjc --force",
     ]);
@@ -374,7 +374,7 @@ describe("one-shot installer", () => {
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("could not identify the just-installed");
     expect(calls).toEqual([
-      "plugin marketplace add devswha/oh-my-gjc",
+      "plugin marketplace add ThewindMom/oh-my-gjc-en",
       "plugin marketplace update oh-my-gjc",
       "plugin install oh-my-gjc@oh-my-gjc --force",
     ]);
@@ -386,7 +386,7 @@ describe("one-shot installer", () => {
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("could not identify the just-installed");
     expect(calls).toEqual([
-      "plugin marketplace add devswha/oh-my-gjc",
+      "plugin marketplace add ThewindMom/oh-my-gjc-en",
       "plugin marketplace update oh-my-gjc",
       "plugin install oh-my-gjc@oh-my-gjc --force",
     ]);

@@ -3,10 +3,10 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 // Regression guard for the 2026-07 defect where the "explicit command" rewrite
-// made three skill descriptions start with a backtick (`/omg:...`). A backtick is
+// made skill descriptions start with a backtick (`/omg:...`). A backtick is
 // a YAML reserved indicator, so a plain scalar may not begin with it: gjc logged
 // "Failed to parse YAML frontmatter (... YAML Parse error: Unexpected token)" and
-// silently dropped no-english / adaptive-response / time-left. The pre-existing
+// silently dropped adaptive-response / time-left. The pre-existing
 // tests only substring-matched, so none of them caught unparseable frontmatter.
 // Bun.YAML enforces the same rule as gjc's loader (verified: identical error).
 
@@ -48,17 +48,4 @@ describe("command template frontmatter is valid YAML", () => {
     const doc = YAML.parse(fm);
     expect(doc).toBeInstanceOf(Object);
   });
-});
-
-describe("backtick-leading descriptions stay quoted", () => {
-  // These three intentionally lead with an `/omg:...` command in backticks; the
-  // value MUST be quoted so it is not parsed as a plain scalar (reserved char).
-  test.each(["no-english", "adaptive-response", "time-left"])(
-    "%s description is quoted and still leads with the command backtick",
-    (name) => {
-      const fm = frontmatter(join(pluginRoot, "skills", name, "SKILL.md"));
-      const doc = YAML.parse(fm) as Record<string, unknown>;
-      expect((doc.description as string).startsWith("`/omg:")).toBe(true);
-    },
-  );
 });

@@ -1,101 +1,74 @@
 ---
-description: 안전-크리티컬 코드를 Fable 5로 적대적 감사한다 — 불변식 깨기, 동시 실패 시나리오, fail-open 경로 탐색. 읽기 전용, 심각도+파일:라인+재현 보고. 결과의 핵심 인용은 실코드와 대조 검증 후 브리핑.
-argument-hint: "[감사 대상 힌트: 모듈/디렉토리/관심사]  (예: '주문 경로와 손절 로직')"
+description: Adversarially audits safety-critical code with Fable 5 — invariant breaking, concurrent-failure scenarios, fail-open path discovery. Read-only; reports severity + file:line + reproduction. Top findings' key citations are cross-checked against real code before briefing.
+argument-hint: "[audit target hint: module/directory/concern]  (e.g. 'order path and stop-loss logic')"
 ---
 
 # /omg:fable
 
-돈·데이터·보안이 걸린 코드의 안전 불변식을 **Fable 5 적대적 감사**로 검사한다.
-아키텍처 리뷰(경계·설계)가 아니라 **불변식 깨기**다 — "이 안전장치들이 동시에
-실패하는 시나리오가 있나?"를 묻는다. 검증된 실적: 8스테이지 3벤더 합의 계획이
-놓친 CRITICAL급 결함을 단일 패스로 발견 (2026-07, magi-stock).
+Audits the safety invariants of money/data/security-critical code with a **Fable 5 adversarial audit**.
+This is not architecture review (boundaries/design) but **invariant breaking** — asking "is there a scenario where these safety mechanisms fail **simultaneously**?" Verified track record: found a CRITICAL-grade defect missed by an 8-stage 3-vendor consensus plan in a single pass (2026-07, magi-stock).
 
-입력 인자: `$ARGUMENTS` — 감사 대상 힌트. 비어 있으면 Step 1에서 스코프를 정한다.
+Input argument: `$ARGUMENTS` — audit target hint. If empty, define scope in Step 1.
 
-## 절대 규칙
+## Absolute rules
 
-- **읽기 전용.** 감사 프로세스는 보고서 파일 1개 저장 외에 어떤 파일도 만들거나
-  수정하지 않는다. 데몬·환경·DB·외부 서비스에 손대지 않는다.
-- **억지 결함 금지 + 견고성도 보고.** 발견이 없으면 없다고 쓰게 한다. "깨려고
-  시도했으나 견고했던 것" 목록을 반드시 요구한다 — 이게 보고서 신뢰도의 지표다.
-- **스팟체크 없이 릴레이 금지.** 모델 보고서의 상위 발견 2~3개는 인용된
-  파일:라인을 실제 코드와 대조한 뒤에만 사용자에게 브리핑한다.
+- **Read-only.** The audit process creates no files and modifies nothing except saving one report file. Do not touch daemons, environment, DB, or external services.
+- **No forced defects + also report robustness.** If there are no findings, say so. Require a list of "attempted-to-break but was robust" items — this is the report's credibility indicator.
+- **No relaying without spot-check.** Cross-check the top 2–3 findings' cited file:line against real code with `read` before briefing the user.
 
-## Step 1 — 스코프 확정 (3~6개 파일)
+## Step 1 — confirm scope (3–6 files)
 
-`$ARGUMENTS`와 저장소 구조에서 **안전-크리티컬 파일 3~6개**를 특정한다:
-실행 경계(주문/결제/삭제/전송), 보호 장치(스탑/락/게이트/검증), 상태 원장.
-6개를 넘기면 감사가 얕아진다 — 나눠서 여러 번 돌리는 게 낫다.
-스코프가 불명확하면 사용자에게 후보를 제시하고 하나 고르게 한다.
+From `$ARGUMENTS` and the repository structure, identify **3–6 safety-critical files**: execution boundaries (order/payment/delete/send), guards (stop/lock/gate/validation), and state ledgers. More than 6 makes the audit shallow — split and run multiple times. If scope is unclear, present candidates to the user and have them pick one.
 
-## Step 2 — 감사 프롬프트 작성 (`/tmp/fable-prompt-<repo>.md`)
+## Step 2 — write the audit prompt (`/tmp/fable-prompt-<repo>.md`)
 
-아래 골격을 대상에 맞게 채운다 (실증된 템플릿 — 구조 유지).
+Fill the skeleton below for the target (proven template — keep the structure).
 
-**⚠ 프레이밍 규칙 (공개/웹/네트워크 대상 필수):** 감사 항목이 본질적으로 공격
-시나리오인 대상(공개 엔드포인트, 인증, rate-limit, 키/시크릿 취급, SSRF 표면)은
-반드시 **방어자·코드리뷰 관점**으로 쓴다 — "공격자가 X를 할 수 있나"가 아니라
-"이 코드가 X 실패 모드를 막나". 공격자 프레이밍은 감사자 모델의 사이버-오용
-필터에 걸려 입력 단계에서 refusal(에러)로 차단된다(실측 2026-07: patina 공개
-서비스 감사). 내부 안전장치(트레이딩 스탑 등)는 이 문제가 없지만, 방어자
-프레이밍은 어느 대상에서든 안전하므로 기본값으로 삼아라. 예:
-- ❌ "SSRF로 내부 주소에 키를 빼돌릴 수 있나" → ✅ "포워딩 목적지가 고정 allowlist인가, 사용자 입력이 목적지를 결정하나"
-- ❌ "rate-limit 우회로 무한정 태울 수 있나" → ✅ "rate-limit 식별자가 신뢰 못 할 헤더에 의존하나, 스트리밍 경로가 계상에서 누락되나"
+**⚠ Framing rule (mandatory for public/web/network targets):** targets whose audit items are inherently attack scenarios (public endpoints, auth, rate-limit, key/secret handling, SSRF surface) MUST be written from a **defender/code-review perspective** — not "can an attacker do X" but "does this code prevent failure mode X." Attacker framing trips the auditor model's cyber-misuse filter and is blocked as a refusal (error) at the input stage (measured 2026-07: patina public-service audit). Internal safety mechanisms (trading stops, etc.) do not have this issue, but defender framing is safe for any target, so use it as the default. Examples:
+- ❌ "Can SSRF exfiltrate keys to an internal address?" → ✅ "Is the forwarding destination a fixed allowlist, or does user input decide the destination?"
+- ❌ "Can rate-limit bypass cause infinite burn?" → ✅ "Does the rate-limit identifier depend on an untrusted header, or is the streaming path omitted from accounting?"
 
 ```markdown
-너는 <시스템 한 줄 설명>의 안전 불변식을 감사하는 적대적 리뷰어다.
-**읽기 전용** — 파일 수정·생성 금지(최종 보고서 저장 1회 제외), <위험 자원> 접근 금지.
+You are an adversarial reviewer auditing the safety invariants of <one-line system description>.
+**Read-only** — do not modify or create files (except saving the final report once), do not access <risk resources>.
 
-## 감사 대상 (이 저장소의 실코드)
-1. <파일> — <해당 파일의 안전 계약>
-... (3~6개)
+## Audit targets (real code in this repository)
+1. <file> — <safety contract of that file>
+... (3–6)
 
-## 질문 (각각 코드 근거로)
-- 이 안전장치들이 **동시에** 실패하는 시나리오가 있나?
-- fail-closed가 실제로 fail-closed인가 — 조용히 fail-open 되는 경로
-  (빈 캐치, 기본값 폴백, 타입 강제변환, 조용한 skip)를 찾아라.
-- <도메인 특화 질문 1~2개: 순서 의존성, 동시성 창, 경계 오염 등>
-- 예정된 변경(<있다면>)이 얹힐 때 깨질 암묵 가정.
-- 각 발견: 심각도(CRITICAL/HIGH/MEDIUM/LOW) + 파일:라인 + 재현 시나리오 + 수정 방향.
+## Questions (each with code evidence)
+- Are there scenarios where these safety mechanisms fail **simultaneously**?
+- Is fail-closed actually fail-closed — find paths that silently fail-open
+  (empty catch, default fallback, type coercion, silent skip).
+- <1–2 domain-specific questions: order dependency, concurrency window, boundary contamination, etc.>
+- Implicit assumptions that break when planned changes (<if any>) land on top.
+- Each finding: severity (CRITICAL/HIGH/MEDIUM/LOW) + file:line + reproduction scenario + fix direction.
 
-억지 결함 금지 — 없으면 없다고 써라. "깨려고 시도했으나 견고했던 것" 목록을 별도
-섹션으로 보고해라. 행복 경로 확인이 아니라 깨뜨리려고 시도해라.
+No forced defects — if none, say so. Report a list of "attempted-to-break but was robust" as a
+separate section. Try to break, not confirm happy paths.
 
-최종 보고서를 `/tmp/fable-audit-<repo>.md`에 저장하고, 응답에는 심각도별 개수와
-최상위 발견 3줄 요약만 출력해라.
+Save the final report to `/tmp/fable-audit-<repo>.md` and output only the per-severity counts and
+a 3-line summary of the top findings.
 ```
 
-## Step 3 — 실행 (백그라운드)
+## Step 3 — execute (background)
 
 ```bash
-cd <대상 repo> && GJC_NOTIFICATIONS=0 GJC_SDK_DISABLE=1 gjc -p @/tmp/fable-prompt-<repo>.md \
+cd <target repo> && GJC_NOTIFICATIONS=0 GJC_SDK_DISABLE=1 gjc -p @/tmp/fable-prompt-<repo>.md \
   --model "anthropic/claude-fable-5:xhigh" --no-session \
   > /tmp/fable-stdout-<repo>.txt 2>&1
 ```
 
-- ⚠ `:max` 금지 — Fable은 xhigh로 침묵 클램프된다.
-- ⚠ Fable refusal은 2종이다: (a) **입력 단계 사전차단** — 프롬프트가 사이버-오용
-  필터를 때리면 실행 전 에러로 시끄럽게 실패(Step 2 프레이밍 규칙으로 예방).
-  (b) **출력 단계 거부** — HTTP 200 + stop_reason으로 조용히 짧은 응답. 둘 중
-  하나라도 발생하거나 Fable 중단/크레딧 소진 시 `anthropic/claude-opus-4-8:xhigh`로
-  대체(품질 한 단계 아래, 여전히 유효).
-- 비용 참고: 구독 무료분 없으면 크레딧으로 패스당 대략 $5~20 규모(파일 수·탐색량에
-  따라 다름). 실돈 시스템의 CRITICAL 하나 값에 비하면 소액이다.
-- 완료까지 수 분~수십 분. 백그라운드로 돌리고 다른 작업을 계속한다.
+- ⚠ No `:max` — Fable is silently clamped to xhigh.
+- ⚠ Fable refusals come in two kinds: (a) **input-stage pre-block** — if the prompt trips the cyber-misuse filter, it fails loudly as an error before running (prevent with the Step 2 framing rule). (b) **output-stage refusal** — a short response silently with HTTP 200 + stop_reason. If either occurs, or Fable halts or credits run out, fall back to `anthropic/claude-opus-4-8:xhigh` (one quality tier lower, still valid).
+- Cost note: with no subscription free tier, a pass costs roughly $5–20 in credits (varies by file count and exploration). Small compared to one CRITICAL in a real-money system.
+- Takes minutes to tens of minutes. Run in the background and continue other work.
 
-## Step 4 — 스팟체크 (필수)
+## Step 4 — spot-check (mandatory)
 
-보고서의 CRITICAL/HIGH 상위 2~3개에서 인용된 파일:라인을 `read`로 직접 열어
-주장과 실코드가 일치하는지 확인한다. 불일치가 하나라도 나오면 그 발견을 제외하고
-브리핑에 "검증 실패 항목"으로 명시한다.
+Open the file:line cited in the top 2–3 CRITICAL/HIGH findings of the report directly with `read` and confirm the claim matches the real code. If any mismatch appears, exclude that finding and mark it as "verification failed" in the briefing.
 
-## Step 5 — 브리핑 (adaptive-response 스타일)
+## Step 5 — briefing (adaptive-response style)
 
-현재 세션에 `/omg:gate` 보정이 켜졌거나 사용자 수준 근거가 있으면 adaptive-response의 임시
-응답 페르소나에 맞추고, 아니면 `미확인` 중립 수준으로 둔다. ① 한 줄 결론 → ② 위험한 것
-상위 2~3개를 상세 설명(입문에는 일상어 영향, 실무/전문에는 계약·경계조건·증거) → ③ 지금 할 일
-1~2개(확인 질문 / 계획 반영 지시문을 복붙 가능한 형태로) → ④ 전문 보고서 경로.
-상위 2~3개 밖에 CRITICAL/HIGH가 더 있으면, 나머지도 파일:라인과 스팟체크·검증 상태를 붙인
-간결한 완전한 목록으로 모두 제시한다. 수준과 무관하게 CRITICAL/HIGH, 안전 경계, 검증 실패를
-생략하지 않는다. 승인·수정 실행은 대행하지 않는다 — 발견을 기존 워크플로(ralplan revision 등)에
-먹이는 걸 권한다.
+If `/omg:gate` calibration is on in the current session or there is user-level evidence, match the adaptive-response temporary persona; otherwise use an `unknown` neutral level. ① one-line conclusion → ② the top 2–3 risky items in detail (for beginners, everyday-language impact; for practitioners/experts, contracts, boundary conditions, evidence) → ③ 1–2 next actions (copy-paste-ready clarifying questions / plan-feeding directives) → ④ the full report path.
+If there are more CRITICAL/HIGH beyond the top 2–3, also present the rest as a concise complete list with file:line and spot-check/verification status. Regardless of level, do not omit CRITICAL/HIGH, safety boundaries, or verification failures. Do not execute approval or fixes — recommend feeding findings into an existing workflow (ralplan revision, etc.).

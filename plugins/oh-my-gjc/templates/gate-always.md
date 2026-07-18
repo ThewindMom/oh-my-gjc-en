@@ -1,121 +1,91 @@
 ---
-description: adaptive-response의 근거 기반 응답 보정과 승인 gate briefing을 사용자 전역 기본값으로 상시 적용/해제한다. ~/.gjc/agent/SYSTEM.md에 정적 절차 블록을 넣거나 빼며, 프로젝트 SYSTEM.md가 우선하는 세션에는 적용되지 않는다.
-argument-hint: "[on|off|status]  (기본: on)"
+description: Applies or removes adaptive-response's evidence-based response calibration and approval-gate briefing as the user-global default. Inserts or removes a static procedure block in ~/.gjc/agent/SYSTEM.md; sessions where a project SYSTEM.md takes precedence are not affected.
+argument-hint: "[on|off|status]  (default: on)"
 ---
 
 # /omg:gate-always
 
-`/omg:gate`는 **이번 세션만** 적용되지만, 이 커맨드는 gjc가 매 턴 시스템
-프롬프트에 주입하는 **사용자 전역 커스터마이징 파일** `~/.gjc/agent/SYSTEM.md`에
-정적 절차 블록을 심어, 프로젝트 `.gjc/SYSTEM.md`가 우선하지 않는 새 세션의 응답 수준 보정과
-승인 게이트 브리핑에 기본 적용한다.
-마커 블록의 존재 여부가 on/off 세마포어다.
+`/omg:gate` applies **only to this session**, but this command inserts a static procedure block into `~/.gjc/agent/SYSTEM.md` — the **user-global customization file** that gjc injects into the system prompt every turn — so that response-level calibration and approval-gate briefing apply by default in new sessions where a project `.gjc/SYSTEM.md` does not take precedence.
+The presence of the marker block is the on/off semaphore.
 
-> **왜 SYSTEM.md인가:** `SYSTEM.md`는 gjc의 전용 사용자 전역 시스템 프롬프트
-> 커스터마이징 표면이고, 프로젝트 `.gjc/SYSTEM.md`가 있으면 프로젝트 파일이 우선한다.
-> 구버전은 `AGENTS.md`를 사용했으므로 아래 마이그레이션 규칙으로 중복 블록을 정리한다.
+> **Why SYSTEM.md:** `SYSTEM.md` is gjc's dedicated user-global system-prompt customization surface, and if a project `.gjc/SYSTEM.md` exists, the project file takes precedence. Older versions used `AGENTS.md`, so the migration rules below clean up duplicate blocks.
 
-입력 인자: `$ARGUMENTS`  → 비었거나 `on`=켜기, `off`=끄기, `status`=상태만.
+Input argument: `$ARGUMENTS` → empty or `on`=turn on, `off`=turn off, `status`=status only.
 
-## 관리 대상 블록 (구분자 고정)
+## Managed block (fixed delimiters)
 
-`~/.gjc/agent/SYSTEM.md` 안에서 아래 두 마커 사이 구간만 이 커맨드가 소유한다.
-켤 때는 이 블록을 넣거나 최신 내용으로 교체하고, 끌 때는 이 블록만 제거한다.
-**마커 밖의 다른 내용은 절대 건드리지 않는다.** SYSTEM.md는 다른 사용자
-커스터마이징과 공유하는 파일이다.
+Only the section between the two markers below inside `~/.gjc/agent/SYSTEM.md` is owned by this command. On turn-on, insert or replace this block with the latest content; on turn-off, remove only this block. **Never touch any other content outside the markers.** SYSTEM.md is a file shared with other user customizations.
 
-> 레거시 마이그레이션 (`~/.gjc/agent/AGENTS.md`):
-> ① 구버전 `<!-- BEGIN my-workflows:gate-always -->` 블록,
-> ② v0.3.0 이하의 `<!-- BEGIN oh-my-gjc:gate-always -->` 블록.
-> on/off 어느 동작에서든 두 위치를 확인한다. `on`이면 SYSTEM.md에 최신 블록을
-> 쓰고 AGENTS.md의 중복 블록은 백업 후 제거하며, `off`면 양쪽 모두 제거한다.
+> Legacy migration (`~/.gjc/agent/AGENTS.md`):
+> ① old `<!-- BEGIN my-workflows:gate-always -->` block,
+> ② `<!-- BEGIN oh-my-gjc:gate-always -->` block from v0.3.0 and below.
+> Check both locations on any on/off action. On `on`, write the latest block to SYSTEM.md and back up then remove duplicate blocks in AGENTS.md; on `off`, remove both.
 
 ```
 <!-- BEGIN oh-my-gjc:gate-always -->
-## 응답 수준 보정 + 승인 게이트 브리핑 상시 적용 (gate-always)
+## Response-level calibration + approval-gate briefing always-on (gate-always)
 
-### 응답 전 임시 페르소나
+### Pre-response temporary persona
 
-모든 GJC 스킬·일반 응답에서, 현재 응답을 쓰기 전에 사용자에 대한 **현재 도메인 전용 임시 작업 카드**를 만든다.
+For every GJC skill and general response, before writing the response, build a **current-domain-only temporary working card** about the user.
 
-- 필드: 도메인 숙련도(입문/실무/전문/미확인 + 근거·신뢰도), 기술 깊이, 설명 밀도,
-  의사결정 역할, 언어·형식 선호, 사용자가 명시한 위험 성향.
-- 근거: 현재 세션의 사용자 직접 발화·정정, 현재 작업을 위해 이미 읽는 저장소의 역할 정보,
-  사용자가 페르소나 근거로 읽으라고 명시한 파일만.
-- 현재 요청의 용어·질문 범위는 약한 신호다. 이것만으로 어떤 숙련도 단계도 판정하지 않고,
-  사용자 직접 진술이나 같은 현재 도메인의 다른 근거와 일치할 때만 보조 근거로 사용한다.
-- 금지: 현재 대화 밖의 저장된 세션 원문·홈·다른 저장소·브라우저·자격증명·GJC private memory를
-  페르소나 목적으로 임의 탐색하지 않는다. 민감·정체성 특성을 추론하거나 추론한 페르소나 데이터를
-  파일에 저장하지 않는다.
-- 정보가 부족하면 `미확인`을 유지한다. 오타·짧은 문장이나 다른 도메인의 숙련도로 수준을 단정하지 않는다.
-- 입문에는 결론·용어 풀이·구체 예시, 실무에는 계약·흐름·트레이드오프·복구,
-  전문에는 불변식·경계조건·증거·잔여 위험을 우선한다. 미확인은 요약 우선 중립 수준이다.
-- 최신 사용자 명시 지시가 우선이며 새 근거·정정이 나오면 즉시 보정한다.
-- 기본적으로 카드를 출력하지 않는다. 사용자가 보정 근거를 물을 때만 근거와 함께 짧게 보여준다.
-- 조정 대상은 표현 순서·용어 밀도·예시·세부 수준뿐이다. 정확성·안전장치·경고·검증·실환경
-  경계·승인 권한은 절대 축소하지 않는다.
+- Fields: domain proficiency (beginner/practitioner/expert/unknown + evidence and confidence), technical depth, explanation density, decision-making role, language and format preferences, user-stated risk appetite.
+- Evidence: only the user's direct utterances and corrections in the current session, role information in repositories already being read for the current task, and files the user explicitly told you to read as persona evidence.
+- The terminology and question scope of the current request is a weak signal. Never determine any proficiency level from it alone; use it only as supporting evidence when it agrees with a direct user statement or other evidence from the same current domain.
+- Forbidden: do not explore stored session transcripts, home, other repositories, browser, credentials, or GJC private memory for persona purposes. Do not infer sensitive or identity traits. Do not save inferred persona data to files.
+- If information is insufficient, keep `unknown`. Do not fix a level from typos, short sentences, or proficiency in another domain.
+- For beginners, prioritize conclusions, terminology glossing, and concrete examples; for practitioners, contracts, flows, trade-offs, and recovery; for experts, invariants, boundary conditions, evidence, and residual risks. Unknown is summary-first neutral.
+- The latest user explicit instruction wins; recalibrate immediately when new evidence or corrections appear.
+- Do not output the card by default. Show it briefly with evidence only when the user asks how calibration was done.
+- What you calibrate is expression order, terminology density, examples, and detail level only. Correctness, safety mechanisms, warnings, verification, real-environment boundaries, and approval authority are all maintained.
 
-### 승인 게이트 4부 브리핑
+### Approval-gate 4-part briefing
 
-승인 게이트(ralplan pending-approval, ultragoal 승인, 계획/실행 승인 요청)를
-사용자에게 제시할 때는 **항상** 임시 페르소나에 맞춘 아래 4부 브리핑을 함께 출력한다.
+Whenever you present an approval gate (ralplan pending-approval, ultragoal approval, plan/execution approval request) to the user, **always** also output the following 4-part briefing tailored to the temporary persona.
 
-1. **수준 맞춤 번역** — 계획의 결론·이유·순서를 5문장 이내로. 입문/미확인에는 용어를 풀고,
-   실무/전문에는 확인된 기초를 반복하지 않고 계약·경계·트레이드오프를 직접 제시한다.
-2. **승인의 경계** — 지금 승인하는 것 / 승인하지 않는 것 (특히 실환경·프로덕션
-   접촉이 시작되는지, 이후 단계에 별도 승인 게이트가 더 있는지).
-3. **도메인-무지 체크리스트** (계획 원문을 실제로 읽고, 근거 위치와 함께):
-   롤백 경로 / 실환경 접촉 시점과 추가 게이트 / 관측 가능한 성공·실패 지표 /
-   수치를 지금 확정하는지 증거로 도출하는지 / 기존 안전장치 약화 여부 /
-   critic·architect 판정 원문. 원문에 없으면 지어내지 말고
-   "명시 없음 — 승인 전 확인 요망"으로 표기한다.
-4. **판정** — 승인/보류/반려 추천 + 승인 전에 물어볼 질문 후보 1~3개.
-   "명시 없음"이 2개 이상이면 추천은 자동으로 "보류"다.
+1. **Level-matched translation** — the plan's conclusion, reasoning, and sequence in 5 sentences or fewer. For beginner/unknown, gloss terms; for practitioner/expert, do not repeat confirmed basics and present contracts, boundaries, and trade-offs directly.
+2. **Approval boundaries** — what you are approving now / what you are not approving (especially whether real-environment/production contact begins, and whether later steps have additional approval gates).
+3. **Domain-agnostic checklist** (actually read the plan original text, with evidence locations):
+   rollback path / real-environment contact timing and additional gates / observable success·failure metrics /
+   whether numbers are fixed now or derived from evidence / whether existing safety mechanisms are weakened /
+   critic·architect verdict original text. If absent from the original text, do not fabricate —
+   mark "not specified — confirm before approval."
+4. **Verdict** — approve/hold/reject recommendation + 1–3 pre-approval question candidates.
+   If 2 or more "not specified" rows appear, the recommendation is automatically "hold."
 
-정확성 > 개인화 > 쉬움. 승인/반려 실행은 절대 대행하지 않는다 — 결정은 사용자의 몫이다.
-추론한 페르소나 데이터는 이 블록이나 별도 산출물에 추가·저장하지 않는다. 이 블록에는 매 응답에서
-페르소나를 다시 구성하는 정적 보정 절차만 담는다.
+Correctness > personalization > ease. Do not execute approve/reject on the user's behalf — the decision is the user's.
+Do not add or store inferred persona data in this block or any separate artifact. This block contains only the static calibration procedure that reconstructs the persona on each response.
 
-끄기: `/omg:gate-always off`
+Turn off: `/omg:gate-always off`
 <!-- END oh-my-gjc:gate-always -->
 ```
 
-## 처리 규칙
+## Processing rules
 
-### 소유권과 선행 검증
-- `~/.gjc/agent/SYSTEM.md`: 현재 `oh-my-gjc:gate-always` 블록 하나만 소유한다.
-- `~/.gjc/agent/AGENTS.md`: 레거시 `my-workflows:gate-always`와
-  `oh-my-gjc:gate-always` 블록만 마이그레이션 목적으로 소유한다.
-- 프로젝트 `.gjc/SYSTEM.md`는 **절대 수정하지 않는다**. 존재하면 사용자 전역 블록을
-  덮어쓴다는 경고만 출력한다.
-- status/on/off 모두 mutation 전에 각 소유 마커의 BEGIN/END가 각각 0개 또는 1개인지,
-  BEGIN이 END보다 앞서는지, 블록이 서로 중첩되지 않는지 검증한다. 하나라도 orphan,
-  duplicate, 역순, 교차 중첩이면 `응답 보정 + 게이트 브리핑 상시: 마커 손상 — 수정 중단`과 파일명을
-  출력하고 아무 파일도 수정하지 않는다.
+### Ownership and pre-validation
+- `~/.gjc/agent/SYSTEM.md`: owns only the one current `oh-my-gjc:gate-always` block.
+- `~/.gjc/agent/AGENTS.md`: owns only the legacy `my-workflows:gate-always` and `oh-my-gjc:gate-always` blocks for migration purposes.
+- **Never modify** a project `.gjc/SYSTEM.md`. If it exists, only warn that it overrides the user-global block.
+- For status/on/off, before mutation, validate that each owned marker's BEGIN/END appears 0 or 1 time each, that BEGIN precedes END, and that blocks are not nested. If any orphan, duplicate, reversed, or cross-nested marker is found, output `Response calibration + gate briefing always-on: marker corruption — mutation stopped` with the filename and modify no file.
 
 ### `status`
-- 검증을 통과한 SYSTEM.md에 완전한 현재 블록 하나가 있으면 `응답 보정 + 게이트 브리핑 상시: 켜짐`,
-  없으면 `응답 보정 + 게이트 브리핑 상시: 꺼짐` 한 줄을 출력한다.
-- AGENTS.md에 검증된 레거시 블록이 있으면
-  `주의: AGENTS.md에 레거시 중복 블록 있음 — on으로 마이그레이션 권장`을 덧붙인다.
+- If a complete current block is present in a validated SYSTEM.md, output `Response calibration + gate briefing always-on: on`; otherwise output `Response calibration + gate briefing always-on: off`.
+- If a validated legacy block is present in AGENTS.md, append `Note: legacy duplicate block in AGENTS.md — recommend migrating with on`.
 
-### `on` (기본)
-1. 선행 검증을 통과한 뒤 SYSTEM.md가 없으면 빈 파일로 만든다.
-2. 수정할 각 기존 파일을 고유한 mode-preserving `.bak-<timestamp>-<random>` 파일로 먼저 백업한다.
-   백업은 기존 파일 바이트만 복제하며, 이 기능이 추론한 페르소나 데이터를 추가하지 않는다.
-3. SYSTEM.md의 현재 블록을 위 최신 블록으로 교체하거나, 없으면 파일 끝에 추가한다.
-4. AGENTS.md의 검증된 레거시 블록만 제거한다.
-5. 같은 디렉터리의 고유 임시 일반 파일에 쓰고 원본 mode를 보존한 뒤 원자적으로 교체한다.
-   임시 파일·백업·교체 중 하나라도 실패하면 해당 원본을 보존하고 실패를 보고한다.
-6. 마커 밖 내용은 바이트 그대로 보존한다.
-7. `응답 보정 + 게이트 브리핑 상시: 켜짐 (~/.gjc/agent/SYSTEM.md, 새 세션부터 적용)`을 출력하고,
-   이번 세션용 `/omg:gate on`을 안내한다. 프로젝트 `.gjc/SYSTEM.md`가 있으면 경고만 한다.
+### `on` (default)
+1. After passing pre-validation, if SYSTEM.md does not exist, create it as an empty file.
+2. Back up each existing file to be modified first to a unique mode-preserving `.bak-<timestamp>-<random>` file. The backup only clones existing file bytes and does not add inferred persona data.
+3. Replace the current block in SYSTEM.md with the latest block above, or append it to the end of the file if absent.
+4. Remove only the validated legacy blocks in AGENTS.md.
+5. Write to a unique temp plain file in the same directory, preserve the original mode, then atomically replace. If any of temp file, backup, or replace fails, preserve the original and report the failure.
+6. Preserve bytes outside the markers verbatim.
+7. Output `Response calibration + gate briefing always-on: on (~/.gjc/agent/SYSTEM.md, applies from new sessions)`, and suggest `/omg:gate on` for this session. If a project `.gjc/SYSTEM.md` exists, only warn.
 
 ### `off`
-1. 선행 검증을 통과하고 어느 소유 블록도 없으면 `응답 보정 + 게이트 브리핑 상시: 이미 꺼짐`을 출력한다.
-2. 수정할 파일을 위와 같이 백업한 뒤 SYSTEM.md의 현재 블록과 AGENTS.md의 레거시 블록만 제거한다.
-3. 원자적 교체와 mode 보존, 마커 밖 바이트 보존 규칙은 `on`과 같다.
-4. `응답 보정 + 게이트 브리핑 상시: 꺼짐`을 출력한다.
+1. After passing pre-validation, if no owned block exists anywhere, output `Response calibration + gate briefing always-on: already off`.
+2. After backing up files as above, remove only the current block in SYSTEM.md and the legacy blocks in AGENTS.md.
+3. Apply the same atomic-replace, mode-preserve, and outside-marker byte-preserve rules as `on`.
+4. Output `Response calibration + gate briefing always-on: off`.
 
-### 그 외 인자
-사용법 한 줄만 안내: `/omg:gate-always [on|off|status]`.
+### Other arguments
+Show one-line usage only: `/omg:gate-always [on|off|status]`.

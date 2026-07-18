@@ -1,73 +1,73 @@
 ---
 name: deep-onboarding
-description: 문서화가 부족하거나 구조를 알기 어려운 저장소를 처음 인수할 때, 읽기 전용 증거 조사·한 번에 하나의 핵심 불확실성 인터뷰·명시 확인 뒤의 3개 Markdown 인수인계 산출물로 깊은 온보딩을 진행한다. 프로젝트 맵, ADR 제안, handoff 문서를 원하거나 저장소 토폴로지를 확인해야 할 때 사용한다.
+description: When taking over a poorly documented or hard-to-understand repository, perform deep onboarding through read-only evidence investigation, one core uncertainty interview at a time, and three Markdown handoff artifacts after explicit confirmation. Use when you want a project map, ADR proposals, or a handoff document, or need to confirm repository topology.
 ---
 
-# Deep Onboarding (깊은 온보딩)
+# Deep Onboarding
 
-문서가 빈약한 저장소를 추측으로 설명하지 않는다. 기본 응답과 산출물은 한국어로 쓰되, 코드 식별자·명령·경로·정확한 인용은 원문 그대로 보존한다.
+Do not explain a poorly documented repository with guesses. Default responses and artifacts are written in English, while code identifiers, commands, paths, and exact quotations are preserved verbatim.
 
-## 불변 경계
+## Invariant boundaries
 
-- 분석 대상 저장소를 기본 출력 위치로 삼거나 조용히 수정하지 않는다.
-- 사용자에게서 **정확히 하나의 출력 디렉터리**를 명시적으로 확인받기 전에는 파일·디렉터리·설정·Git 상태를 바꾸지 않는다.
-- 확인 뒤에도 합의한 `project-map.md`, `adr-proposals.md`, `handoff.md` 세 Markdown 파일만 작성한다. 디렉터리를 만들거나 다른 파일을 고치지 않는다.
-- `git commit`, stage, push, tag, release를 하지 않는다.
+- Do not use the analyzed repository as the default output location or silently modify it.
+- Do not change files, directories, settings, or Git state until you have explicitly received **exactly one output directory** from the user.
+- Even after confirmation, write only the three agreed Markdown files: `project-map.md`, `adr-proposals.md`, and `handoff.md`. Do not create directories or modify other files.
+- Do not `git commit`, stage, push, tag, or release.
 
-## 증거 표기
+## Evidence labeling
 
-대화와 세 산출물의 주장마다 아래 중 하나를 붙인다. 한 문장에 여러 종류가 섞이면 문장을 나눈다.
+Attach one of the following to every claim in the conversation and the three artifacts. If multiple types mix in one sentence, split the sentence.
 
-- **관찰 사실 (Observed):** `read`/`search`/`find`로 직접 확인한 내용. 도구, 경로, 줄 앵커 또는 검색 결과를 함께 적는다.
-- **사용자 진술 (User statement):** 사용자가 직접 말한 목적·제약·정정. 저장소 증거인 것처럼 바꾸지 않는다.
-- **추론 (Inference):** 관찰 사실이나 사용자 진술에서 도출한 잠정 해석. 근거와 신뢰도를 적고 확정 사실로 승격하지 않는다.
+- **Observed fact (Observed):** confirmed directly with `read`/`search`/`find`. Include the tool, path, line anchor, or search result.
+- **User statement (User statement):** purpose, constraint, or correction the user stated directly. Do not reframe it as repository evidence.
+- **Inference (Inference):** a tentative interpretation derived from observed facts or user statements. Include evidence and confidence; do not promote it to confirmed fact.
 
-## Phase 1 — 읽기 전용 증거 조사
+## Phase 1 — read-only evidence investigation
 
-이 단계의 도구는 **`read`, `search`, `find`만** 사용한다. 실행, 설치, 생성, 수정, Git 명령, 네트워크 활동을 하지 않는다. 분석 대상의 파일 내용·메타데이터·관례만 읽는다.
+The only tools in this phase are **`read`, `search`, and `find`**. Do not execute, install, generate, modify, run Git commands, or perform network activity. Read only the analyzed target's file contents, metadata, and conventions.
 
-1. 저장소 지침, 최상위 구조, 매니페스트, 진입점, 테스트, 설정, 배포·운영 흔적을 좁은 범위부터 조사한다. 파일을 짐작해서 열지 말고 `find`/`search`로 위치를 찾은 뒤 `read`한다.
-2. 채팅에 아래 두 개의 **잠정** 결과를 제시한다.
-   - **증거 기반 프로젝트 맵:** 목적, 경계, 주요 디렉터리, 진입점, 실행·빌드·테스트 흐름, 데이터·제어 흐름, 외부 의존성, 설정·비밀 경계를 각 주장별 증거와 함께 정리한다.
-   - **불확실성 목록:** 증거가 없거나 서로 충돌하는 책임자·배포 방식·운영 경로·의사결정·용어를 나열하고, 각각이 중요한 이유를 적는다.
-3. 빈 칸은 추론으로 채우지 않는다. 관찰 사실과 추론을 분리하고, 프로젝트 맵이 잠정이라는 점을 분명히 한다.
+1. Investigate repository guidance, top-level structure, manifests, entry points, tests, configuration, and deployment/operations traces, starting from a narrow scope. Do not open files by guessing — locate them with `find`/`search` first, then `read`.
+2. Present the following two **tentative** results in chat:
+   - **Evidence-based project map:** purpose, boundaries, major directories, entry points, run/build/test flow, data and control flow, external dependencies, and configuration/secret boundaries, each with per-claim evidence.
+   - **Uncertainty list:** owners, deployment methods, operational paths, decisions, or terminology with no evidence or conflicting evidence, and why each matters.
+3. Do not fill gaps with inference. Separate observed facts from inferences and make clear the project map is tentative.
 
-## Phase 2 — 토폴로지 인터뷰와 확인
+## Phase 2 — topology interview and confirmation
 
-Phase 1의 불확실성 중 결과물의 구조·안전·의사결정에 영향을 주는 **핵심 불확실성 하나만 한 번에** 질문한다. 답을 받은 뒤에는 그 답을 **사용자 진술 (User statement)** 으로 기록하고, 새 증거와 충돌하면 충돌을 숨기지 않는다.
+From Phase 1's uncertainties, ask **only one core uncertainty at a time** that affects the structure, safety, or decisions of the output. After receiving an answer, record it as a **User statement**, and if it conflicts with new evidence, do not hide the conflict.
 
-- 질문 하나에 답이 오면 프로젝트 맵을 갱신하고 다음 핵심 불확실성이 남았는지 판단한다. 사소한 선호나 이미 증거로 답한 질문은 묻지 않는다.
-- 서비스 경계, 소유권, 실행 환경, 의존 흐름, 배포 경로를 포함한 토폴로지를 텍스트로 다시 보여 준다.
-- "이 토폴로지와 미확인 항목이 맞나요?"라고 확인받는다. 사용자의 정정은 관찰 사실이 아니라 사용자 진술로 보존하며, 확정되지 않은 연결은 추론으로 남긴다.
-- 사용자가 인터뷰를 중단하거나 답을 모르면 현재의 불확실성을 보존한 채 Phase 3의 미리보기로 갈 수 있다. 답을 만들어 내지 않는다.
+- After one answer, update the project map and judge whether a next core uncertainty remains. Do not ask about trivial preferences or questions already answered by evidence.
+- Re-show the topology as text, including service boundaries, ownership, execution environment, dependency flow, and deployment paths.
+- Ask "Is this topology and the unresolved items correct?" Preserve user corrections as User statements, not observed facts; keep unconfirmed connections as inferences.
+- If the user interrupts the interview or does not know an answer, you may proceed to the Phase 3 preview with current uncertainties preserved. Do not fabricate answers.
 
-## Phase 3 — 산출물 미리보기와 쓰기 승인
+## Phase 3 — artifact preview and write approval
 
-먼저 아래 **세 파일의 미리보기**를 채팅으로 보여 준다. 이 시점까지는 읽기 전용이며 파일을 작성하지 않는다.
+First show a **preview of the three files** in chat. Until this point you are read-only and write no files.
 
-| 파일명 | 계약 |
+| File | Contract |
 |---|---|
-| `project-map.md` | 증거 표기가 있는 잠정 프로젝트 맵, 토폴로지, 주요 흐름, 경계, 불확실성 목록을 담는다. |
-| `adr-proposals.md` | 관찰된 결정 맥락, 대안, 트레이드오프, 근거, 미해결 질문을 담은 **제안**만 담는다. 이미 승인된 ADR이나 사실을 꾸며 내지 않는다. |
-| `handoff.md` | 다음 담당자가 시작할 위치, 확인된 사실, 진행 중인 판단, 위험, 미해결 질문, 재조사 방법을 담는다. |
+| `project-map.md` | Contains the tentative project map with evidence labels, topology, major flows, boundaries, and the uncertainty list. |
+| `adr-proposals.md` | Contains only **proposals** — observed decision context, alternatives, trade-offs, rationale, and open questions. Do not fabricate approved ADRs or facts. |
+| `handoff.md` | Contains where the next owner should start, confirmed facts, in-progress decisions, risks, open questions, and how to re-investigate. |
 
-그 뒤 사용자가 기존의 단일 디렉터리를 정확한 절대·정규 경로로 지정하고, 예를 들어 "`/safe/onboarding-output`에 이 세 파일을 작성하세요"처럼 **그 경로에 세 파일을 작성하는 것을 명시적으로 확인**할 때까지 멈춘다. 명령 인자나 앞선 경로 언급은 제안일 뿐 확인이 아니다.
+Then stop until the user specifies a single existing directory with an exact absolute or canonical path and **explicitly confirms writing the three files to that path** — for example, "write these three files to `/safe/onboarding-output`". A command argument or a prior path mention is a proposal, not confirmation.
 
-### 출력 경로 거부 규칙
+### Output path rejection rules
 
-다음 대상은 거부하고, 안전한 기존 디렉터리를 다시 명시해 달라고 요청한다.
+Reject the following and request a safe existing directory again:
 
-- 비어 있거나 상대 경로·`~`·해석이 여러 개인 모호한 경로
-- 루트 디렉터리 `/` 또는 홈 디렉터리 `$HOME`
-- `.git`, `.gjc`, 또는 그 내부·하위 경로
-- 존재하지 않아 새 디렉터리 생성을 요구하는 경로
+- Empty or relative paths, `~`, or ambiguous paths with multiple interpretations
+- Root directory `/` or home directory `$HOME`
+- `.git`, `.gjc`, or paths inside/under them
+- Paths that do not exist and would require creating a new directory
 
-분석 대상 저장소 내부 경로는 기본값으로 선택하거나 자동 제안하지 않는다. 사용자가 위 조건을 통과하는 정확한 경로와 세 파일 작성을 분명히 확인한 경우에만 저장소 내부 출력도 허용한다.
+Do not default to or auto-suggest a path inside the analyzed repository. Allow an in-repository output only when the user gives an exact path that passes the above conditions and explicitly confirms writing the three files.
 
-확인된 디렉터리에서 세 대상 파일의 존재를 먼저 확인한다. 하나라도 이미 있으면 일반적인 디렉터리 승인을 덮어쓰기 승인으로 해석하지 않는다. 기존 `project-map.md`, `adr-proposals.md`, `handoff.md` 각각에 대해 대상 파일명과 덮어쓰기 영향을 밝힌 **파일별 명시 승인**을 받은 파일만 덮어쓴다. 승인되지 않은 기존 파일이 있으면 아무 파일도 작성하지 않는다.
+In the confirmed directory, first check whether the three target files already exist. If any already exists, do not interpret a general directory approval as overwrite approval. Overwrite only files for which you receive **per-file explicit approval** stating the target filename and overwrite impact. If an unapproved existing file is present, write no files.
 
-쓰기 승인과 필요한 파일별 승인이 모두 있으면 세 계약을 지켜 세 파일만 작성하고, 작성한 정확한 경로와 각 파일의 짧은 내용을 보고한다. 그 외 파일, 커밋, 원격 활동은 하지 않는다.
+When write approval and any required per-file approvals are all in hand, write only the three files honoring their contracts, then report the exact paths written and a short summary of each. Do not perform any other file, commit, or remote activity.
 
-## 출처·수요 메모
+## Provenance / demand note
 
-**Provenance / demand note:** upstream #158 + Discord. 이는 수요 맥락을 보존하는 메모일 뿐이며, 이 스킬은 upstream 또는 Discord에서의 외부 활동을 지시하거나 수행하지 않는다.
+**Provenance / demand note:** upstream #158 + Discord. This is a note preserving demand context only; this skill does not direct or perform any external activity on upstream or Discord.

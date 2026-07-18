@@ -34,7 +34,7 @@ for _a in "$@"; do
     */*|*install-skill.sh)
       echo "❌ '$_a' looks like a path, not an argument — a glob likely matched the wrong plugin folder." >&2
       echo "   Repair or upgrade through the hardened suite installer instead:" >&2
-      echo "   curl -fsSL https://raw.githubusercontent.com/devswha/oh-my-gjc/main/install.sh | bash" >&2
+      echo "   curl -fsSL https://raw.githubusercontent.com/ThewindMom/oh-my-gjc-en/main/install.sh | bash" >&2
       exit 2 ;;
   esac
 done
@@ -42,21 +42,23 @@ done
 PLUGIN_ROOT="$(cd -P "$(dirname "$0")/.." && pwd -P)"
 
 # ── EXPECTED manifest (the single source of truth for a complete install) ────────────
-EXPECTED_SKILLS=(adaptive-response no-english time-left extragoal insane-review lazycodex-gjc deep-onboarding session-observer)
-EXPECTED_COMMANDS=(omg setup gate gate-always no-english time-left fable insane-review lazycodex-gjc deep-onboarding session-observer)
+EXPECTED_SKILLS=(adaptive-response time-left extragoal insane-review lazycodex-gjc deep-onboarding session-observer)
+EXPECTED_COMMANDS=(omg setup gate gate-always time-left fable insane-review lazycodex-gjc deep-onboarding session-observer)
 EXPECTED_RUNTIMES=(bin/lazycodex-gjc.mjs bin/session-observer.ts tools/sdk-lab/package.json tools/sdk-lab/bun.lock tools/sdk-lab/src/inspect.ts tools/sdk-lab/src/eta.ts)
-# Capabilities REMOVED (관제탑 발주, 하코 승인). 0.11.0: codex-deepwork(실사용 0회, lazycodex와 중복) +
-# codex-app 짝(대상 앱 빌드 트랙 07-03 아카이브; Pro 리뷰는 insane-review 전담). 0.12.0: codex-cli-ask·
-# lazycodex·tower(명시 호출 0 — Codex 트래픽은 전량 제품 파이프라인 codex exec 직결로 스킬 미경유,
-# lazycodex 하니스 발원 세션 0건, 실관제탑은 자체 스크립트 구현이라 tower 스킬 미사용).
+# Capabilities removed by upstream control-tower order and human approval. 0.11.0:
+# codex-deepwork (zero real use; overlaps lazycodex) and the codex-app pair (target app
+# build track archived on 07-03; insane-review owns Pro review). 0.12.0: codex-cli-ask,
+# lazycodex, and tower (zero explicit calls; product-pipeline codex exec handles all Codex
+# traffic, no sessions originated from the lazycodex harness, and the real control tower
+# uses its own scripts rather than the tower skill).
 # 0.12.0: obsolete control/worker surfaces; 0.14.0: gajae-app ownership transfer.
 # Post-v0.17.1 prune: multivendor-presets, release-gate, easy-answer, plain-layer,
 # branch-flow/worktree, and public gjc-bugwatch. lazycodex-gjc remains supported.
 # gate-briefing was renamed to adaptive-response, korean-first to no-english, and workflow-eta to time-left;
 # upgrades remove retired native directories.
 # Upgrades sweep only their native skill/command files plus explicitly owned retired state.
-REMOVED_SKILLS=(gate-briefing korean-first workflow-eta codex-deepwork codex-app-launch codex-app-cdp codex-cli-ask lazycodex tower worktree gajae-app multivendor-presets release-gate easy-answer plain-layer branch-flow gjc-bugwatch)
-REMOVED_COMMANDS=(codex-run codex-app-launch codex-app-ask codex-ask lazycodex-setup lazycodex-work tower-setup gajae-app presets release easy easy-always plain branchflow-always worktree bugwatch-scan)
+REMOVED_SKILLS=(gate-briefing korean-first no-english workflow-eta codex-deepwork codex-app-launch codex-app-cdp codex-cli-ask lazycodex tower worktree gajae-app multivendor-presets release-gate easy-answer plain-layer branch-flow gjc-bugwatch)
+REMOVED_COMMANDS=(codex-run codex-app-launch codex-app-ask codex-ask lazycodex-setup lazycodex-work tower-setup gajae-app presets release easy easy-always plain branchflow-always worktree bugwatch-scan no-english)
 # Pre-0.8.1 native files that upgrades must sweep away: the 17 one-release deprecation
 # tombstones shipped by 0.8.0 (removed in 0.8.1). Old `oh-my-gjc:<name>.md` aliases are
 # covered separately by looping EXPECTED_COMMANDS in cleanup_legacy_commands.
@@ -768,7 +770,7 @@ case "$mode" in
       report_missing
     fi
     if [ "$mode" = "user" ]; then
-      echo "  → adaptive-response, no-english, and time-left require their explicit /omg:* commands; other skills keep their documented triggers."
+      echo "  → adaptive-response and time-left require their explicit /omg:* commands; other skills keep their documented triggers."
       echo "  → open a NEW gjc session (or run /move .) to load newly installed commands. Re-run after upgrades."
     else
       echo "  → installed for this repo. A new gjc session in this dir will pick them up."

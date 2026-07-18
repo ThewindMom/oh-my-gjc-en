@@ -118,7 +118,7 @@ describe("lazycodex-gjc skill and command contract", () => {
       expect(text).toContain("/usr/bin/sha256sum");
       expect(text).not.toContain("./.gjc/plugins/cache/plugins/");
       expect(text).not.toContain("plugins/oh-my-gjc/bin/lazycodex-gjc.mjs");
-      expect(text).toMatch(/danger-full-access.*금지|금지.*danger-full-access/);
+      expect(text).toMatch(/danger-full-access.*forbidden|forbidden.*danger-full-access/);
     }
     expect(executable).toContain(`printf '%s' "$LAZYCODEX_GJC_TASK" > "$TASK_FILE"`);
     expect(executable).toContain('"${BINDING_LINES[5]}" "$RUNNER" "${RUNNER_ARGS[@]}" --binding "$BINDING" < "$TASK_FILE"');
@@ -207,8 +207,8 @@ describe("lazycodex-gjc isolated native install", () => {
     expect(result.status, result.stderr).toBe(0);
     const expectedSkills = parseManifest("EXPECTED_SKILLS");
     const expectedCommands = ownedCommands();
-    expect(expectedSkills).toHaveLength(8);
-    expect(expectedCommands).toHaveLength(11);
+    expect(expectedSkills).toHaveLength(7);
+    expect(expectedCommands).toHaveLength(10);
     expect(expectedSkills).toContain("lazycodex-gjc");
     expect(expectedSkills).toContain("deep-onboarding");
     expect(expectedSkills).toContain("session-observer");

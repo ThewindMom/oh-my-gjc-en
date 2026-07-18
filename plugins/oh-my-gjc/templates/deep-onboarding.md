@@ -1,17 +1,17 @@
 ---
-description: 문서가 부족한 저장소를 읽기 전용 증거 조사와 한 번에 하나의 핵심 질문으로 파악한 뒤, 명시 승인된 별도 디렉터리에 프로젝트 맵·ADR 제안·handoff만 작성한다.
+description: Investigates a poorly documented repository read-only and through one core question at a time, then writes only a project map, ADR proposals, and a handoff to an explicitly approved separate directory.
 argument-hint: "[output-path]"
 ---
 
 # /omg:deep-onboarding
 
-이 명령이 **명시적으로 호출됐을 때만** 설치된 `deep-onboarding` 스킬을 불러와 적용한다.
+Only when this command is **explicitly invoked**, load and apply the installed `deep-onboarding` skill.
 
-입력 인자: `$ARGUMENTS`
+Input argument: `$ARGUMENTS`
 
-- 인자가 비어 있으면 출력 위치를 정하지 않은 채 스킬의 Phase 1 읽기 전용 조사부터 시작한다.
-- `[output-path]`가 있으면 그것을 스킬에 전달하는 **출력 경로 제안**으로만 취급한다. 확인된 디렉터리, 쓰기 승인, 덮어쓰기 승인이 아니며 Phase 1~2 또는 Phase 3 미리보기를 건너뛰지 않는다.
-- 스킬의 출력 경로 거부 규칙과 명시적 단일 디렉터리 확인을 그대로 적용한다. 사용자가 확인하기 전에는 분석 대상 저장소나 제안 경로에 파일을 작성하지 않는다.
-- 확인 뒤에도 `project-map.md`, `adr-proposals.md`, `handoff.md` 세 Markdown 파일 외에는 작성하지 않고 커밋하지 않는다.
+- If the argument is empty, start from the skill's Phase 1 read-only investigation without fixing an output location.
+- If `[output-path]` is present, treat it only as an **output path proposal** passed to the skill. It is not a confirmed directory, write approval, or overwrite approval; it does not skip Phase 1–2 or the Phase 3 preview.
+- Apply the skill's output-path rejection rules and explicit single-directory confirmation as-is. Do not write files to the analyzed repository or the proposed path before the user confirms.
+- Even after confirmation, write only the three Markdown files `project-map.md`, `adr-proposals.md`, and `handoff.md`; do not commit.
 
-자연어 요청이나 단순 경로 언급으로 이 명령의 동작을 대신 시작하지 않는다. 이 명령은 `/omg:deep-onboarding [output-path]`라는 명시 호출만의 진입점이며, 선택 인자는 확인이 아니라 제안이다.
+Natural-language requests or a mere path mention do not start this command's behavior. This command is the entry point of explicit invocation via `/omg:deep-onboarding [output-path]` only, and the optional argument is a proposal, not confirmation.

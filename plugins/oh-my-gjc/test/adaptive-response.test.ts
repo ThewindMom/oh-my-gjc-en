@@ -21,28 +21,28 @@ describe("adaptive response contract", () => {
     const skill = read(join(pluginRoot, "skills/adaptive-response/SKILL.md"));
 
     for (const contract of [
-      "현재 도메인 숙련도",
-      "기술 깊이",
-      "설명 밀도",
-      "의사결정 역할",
-      "언어·형식 선호",
-      "위험 성향",
-      "입문 / 실무 / 전문 / 미확인",
-      "최신 명시 지시가 우선",
+      "Current domain proficiency",
+      "Technical depth",
+      "Explanation density",
+      "Decision-making role",
+      "Language and format preferences",
+      "Risk appetite",
+      "beginner / practitioner / expert / unknown",
+      "the latest explicit instruction wins",
     ]) {
       expect(skill).toContain(contract);
     }
-    expect(skill).toContain("한 도메인의 숙련도를 다른 도메인에 복사");
-    expect(skill).toContain("단독으로 어떤 숙련도 단계도 판정하지");
-    expect(skill).toContain("사용자 직접 진술이나 같은 현재 도메인의 다른 근거");
-    expect(skill).toContain("정확성 > 개인화 > 쉬움");
+    expect(skill).toContain("Copying proficiency from one domain to another");
+    expect(skill).toContain("never determine any proficiency level from it alone");
+    expect(skill).toContain("a direct user statement or other evidence from the same current domain");
+    expect(skill).toContain("Correctness > personalization > ease");
   });
 
   test("activates only through explicit gate commands", () => {
     const skill = read(join(pluginRoot, "skills/adaptive-response/SKILL.md"));
-    expect(skill).toContain("`/omg:gate` 또는 `/omg:gate-always`가 명시적으로 요청했을 때만");
-    expect(skill).toContain("`/omg:gate on` 또는 활성 상태의 `/omg:gate-always on`");
-    expect(skill).not.toContain("스킬이 자동 활성화되거나");
+    expect(skill).toContain("Only when the user explicitly turns it on with `/omg:gate` or `/omg:gate-always`");
+    expect(skill).toContain("`/omg:gate on` or an active `/omg:gate-always on`");
+    expect(skill).not.toContain("auto-activates from ordinary conversation");
   });
 
   test("limits evidence across every activation surface", () => {
@@ -51,38 +51,38 @@ describe("adaptive response contract", () => {
     const always = read(join(pluginRoot, "templates/gate-always.md"));
     const marker = ownedMarkerBody(always);
 
-    expect(skill).toContain("사용자가 페르소나 근거로 읽으라고 **명시한** 파일");
-    expect(gate).toContain("사용자가 페르소나 근거로");
-    expect(marker).toContain("사용자가 페르소나 근거로 읽으라고 명시한 파일");
+    expect(skill).toContain("Files the user **explicitly** told you to read for persona evidence");
+    expect(gate).toContain("files the user explicitly told you to read as persona evidence");
+    expect(marker).toContain("files the user explicitly told you to read as persona evidence");
 
     for (const content of [skill, gate, marker]) {
-      expect(content).toMatch(/(?:단독으로|이것만으로) 어떤 숙련도 단계도 판정하지/);
-      expect(content).toContain("사용자 직접 진술이나 같은 현재 도메인의 다른 근거");
-      expect(content).toMatch(/저장된 세션 원문/);
-      expect(content).toMatch(/홈·다른 저장소·브라우저/);
-      expect(content).toContain("자격증명");
+      expect(content).toMatch(/never determine any proficiency level from it alone/i);
+      expect(content).toContain("a direct user statement or other evidence from the same current domain");
+      expect(content).toMatch(/stored session transcripts/);
+      expect(content).toMatch(/home, other repositories, browser/);
+      expect(content).toContain("credentials");
       expect(content).toMatch(/private memory/i);
-      expect(content).toMatch(/민감/);
-      expect(content).toMatch(/페르소나 데이터.*저장하지 않는다/s);
+      expect(content).toMatch(/sensitive/i);
+      expect(content).toMatch(/do not save inferred persona data/is);
     }
 
-    expect(marker).toContain("이 블록이나 별도 산출물에 추가·저장하지 않는다");
-    expect(marker).toContain("정적 보정 절차만");
-    expect(marker).not.toMatch(/사용자\s*(이름|나이|성별|국적)\s*:/);
+    expect(marker).toContain("Do not add or store inferred persona data in this block or any separate artifact");
+    expect(marker).toContain("only the static calibration procedure");
+    expect(marker).not.toMatch(/user\s*(name|age|gender|nationality)\s*:/i);
   });
 
   test("keeps session and user-global scopes technically bounded", () => {
     const gate = read(join(pluginRoot, "templates/gate.md"));
     const always = read(join(pluginRoot, "templates/gate-always.md"));
 
-    expect(gate).toContain("이번 세션의 **모든 GJC 스킬·일반 응답**");
-    expect(gate).toContain("응답 보정 + 게이트 브리핑 모드: 켜짐");
-    expect(always).toContain("프로젝트 `.gjc/SYSTEM.md`가 우선하지 않는 새 세션");
-    expect(always).toContain("모든 GJC 스킬·일반 응답");
+    expect(gate).toContain("**all GJC skills and general responses** in this session");
+    expect(gate).toContain("Response calibration + gate briefing mode: on");
+    expect(always).toContain("new sessions where a project `.gjc/SYSTEM.md` does not take precedence");
+    expect(always).toContain("every GJC skill and general response");
     expect(always.match(/^<!-- BEGIN oh-my-gjc:gate-always -->$/gm)).toHaveLength(1);
     expect(always.match(/^<!-- END oh-my-gjc:gate-always -->$/gm)).toHaveLength(1);
-    expect(always).toContain("마커 밖의 다른 내용은 절대 건드리지 않는다");
-    expect(always).toContain("백업은 기존 파일 바이트만 복제");
+    expect(always).toContain("Never touch any other content outside the markers");
+    expect(always).toContain("The backup only clones existing file bytes");
   });
 
   test("preserves every gate section and approval invariant", () => {
@@ -91,40 +91,40 @@ describe("adaptive response contract", () => {
     const marker = ownedMarkerBody(read(join(pluginRoot, "templates/gate-always.md")));
 
     for (const heading of [
-      "### ① 수준 맞춤 번역",
-      "### ② 승인의 경계",
-      "### ③ 도메인-무지 체크리스트",
-      "### ④ 판정",
+      "### ① Level-matched translation",
+      "### ② Approval boundaries",
+      "### ③ Domain-agnostic checklist",
+      "### ④ Verdict",
     ]) {
       expect(skill).toContain(heading);
     }
-    for (const section of ["수준 맞춤 번역", "승인의 경계", "도메인-무지 체크리스트", "판정"]) {
+    for (const section of ["Level-matched translation", "Approval boundaries", "Domain-agnostic checklist", "Verdict"]) {
       expect(gate).toMatch(new RegExp(`[1-4]\\. (?:\\*\\*)?${section}`));
       expect(marker).toMatch(new RegExp(`[1-4]\\. (?:\\*\\*)?${section}`));
     }
     for (const content of [skill, gate, marker]) {
-      expect(content).toContain("명시 없음");
-      expect(content).toMatch(/승인\/반려 실행.*대행하지 않(?:는다|고)/s);
-      expect(content).toMatch(/(?:보정|조정) 대상은|표현만 조정/);
-      for (const invariant of ["정확성", "안전장치", "경고", "검증", "실환경", "승인 권한"]) {
+      expect(content).toContain("not specified");
+      expect(content).toMatch(/Do not execute approve\/reject/s);
+      expect(content).toMatch(/What you calibrate is|Calibrate expression only/);
+      for (const invariant of ["Correctness", "safety mechanisms", "warnings", "verification", "real-environment", "approval authority"]) {
         expect(content).toContain(invariant);
       }
-      expect(content).toMatch(/전부 유지|절대 축소하지 않는다/);
+      expect(content).toMatch(/are all maintained|Never reduce/);
     }
   });
 
   test("propagates calibration without hiding Fable findings", () => {
     const fable = read(join(pluginRoot, "templates/fable.md"));
 
-    expect(fable).toContain("adaptive-response의 임시");
-    expect(fable).toContain("입문에는 일상어 영향, 실무/전문에는 계약·경계조건·증거");
-    expect(fable).toContain("간결한 완전한 목록으로 모두 제시");
-    expect(fable).toContain("CRITICAL/HIGH, 안전 경계, 검증 실패");
-    expect(fable).toContain("승인·수정 실행은 대행하지 않는다");
-    expect(fable).not.toContain("사용자가 도메인을 모른다고 가정");
+    expect(fable).toContain("adaptive-response temporary");
+    expect(fable).toContain("for beginners, everyday-language impact; for practitioners/experts, contracts, boundary conditions, evidence");
+    expect(fable).toContain("a concise complete list");
+    expect(fable).toContain("CRITICAL/HIGH, safety boundaries, or verification failures");
+    expect(fable).toContain("Do not execute approval or fixes");
+    expect(fable).not.toContain("assume the user does not know the domain");
   });
 
-  test("keeps the exact public surface at eight skills and eleven commands", () => {
+  test("keeps the exact public surface at seven skills and ten commands", () => {
     const skillRoot = join(pluginRoot, "skills");
     const skillNames = readdirSync(skillRoot, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && existsSync(join(skillRoot, entry.name, "SKILL.md")))
@@ -135,7 +135,7 @@ describe("adaptive response contract", () => {
       .map((name) => name.slice(0, -3))
       .sort();
 
-    expect(skillNames).toEqual(["adaptive-response", "deep-onboarding", "extragoal", "insane-review", "lazycodex-gjc", "no-english", "session-observer", "time-left"]);
+    expect(skillNames).toEqual(["adaptive-response", "deep-onboarding", "extragoal", "insane-review", "lazycodex-gjc", "session-observer", "time-left"]);
     expect(commandNames).toEqual([
       "deep-onboarding",
       "fable",
@@ -143,7 +143,6 @@ describe("adaptive response contract", () => {
       "gate-always",
       "insane-review",
       "lazycodex-gjc",
-      "no-english",
       "omg",
       "session-observer",
       "setup",

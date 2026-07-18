@@ -1,43 +1,35 @@
 ---
-description: 현재 세션에 adaptive-response의 근거 기반 응답 보정과 승인 gate briefing을 켜거나 끈다. 인자 없거나 'on'이면 켜고, 'off'면 끈다.
+description: Turns adaptive-response's evidence-based response calibration and approval-gate briefing on or off for the current session. Empty or 'on' turns it on; 'off' turns it off.
 argument-hint: "[on|off]"
 ---
 
-사용자가 현재 세션의 adaptive-response 보정 + 승인 gate briefing을 토글했다.
+The user toggled adaptive-response calibration + approval-gate briefing for the current session.
 
-입력 인자: $ARGUMENTS
+Input argument: $ARGUMENTS
 
-처리 규칙:
+Processing rules:
 
-- 인자가 비어 있거나 `on`이면 → **켜기**:
-  지금부터 사용자가 `/omg:gate off`를 실행하기 전까지, 이번 세션의 **모든 GJC 스킬·일반 응답**에
-  다음 임시 응답 페르소나 절차를 적용한다.
-  - 현재 세션의 사용자 직접 발화·정정, 작업상 이미 읽는 역할 정보, 사용자가 페르소나 근거로
-    읽으라고 명시한 파일만 근거로 사용한다.
-  - 현재 요청의 용어·질문 범위는 약한 신호다. 이것만으로 어떤 숙련도 단계도 판정하지 않고,
-    사용자 직접 진술이나 같은 현재 도메인의 다른 근거와 일치할 때만 보조 근거로 사용한다.
-  - 현재 도메인 숙련도 / 기술 깊이 / 설명 밀도 / 의사결정 역할 / 언어·형식 / 명시된 위험 성향을
-    응답 전 임시 카드로 구성한다. 불명확하면 `미확인`, 최신 사용자 지시가 우선이다.
-  - 현재 대화 밖의 저장된 세션 원문·홈·다른 저장소·브라우저·자격증명·private memory를
-    페르소나 목적으로 탐색하지 않고, 민감 특성을 추론하거나 추론한 페르소나 데이터를 파일에
-    저장하지 않는다.
-  - 입문에는 결론·용어 풀이·구체 예시, 실무에는 계약·흐름·트레이드오프, 전문에는
-    불변식·경계조건·증거를 우선한다. 미확인은 요약 우선 중립 수준이다.
-  - 표현만 조정한다. 정확성·안전장치·경고·검증·실환경 경계·승인 권한은 절대 축소하지 않는다.
+- If the argument is empty or `on` → **turn on**:
+  From now until the user runs `/omg:gate off`, apply the following temporary response persona procedure to **all GJC skills and general responses** in this session.
+  - Use only the user's direct utterances and corrections in the current session, role information already being read for the task, and files the user explicitly told you to read as persona evidence.
+  - The terminology and question scope of the current request is a weak signal. Never determine any proficiency level from it alone; use it only as supporting evidence when it agrees with a direct user statement or other evidence from the same current domain.
+  - Build a temporary card before each response: current domain proficiency / technical depth / explanation density / decision-making role / language and format / stated risk appetite. If unclear, use `unknown`; the latest user instruction wins.
+  - Do not explore stored session transcripts, home, other repositories, browser, credentials, or private memory for persona purposes; do not infer sensitive traits. Do not save inferred persona data to files.
+  - For beginners, prioritize conclusions, terminology glossing, and concrete examples; for practitioners, contracts, flows, and trade-offs; for experts, invariants, boundary conditions, and evidence. Unknown is summary-first neutral.
+  - Calibrate expression only. Correctness, safety mechanisms, warnings, verification, real-environment boundaries, and approval authority are all maintained.
 
-  또한 **승인 게이트(pending-approval, 계획/실행 승인 요청)**를 제시하는 모든 순간에
-  adaptive-response 스킬의 4부 게이트 브리핑을 함께 출력한다:
-  1. 수준 맞춤 번역 (결론·이유·순서, 5문장 이내)
-  2. 승인의 경계 (지금 승인하는 것 / 승인하지 않는 것)
-  3. 도메인-무지 체크리스트 (계획 원문 근거 필수, 없으면 "명시 없음 — 승인 전 확인 요망")
-  4. 판정 (승인/보류/반려 추천 + 승인 전 질문 후보)
-  - 계획 원문(pending-approval.md 등)과 critic/architect 판정을 실제로 읽고 작성한다.
-  - "명시 없음" 행이 2개 이상이면 추천은 자동으로 "보류"다.
-  - 승인/반려 실행은 절대 대행하지 않는다.
-  - 출력은 `응답 보정 + 게이트 브리핑 모드: 켜짐` 한 줄만 확인으로 내보내고 끝낸다.
+  Additionally, whenever you present an **approval gate** (pending-approval, plan/execution approval request), also output the adaptive-response skill's 4-part gate briefing:
+  1. Level-matched translation (conclusion, reasoning, sequence, within 5 sentences)
+  2. Approval boundaries (what you are approving / what you are not approving)
+  3. Domain-agnostic checklist (plan original-text evidence required; if absent, "not specified — confirm before approval")
+  4. Verdict (approve/hold/reject recommendation + pre-approval question candidates)
+  - Actually read the plan original text (pending-approval.md, etc.) and the critic/architect verdicts before writing.
+  - If 2 or more "not specified" rows appear, the recommendation is automatically "hold."
+  - Do not execute approve/reject on the user's behalf.
+  - Output only the one-line confirmation `Response calibration + gate briefing mode: on` and finish.
 
-- 인자가 `off`이면 → **끄기**:
-  임시 응답 페르소나 보정과 강제 게이트 브리핑을 함께 해제한다.
-  출력은 `응답 보정 + 게이트 브리핑 모드: 꺼짐` 한 줄만 확인으로 내보내고 끝낸다.
+- If the argument is `off` → **turn off**:
+  Disable the temporary response persona calibration and the forced gate briefing together.
+  Output only the one-line confirmation `Response calibration + gate briefing mode: off` and finish.
 
-- 그 외 인자면 → 사용법 한 줄만 안내한다: `/omg:gate [on|off]`.
+- For any other argument → only show a one-line usage hint: `/omg:gate [on|off]`.

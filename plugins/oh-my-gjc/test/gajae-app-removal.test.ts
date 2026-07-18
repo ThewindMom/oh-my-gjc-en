@@ -35,6 +35,7 @@ function intersection(left: string[], right: string[]): string[] {
 const retiredSkills = [
   "gate-briefing",
   "korean-first",
+  "no-english",
   "workflow-eta",
   "gajae-app",
   "multivendor-presets",
@@ -56,6 +57,7 @@ const retiredCommands = [
   "branchflow-always",
   "worktree",
   "bugwatch-scan",
+  "no-english",
 ];
 
 describe("removed capability manifests", () => {
@@ -64,14 +66,13 @@ describe("removed capability manifests", () => {
     const expectedCommands = parseManifest("EXPECTED_COMMANDS");
     const removedSkills = parseManifest("REMOVED_SKILLS");
     const removedCommands = parseManifest("REMOVED_COMMANDS");
-    expect(expectedSkills).toHaveLength(8);
-    expect(expectedCommands).toHaveLength(11);
+    expect(expectedSkills).toHaveLength(7);
+    expect(expectedCommands).toHaveLength(10);
     expect(expectedSkills).not.toContain("gajae-app");
     expect(expectedCommands).not.toContain("gajae-app");
 
     expect(expectedSkills).toEqual([
       "adaptive-response",
-      "no-english",
       "time-left",
       "extragoal",
       "insane-review",
@@ -84,7 +85,6 @@ describe("removed capability manifests", () => {
       "setup",
       "gate",
       "gate-always",
-      "no-english",
       "time-left",
       "fable",
       "insane-review",

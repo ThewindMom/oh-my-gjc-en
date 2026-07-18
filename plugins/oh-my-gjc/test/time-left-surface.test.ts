@@ -38,32 +38,32 @@ describe("time-left public skill", () => {
       expect(content).toContain(`\`${query}\``);
     }
     expect(content).not.toContain("context.get");
-    expect(content).toContain("아래 두 workflow를 항상");
+    expect(content).toContain("**read** both workflows below");
     expect(content).toContain("gjc state ralplan read --json");
     expect(content).toContain("gjc state ultragoal read --json");
-    expect(content).toContain("사용 가능한 스킬 목록이지 활성 workflow 증거가 아니다");
-    expect(content).toContain("사용자 응답 후 재산정");
-    expect(content).toContain("예상 약 N~M분");
-    expect(content).toContain("둘 다 확률 분위수는 아니다");
+    expect(content).toContain("an available-skill catalog, not active-workflow evidence");
+    expect(content).toContain("re-estimate after user response");
+    expect(content).toContain("estimated ~N–M minutes");
+    expect(content).toContain("Neither is a probabilistic quantile");
     expect(content).toContain('--session-id "$SESSION_ID"');
     expect(content).toContain("flock -s -w 5 9");
-    expect(content).toContain("user-scope 전용");
+    expect(content).toContain("**user-scope**");
     expect(content).not.toContain("PROJECT_RUNTIME");
     for (const forbidden of ["user_message", "reply", "control", "config", "broker"]) {
-      expect(content).toMatch(new RegExp(`\\b${forbidden}\\b.*보내지 않는다|보내지 않는다.*\\b${forbidden}\\b`, "s"));
+      expect(content).toMatch(new RegExp(`do not send.*\\b${forbidden}\\b`, "is"));
     }
-    expect(content).toContain("transcript, private memory, 다른 세션");
-    expect(content).toContain("완료 **시각**을 단정하지 않는다");
+    expect(content).toContain("transcript, private memory, other sessions");
+    expect(content).toContain("Do not assert a completion **time**");
   });
 
   test("requires the explicit slash command", () => {
     const skillContent = read(skill);
     const commandContent = read(command);
-    expect(skillContent).toContain("`/omg:time-left` 명령이 명시적으로 요청했을 때만");
-    expect(skillContent).toContain("다른 입력에서는 자동 활성화하지 않는다");
+    expect(skillContent).toContain("Only when the `/omg:time-left` command is explicitly requested");
+    expect(skillContent).toContain("Does not auto-activate from other inputs");
     expect(commandContent).toContain("# /omg:time-left");
-    expect(commandContent).toContain("이 명령이 명시적으로 호출된 경우에만");
-    expect(read(installer)).toContain("EXPECTED_COMMANDS=(omg setup gate gate-always no-english time-left fable insane-review lazycodex-gjc deep-onboarding session-observer)");
+    expect(commandContent).toContain("Only when this command is explicitly invoked");
+    expect(read(installer)).toContain("EXPECTED_COMMANDS=(omg setup gate gate-always time-left fable insane-review lazycodex-gjc deep-onboarding session-observer)");
     const description = skillContent.split("---", 3)[1];
     expect(description).not.toContain("언제 끝나?");
     expect(description).not.toContain("얼마나 남았어?");
@@ -75,7 +75,7 @@ describe("time-left public skill", () => {
     const packageJson = JSON.parse(read(join(sdkRoot, "package.json"))) as { dependencies: Record<string, string> };
     const installScript = read(installer);
     expect(packageJson.dependencies["@gajae-code/bridge-client"]).toBe("0.11.0");
-    expect(installScript).toContain("EXPECTED_SKILLS=(adaptive-response no-english time-left extragoal insane-review lazycodex-gjc deep-onboarding session-observer)");
+    expect(installScript).toContain("EXPECTED_SKILLS=(adaptive-response time-left extragoal insane-review lazycodex-gjc deep-onboarding session-observer)");
     expect(installScript).toContain("REMOVED_SKILLS=(gate-briefing ");
     expect(installScript).toContain("bun install --frozen-lockfile --production --ignore-scripts");
     expect(installScript).toContain("OMG_TIME_LEFT_RUNTIME");

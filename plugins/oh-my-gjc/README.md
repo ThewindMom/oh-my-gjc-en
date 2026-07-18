@@ -1,107 +1,122 @@
 # oh-my-gajaecode (plugin)
 
-**Gajae Code(gjc)의 oh-my 단일 플러그인.** 한 번 설치로 스킬 8개 + 커맨드 11개
-(`/omg` + `/omg:*` 10개)가 전부 들어온다. `/omg:time-left`는 Linux+Bun 1.3.14+와
-현재 top-level GJC SDK endpoint, `insane-review`는 ChatGPT+크로미움,
-`lazycodex-gjc`는 이미 설치·로그인된 Codex CLI+LazyCodex/OMO, `session-observer` slash launcher는 Linux+Bun+tmux가 필요하다.
+**The single oh-my plugin for Gajae Code (gjc).** One install brings 7 skills + 10 commands
+(`/omg` + 9 `/omg:*`). `/omg:time-left` requires Linux+Bun 1.3.14+ and a current top-level GJC SDK endpoint;
+`insane-review` requires ChatGPT+Chromium; `lazycodex-gjc` requires an already-installed and logged-in
+Codex CLI+LazyCodex/OMO; the `session-observer` slash launcher requires Linux+Bun+tmux.
+
+This is the English-language fork of [devswha/oh-my-gjc](https://github.com/devswha/oh-my-gjc).
+The `no-english` Korean-first skill and `/omg:no-english` command are removed; everything else matches
+upstream `0.20.0`.
 
 ## Quick Start
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/devswha/oh-my-gjc/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/ThewindMom/oh-my-gjc-en/main/install.sh | bash
 
-# curl|bash가 금지된 환경:
-git clone --depth 1 https://github.com/devswha/oh-my-gjc.git
-bash oh-my-gjc/install.sh
+# if curl|bash is disallowed:
+git clone --depth 1 https://github.com/ThewindMom/oh-my-gjc-en.git
+bash oh-my-gjc-en/install.sh
 
-# 새 gjc 세션을 연 뒤 (또는 /move .):
+# after opening a new gjc session (or /move .):
 /omg
 ```
 
-## 들어있는 것 (스킬 8 · 커맨드 11)
+## What's included (7 skills · 10 commands)
 
-### 스킬
-`adaptive-response` · `no-english` · `time-left` · `extragoal` · `insane-review` · `lazycodex-gjc` · `deep-onboarding` · `session-observer`
+### Skills
+`adaptive-response` · `time-left` · `extragoal` · `insane-review` · `lazycodex-gjc` · `deep-onboarding` · `session-observer`
 
-`adaptive-response`, `no-english`, `time-left`는 자연어로 자동 활성화되지 않는다. 각각
-`/omg:gate*`, `/omg:no-english`, `/omg:time-left`에서만 명시적으로 불러온다.
-`no-english`는 일반 한국어 설명만 다듬으며 `ultragoal`, `ralplan`, `deep-interview`, `team` 같은
-GJC 정식 이름과 코드·명령·경로·API 이름은 번역하거나 한글로 음역하지 않는다.
+`adaptive-response` and `time-left` do not auto-activate from natural language. Load them explicitly via
+`/omg:gate*` and `/omg:time-left` respectively. Code identifiers, commands, paths, and API names are
+preserved verbatim, not translated or transliterated.
 
-### 커맨드
+### Commands
 
-| 커맨드 | 기능 | 전제 |
+| Command | Function | Prerequisite |
 |---|---|---|
-| `/omg` | 카탈로그 — 설치된 omg 스킬·커맨드 한눈에 | — |
-| `/omg:setup` | 셋업 + 전제조건 확인 + 상시 토글 안내 (멱등) | — |
-| `/omg:gate [on\|off]` · `/omg:gate-always [on\|off\|status]` | adaptive-response 보정 + 승인 게이트 브리핑 (이번 세션 / 상시) | — |
-| `/omg:no-english [on\|off\|status]` | 현재 세션의 한국어 우선 표현 명시 토글 | — |
-| `/omg:time-left [ralplan\|ultragoal]` | 현재 workflow의 남은 기계 작업 시간 범위 명시 조회 | Linux + Bun 1.3.14+ + 현재 GJC SDK endpoint |
-| `/omg:fable [대상]` | Fable 5 적대적 안전 감사 (읽기전용, 심각도+파일:라인, 스팟체크) | Fable 5 모델 |
-| `/omg:insane-review` | GPT-5.6 Sol Pro 웹 코드 리뷰 (API 비용 0) | ChatGPT 구독 + 크로미움 로그인 |
-| `/omg:lazycodex-gjc "<작업>"` | 격리된 읽기 전용 `codex exec --ephemeral` 작업자 | 설치·로그인된 Codex + LazyCodex/OMO |
-| `/omg:deep-onboarding [출력 경로]` | 저장소 분석·인터뷰 뒤 확인된 경로에 프로젝트 맵·ADR 제안·인수인계 생성 | — |
-| `/omg:session-observer --tmux omg` · `/omg:session-observer --session <id>` | 다른 GJC 세션의 JSONL 대화를 detached tmux viewer로 읽기 전용 관찰 | Linux + Bun + tmux |
+| `/omg` | Catalog — omg skills and commands at a glance | — |
+| `/omg:setup` | Setup + prerequisite check + always-on toggle guidance (idempotent) | — |
+| `/omg:gate [on\|off]` · `/omg:gate-always [on\|off\|status]` | adaptive-response calibration + approval-gate briefing (this session / always) | — |
+| `/omg:time-left [ralplan\|ultragoal]` | Explicit query of the current workflow's remaining machine work-time range | Linux + Bun 1.3.14+ + current GJC SDK endpoint |
+| `/omg:fable [target]` | Fable 5 adversarial safety audit (read-only, severity+file:line, spot-check) | Fable 5 model |
+| `/omg:insane-review` | GPT-5.6 Sol Pro web code review (zero API cost) | ChatGPT subscription + Chromium login |
+| `/omg:lazycodex-gjc "<task>"` | Isolated read-only `codex exec --ephemeral` worker | Installed and logged-in Codex + LazyCodex/OMO |
+| `/omg:deep-onboarding [output path]` | After repository analysis + interview, generate a project map, ADR proposals, and handoff to a confirmed path | — |
+| `/omg:session-observer --tmux omg` · `/omg:session-observer --session <id>` | Read-only observation of another GJC session's JSONL conversation in a detached tmux viewer | Linux + Bun + tmux |
 
-> 전제가 붙은 커맨드는 필요한 도구가 없으면 실행 시 안내하고 멈춘다.
-### `time-left` SDK 경계
+> Commands with prerequisites guide and stop safely when the required tool is missing.
 
-canonical state read로 활성 workflow를 선택하고, 현재 세션의 `session.metadata`, goal, todo,
-workflow gate, runtime job을
-공식 SDK v3 client로 읽어 `예상 약 N~M분`의 비확률적 남은 시간 범위를 낸다. prompt·reply·control을
-보내지 않고, 사람 승인·일시정지·실패·근거 부족 상태에서는 숫자를 내지 않는다. installer가 exact
-lockfile로 user-scope 전용 private runtime을 만들며 Bun/패키지 설치/endpoint가 없으면 fail-closed다.
+### `time-left` SDK boundary
 
-실행 중인 ralplan·ultragoal의 시간을 보려면 workflow와 **같은 세션**에서 `/omg:time-left`를 실행한다.
-skill은 session identity 일치를 강제한다. mid-turn에는 그대로 입력하고 Enter를 누르면 기본
-`promptWhileBusy`가 다음 turn boundary에 대기 실행하므로 steering은 필요 없고, 활성 turn을 끊어야 할
-정도로 긴급할 때만 steering을 쓴다. `/btw`는 tools 금지 contract 때문에 skill을 실행하지 못해 모델이
-추측하게 되므로 이 용도에는 쓰지 않는다.
+Selects the active workflow via a canonical state read, then reads `session.metadata`, goal, todo, workflow gate,
+and runtime job from the current session with the official SDK v3 client to produce a non-probabilistic remaining-time
+range like `estimated ~N–M minutes`. It sends no prompt/reply/control, and produces no number under human-approval,
+paused, failed/blocked, or insufficient-evidence states. The installer builds a user-scope-only private runtime from
+an exact lockfile and fails closed if Bun/package install/endpoint is unavailable.
 
-### `lazycodex-gjc` 격리 경계
+To see the time for a running ralplan or ultragoal, run `/omg:time-left` in the **same session** running that workflow.
+The skill enforces session identity match. If mid-turn, just type the command and press Enter — the default
+`promptWhileBusy` queues it for the next turn boundary, so steering is not needed; use steering only when urgent enough
+to interrupt the active turn. `/btw` is a tools-forbidden contract, so it cannot run the skill and would make the model
+guess — not suitable for this use.
 
-이미 설치된 Codex CLI+LazyCodex/OMO를 외부 작업자로 한 번 동기 실행한다.
-user-scope private SHA-256 runtime binding이 일치해야 하며 child GJC 세션, config·credential
-변경, web/MCP/browser egress는 금지한다. 현재는 `read-only`만 허용하고,
-동시 편집 안전성이 해결될 때까지 `workspace-write`는 fail-closed다.
-선택 `LAZYCODEX_OBSERVE_LOG`로 레닥션된 이벤트 스트림을 리더 소유 로그(mode 0600)에 tee해
-실시간 관찰할 수 있고, 완주한 worker의 최종 출력이 1 MiB relay 한도를 넘으면 완료 작업을
-폐기하는 대신 고정 bounded summary를 exit 0으로 반환한다(#202 원자성). 발주는 통짜 대신
-조각 단위가 표준이며 시각 검수는 리더 browser 몫이다.
-### `session-observer` 읽기 전용 경계
+### `lazycodex-gjc` isolation boundary
 
-`/omg:session-observer --tmux omg` 또는 `/omg:session-observer --session <id>`가 detached tmux viewer를 연다. 기본은 conversation+follow이고, `--mode user-only`로 사용자 발화만, `--thinking`으로 선택한 thinking도 표시하며, `--no-follow`는 snapshot으로 끝낸다.
+Runs an already-installed Codex CLI+LazyCodex/OMO as a one-time synchronous external worker. A user-scope private
+SHA-256 runtime binding must match, and child GJC sessions, config/credential changes, and web/MCP/browser egress are
+forbidden. Currently only `read-only` is allowed; `workspace-write` is fail-closed until concurrent-edit safety is
+solved. An optional `LAZYCODEX_OBSERVE_LOG` tees a redacted event stream to a leader-owned log (mode 0600) for live
+observation, and if a completed worker's final output exceeds the 1 MiB relay limit, the runner returns a fixed
+bounded summary at exit 0 instead of discarding verified work (#202 atomicity). Piecewise dispatch is standard over
+monoliths, and visual QA is the leader's browser's job.
 
-runner는 `$HOME/.gjc/agent/sessions/...jsonl`을 tail하며 user/assistant text와 optional thinking만 출력하고 tool-call noise는 제외한다. JSONL이 안전한 기본값이고 SDK 의존성은 없다. 세션 주입·제어·쓰기와 네트워크·upstream 활동은 하지 않으며, 관찰 텍스트는 절대 GJC tool result로 되돌아가지 않는다. 직접 터미널 runner는 완전 token-free이고 `--follow` 없이 snapshot으로 끝난다. slash command는 detached tmux viewer를 띄우는 한 launch turn만 소비하고 이후 관찰은 token-free다.
+### `session-observer` read-only boundary
 
-저장소 checkout에서 slash launch turn 없이 직접 실행:
+`/omg:session-observer --tmux omg` or `/omg:session-observer --session <id>` opens a detached tmux viewer. Default is
+conversation+follow; `--mode user-only` shows only user utterances, `--thinking` shows selected thinking, and
+`--no-follow` ends as a snapshot.
+
+The runner tails `$HOME/.gjc/agent/sessions/...jsonl` and outputs only user/assistant text and optional thinking,
+excluding tool-call noise. JSONL is the safe default and has no SDK dependency. It does not inject, control, or write
+to the session, performs no network or upstream activity, and observed text never returns to a GJC tool result. The
+direct terminal runner is fully token-free; omitting `--follow` ends as a snapshot. The slash command spends only one
+launch turn to open the detached tmux viewer; subsequent viewing is token-free.
+
+To run directly from a repository checkout without a slash launch turn:
 
 ```sh
 bun plugins/oh-my-gjc/bin/session-observer.ts --tmux omg --follow
 ```
 
-### 모델 프리셋
+### Model presets
 
-omj는 커스텀 모델 프리셋을 설치하지 않고 `models.yml`도 수정하지 않는다. GJC의 기본 모델 구성과 내장 프리셋을 그대로 사용한다.
+omj does not install custom model presets or modify `models.yml`. It uses GJC's default model configuration and
+built-in presets as-is.
 
-## 세마포어 구조
+## Semaphore structure
 
-`/omg:gate-always`는 `~/.gjc/agent/SYSTEM.md`에 소유 마커 블록
-(`<!-- BEGIN oh-my-gjc:gate-always -->` ~ `<!-- END ... -->`)을 넣고 빼는 방식이다.
-업그레이드는 제거된 `easy-always` 마커만 백업 후 정리하며, 다른 사용자 내용은 건드리지 않는다.
+`/omg:gate-always` inserts and removes an owned marker block
+(`<!-- BEGIN oh-my-gjc:gate-always -->` ~ `<!-- END ... -->`) in `~/.gjc/agent/SYSTEM.md`.
+Upgrades back up and clean only retired `easy-always` markers; other user content is untouched.
 
-## 마이그레이션
+## Migration
 
-hardened installer 재실행은 이름이 바뀐 `gate-briefing`과 제거된 공개 기능
-(`multivendor-presets`, `release-gate`, `easy-answer`, `plain-layer`, `branch-flow`,
-`gjc-bugwatch`)의 네이티브 잔재를 정리한다. `adaptive-response`, `no-english`, `time-left`를 설치하고,
-SDK 런타임은 exact lockfile과 shared/exclusive lock으로 직렬 교체한다. `lazycodex-gjc`는 유지되며 런타임 전제조건이
-없을 때만 stale binding을 제거해 fail-closed 상태로 둔다. 기존 `models.yml`은 수정하지 않는다.
-### 가재 앱 마이그레이션 (0.14.0)
+Re-running the hardened installer cleans native remnants of renamed `gate-briefing` and removed public capabilities
+(`multivendor-presets`, `release-gate`, `easy-answer`, `plain-layer`, `branch-flow`, `gjc-bugwatch`). It installs
+`adaptive-response` and `time-left`, and atomically replaces the SDK runtime using the exact lockfile and a
+shared/exclusive lock. `lazycodex-gjc` is retained; stale bindings are removed only when runtime prerequisites are
+absent, leaving it fail-closed. Existing `models.yml` is not modified.
 
-`gajae-app` 스킬과 `/omg:gajae-app` 커맨드는 이 번들에서 분리됐다. 이 업그레이드는 기존 셀프호스트 앱 배포를 삭제하지 않는다. 설치·업데이트는 [devswha/claudecodeui SELF-HOST 문서](https://github.com/devswha/claudecodeui/blob/feat/gjc-provider/docs/SELF-HOST.md)를 따른다.
+The English fork additionally removes the `no-english` skill and `/omg:no-english` command on upgrade.
+
+### Gajae app migration (0.14.0)
+
+The `gajae-app` skill and `/omg:gajae-app` command have been split out of this bundle. This upgrade does not delete an
+existing self-hosted app deployment. For install/update, follow the
+[devswha/claudecodeui SELF-HOST docs](https://github.com/devswha/claudecodeui/blob/feat/gjc-provider/docs/SELF-HOST.md).
 
 ## Non-Goals
 
-- gjc 내장 워크플로(team/ultragoal/ralplan/deep-interview) 중복 구현 — gjc가 네이티브로 잘함.
-- 벤더 자동 로그인·자격증명 발급.
+- Reimplementing gjc-native workflows (team/ultragoal/ralplan/deep-interview) — gjc does these natively well.
+- Vendor auto-login or credential issuance.

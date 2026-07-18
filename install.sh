@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # oh-my-gajaecode — one-shot installer (single plugin suite).
 #
-#   curl -fsSL https://raw.githubusercontent.com/devswha/oh-my-gjc/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/ThewindMom/oh-my-gjc-en/main/install.sh | bash
 #       → installs the one oh-my-gjc plugin + native skill/command copy. Then open a new gjc session.
 #
 #   --candidate-ref <path|ref>   marketplace SOURCE override (a local checkout path or an
 #                                explicit dev ref) for release-candidate provenance testing.
-#                                Default is the published marketplace (devswha/oh-my-gjc).
+#                                Default is the published marketplace (ThewindMom/oh-my-gjc-en).
 #
 # One install brings ALL 7 skills + 10 commands (/omg + 9 /omg:*) — there are no separate/optional plugins. Legacy
 # args (--core, tower, insane-review, codex-*, lazycodex, gjc-bugwatch) are accepted only
@@ -19,7 +19,7 @@
 # with GJC defaults/built-ins; the gate always-on toggle is exposed through /omg:setup. Idempotent. Shell CLI only.
 set -euo pipefail
 
-MARKET_DEFAULT="devswha/oh-my-gjc"
+MARKET_DEFAULT="ThewindMom/oh-my-gjc-en"
 ENTRY="oh-my-gjc"
 PLUGIN_ID="${ENTRY}@${ENTRY}"
 CACHE="$HOME/.gjc/plugins/cache/plugins"

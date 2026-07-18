@@ -1,22 +1,15 @@
 ---
-description: 명시적으로 선택한 GJC 세션을 분리된 tmux 창에서 토큰 없이 읽기 전용으로 관찰한다. 자연어 요청으로는 활성화하지 않는다.
+description: Observes an explicitly selected GJC session read-only and token-free in a detached tmux window. Does not activate from natural-language requests.
 argument-hint: "--tmux NAME | --session ID [--mode conversation|user-only] [--thinking] [--no-follow] [--history N]"
 ---
 
 # /omg:session-observer
 
-이 명령은 **명시 호출 전용**이다. 자연어로 세션 관찰·추적·요약을 요청해도 이 기능을 자동 활성화하지 않는다.
+This command is **explicit-invocation only.** It never auto-activates from natural-language requests to watch, inspect, summarize, follow, or monitor a session.
 
-대상은 정확한 `--tmux NAME` 또는 `--session ID` 하나여야 한다. 기본값은 `mode=conversation`,
-`thinking=0`, `follow=1`, `history=20`이며, thinking 표시는 `--thinking`으로만 켠다. `--mode user-only`는
-사용자 메시지만 표시한다. history는 0~200으로 제한한다.
+The target must be exactly one `--tmux NAME` or `--session ID`. Defaults are `mode=conversation`, `thinking=0`, `follow=1`, `history=20`; thinking display is enabled only with `--thinking`. `--mode user-only` shows only user messages. history is limited to 0–200.
 
-모델은 인자를 다음 안전한 env 필드로 해석해 **한 번의 Bash 호출**에만 전달한다. 사용자 텍스트를
-셸 코드에 보간하지 않는다: `OBSERVER_TARGET_KIND`(`tmux` 또는 `session`),
-`OBSERVER_TARGET_VALUE`, `OBSERVER_MODE`, `OBSERVER_THINKING`(`0`/`1`),
-`OBSERVER_FOLLOW`(`0`/`1`), `OBSERVER_HISTORY`(정수). 이 호출은 `--launch-window`로 detached tmux
-observer 창을 열며, stdout/stderr의 launch receipt/error만 반환한다. 대화 내용은 절대 도구 결과나
-GJC transcript로 보내지 않으며, 창을 연 뒤 관찰은 모델 토큰을 소비하지 않는다.
+The model resolves the arguments into the following safe env fields and passes them in **a single Bash call only**. Do not interpolate user text into shell source: `OBSERVER_TARGET_KIND` (`tmux` or `session`), `OBSERVER_TARGET_VALUE`, `OBSERVER_MODE`, `OBSERVER_THINKING` (`0`/`1`), `OBSERVER_FOLLOW` (`0`/`1`), `OBSERVER_HISTORY` (integer). This call opens a detached tmux observer window with `--launch-window` and returns only the launch receipt/error on stdout/stderr. Conversation text is never sent to a tool result or the GJC transcript; after opening the window, observation consumes no model tokens.
 
 ```bash
 set -euo pipefail
@@ -62,7 +55,6 @@ esac
 exec bun "${argv[@]}"
 ```
 
-엔진 `bin/session-observer.ts`는 JSONL만 authoritative/default로 읽고 SDK enrichment를 사용하지 않는다.
-관찰 대상에는 inject/control/write하지 않으며 upstream activity, network, LLM 호출도 하지 않는다.
-tmux 밖이거나 Bun 또는 private user root binding이 없으면 fail-closed한다. 실행 후 receipt 외의 내용을
-읽거나 요약하거나 relay하지 않는다.
+Do not call `tmux capture-pane`, SDK APIs, network tools, LLM tools, or any alternative observer path from this command. Do not poll or relay observer output after the receipt.
+
+The engine `bin/session-observer.ts` reads JSONL only as authoritative/default and does not use SDK enrichment. It does not inject/control/write to the observed target, and performs no upstream activity, network, or LLM calls. If outside tmux or Bun or the private user root binding is missing, it fails closed. Do not read, summarize, or relay anything beyond the receipt after launch.

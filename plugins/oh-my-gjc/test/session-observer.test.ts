@@ -60,7 +60,7 @@ describe("session observer capability surface", () => {
 		expect(command).toContain("# /omg:session-observer");
 		expect(command).toContain("detached tmux");
 		expect(command).toContain('exec bun "${argv[@]}"');
-		expect(command).toContain("실행 후 receipt 외의 내용을");
+		expect(command).toContain("only the launch receipt/error on stdout/stderr");
 		expect(command).not.toContain("$ARGUMENTS");
 	});
 

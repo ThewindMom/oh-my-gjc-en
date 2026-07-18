@@ -1,25 +1,21 @@
 ---
-description: GJC 안을 건드리지 않고 이미 설치된 Codex+LazyCodex를 격리된 읽기 전용 외부 작업자로 동기 실행해 결과만 회수한다. workspace-write는 안전상 비활성화.
-argument-hint: "<읽기 전용 조사·리뷰 작업> [대상 cwd]"
+description: Synchronously runs an already-installed Codex+LazyCodex as an isolated read-only external worker without touching GJC internals and retrieves only the result. workspace-write is disabled for safety.
+argument-hint: "<read-only investigation/review task> [target cwd]"
 ---
 
 # /omg:lazycodex-gjc
 
-`$ARGUMENTS` 또는 바로 앞 사용자 요청을 **원문 task**로 삼아, 이미 설치된 Codex+LazyCodex를
-외부 일회성 작업자로 실행한다. task가 없으면 한 번만 물어보고 실행하지 않는다.
+Treat `$ARGUMENTS` or the immediately preceding user request as the **original task** and run the already-installed Codex+LazyCodex as a one-time external worker. If the task is empty, ask once and do not execute.
 
-## 권한 결정
+## Permission decision
 
-- `read-only`만 허용한다.
-- `workspace-write`는 동시 편집 안전성이 보장될 때까지 fail-closed로 비활성화한다. 수정 작업은 이 커맨드에 위임하지 않는다.
-- `danger-full-access`와 승인 우회는 항상 금지한다.
-- user-scope native install이 만든 mode-0600 SHA-256 runtime binding(`~/.gjc/agent/runtimes/lazycodex-gjc/binding`)과 일치하는 private runner snapshot만 실행한다. project-scope 설치만 있으면 안전하게 중단한다.
-- runner는 호환 OMO `ultrawork`를 먼저 검증하고 target `cwd`(시작 시 존재하는 모든 깊이의 `.gjc`와 root `.gjc` 예약 경로 제외)+정확한 Codex runtime helper+private tmp만 허용하는 custom permission profile을 쓴다. workspace 안을 가리키는 directory symlink는 canonical target까지 검사하고, sandbox에 노출되지 않는 외부 directory symlink는 건너뛴다. 실제 사용자 `~/.gjc`, `~/.codex`, `CODEX_HOME`은 명시적으로 차단하고 그 안을 target `cwd`로 지정하면 spawn 전에 거부하며, web/MCP/apps/hooks/browser egress와 child shell 환경 상속도 비활성화한다. Codex native profile은 profile 생성 뒤 처음 만들어진 부모 아래의 미래 `.gjc`까지 경로 이름으로 미리 차단하지는 못한다. 따라서 worker에게 어떤 `.gjc`도 만들거나 바꾸지 말라는 금지 규칙을 별도로 적용한다.
+- Only `read-only` is allowed.
+- `workspace-write` is fail-closed disabled until concurrent-edit safety is proven. Do not delegate modification work to this command.
+- `danger-full-access` and approval bypass are always forbidden.
+- Only a private runner snapshot matching the mode-0600 SHA-256 runtime binding (`~/.gjc/agent/runtimes/lazycodex-gjc/binding`) created by the user-scope native install is executed. A project-scope install alone safely aborts.
+- The runner first verifies a compatible OMO `ultrawork` and uses a custom permission profile that exposes only the target `cwd` (excluding all-depth `.gjc` present at start and the root `.gjc` reserved paths) + the exact Codex runtime helper + a private tmp. Directory symlinks pointing inside the workspace are checked to their canonical target; external directory symlinks not exposed to the sandbox are skipped. The real user's `~/.gjc`, `~/.codex`, and `CODEX_HOME` are explicitly blocked, and specifying inside them as target `cwd` is rejected before spawn; web/MCP/apps/hooks/browser egress and child shell environment inheritance are also disabled. The Codex native profile cannot pre-block by path name a future `.gjc` created under the first parent after profile generation. Therefore a separate prohibition rule applies: instruct the worker not to create or modify any `.gjc`.
 
-GJC `bash` 도구의 `env` 파라미터에 task를 `LAZYCODEX_GJC_TASK`로, 대상 절대 경로를
-`TARGET_CWD`로 전달한다. task를 아래 셸 문자열에 붙여 넣지 않는다. 선택적으로
-`CODEX_MODEL`, `LAZYCODEX_TIMEOUT_SECONDS`, `LAZYCODEX_OBSERVE_LOG`(관찰 로그로 쓸
-**새 파일**의 절대 경로)만 env에 추가한다.
+Pass the task as `LAZYCODEX_GJC_TASK` and the target absolute path as `TARGET_CWD` in the GJC `bash` tool's `env` parameter. Do not paste the task into the shell string below. Optionally add only `CODEX_MODEL`, `LAZYCODEX_TIMEOUT_SECONDS`, and `LAZYCODEX_OBSERVE_LOG` (absolute path of a **new file** to use as the observation log) to env.
 
 ```bash
 [ -n "${LAZYCODEX_GJC_TASK:-}" ] || { echo "lazycodex-gjc task is empty" >&2; exit 2; }
@@ -77,23 +73,15 @@ RUNNER_ARGS=(--cwd "$TARGET_CWD" --sandbox "$SANDBOX")
 "${BINDING_LINES[5]}" "$RUNNER" "${RUNNER_ARGS[@]}" --binding "$BINDING" < "$TASK_FILE"
 ```
 
-이 호출은 **GJC bash 한 번을 동기 실행**한다. GJC `task`, goal, team, move, write/edit,
-background job을 사용하지 않으며 install/update/doctor/setup/login도 실행하지 않는다.
-성공하면 stdout을 그대로 반환하고, 실패하면 부분 결과 없이 오류와 수동 해결책만 짧게 알린다.
-worker가 완수했는데 최종 출력만 1 MiB relay 한도를 넘긴 경우 runner가 고정 bounded summary를
-exit 0으로 대신 반환한다 — 완료 작업을 실패로 폐기하지 않는다(#202 원자성 계약).
-child stderr는 task나 파일 비밀을 포함할 수 있으므로 그대로 전달하지 않는다.
+This call executes **one synchronous GJC bash**. Do not use GJC `task`, goal, team, move, write/edit, or background jobs; do not run install/update/doctor/setup/login.
+On success, return stdout as-is; on failure, give a short error and manual remediation without partial results.
+If the worker completed the goal but the final output exceeds the 1 MiB relay limit, the runner returns a fixed bounded summary at exit 0 — completed work is not discarded as failure (#202 atomicity contract).
+Do not relay child stderr verbatim, as it may contain task or file secrets.
 
-runner의 `--ephemeral`은 외부 Codex 세션에만 적용된다. 현재 GJC 대화에는 이 명령과 결과가
-남지만 child GJC 세션은 생기지 않는다. child와 그 shell의 `GJC_NOTIFICATIONS=0
-GJC_SDK_DISABLE=1`도 현재 GJC 설정을 바꾸지 않는다.
+The runner's `--ephemeral` applies only to the external Codex session. This command and its result remain in the current GJC conversation, but no child GJC session is created. The child and its shell's `GJC_NOTIFICATIONS=0 GJC_SDK_DISABLE=1` also do not change the current GJC settings.
 
-## 관찰과 오케스트레이션
+## Observation and orchestration
 
-- `LAZYCODEX_OBSERVE_LOG`를 주면 runner 부모 프로세스가 레닥션된 codex exec 이벤트 스트림을
-  그 새 로그 파일(mode 0600)에 tee한다. 리더는 동기 bash 호출 **전에** GJC monitor 도구로
-  로그를 tail하고, 이상 시 로그 첫 `[observe]` 줄의 유닛명으로 `systemctl --user stop <unit>`을
-  실행한다. 관찰은 read-only이며 로그 실패는 worker에 영향이 없다.
-- 통짜 대신 **조각 발주**가 표준이다(실측 조각당 약 6분). 시각 검수는 리더 browser 몫이며
-  정지 스크린샷 검수는 불충분하다(애니메이션 레이스 실측 — running 카운트는 가시성 증거가 아님).
-  interactive 변종은 보류한다.
+- If you pass `LAZYCODEX_OBSERVE_LOG`, the runner parent process tees the redacted codex exec event stream to that new log file (mode 0600). The leader tails the log with the GJC monitor tool **before** the synchronous bash call, and on anomaly stops the unit named in the log's first `[observe]` line via `systemctl --user stop <unit>`. Observation is read-only; log failure does not affect the worker.
+- **Piecewise dispatch** is standard instead of monoliths (about 6 minutes per piece measured). Visual QA is the leader's browser's job; static screenshot QA is insufficient (animation race measured — running counts are not visibility evidence).
+  The interactive variant is on hold.

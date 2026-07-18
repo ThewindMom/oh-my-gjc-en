@@ -1,7 +1,11 @@
-# AGENTS.md — working in oh-my-gjc
+# AGENTS.md — working in oh-my-gjc (English fork)
 
 Agent-facing guide for `oh-my-gjc`, a **plugin marketplace** for Gajae Code (`gjc`).
 Read this before adding or editing plugins. Human-facing intro lives in [README.md](./README.md).
+
+> This is the English-language fork of [devswha/oh-my-gjc](https://github.com/devswha/oh-my-gjc).
+> Retained skill bodies, command templates, and primary user-facing docs are in English. The `no-english` Korean-first skill and
+> `/omg:no-english` command are removed. The structural conventions below are the same as upstream.
 
 ## What this repo is
 
@@ -32,7 +36,7 @@ catalog; `gjc plugin list` shows installed). **Plugin management is shell-CLI on
 - `insane-review`: ChatGPT subscription + a Chromium-family browser on CDP `:9222` logged into chatgpt.com.
 - `lazycodex-gjc`: already installed and logged-in Codex CLI + compatible LazyCodex/OMO. The suite never installs or logs in to them; `workspace-write` is disabled and only read-only delegation is supported.
 - `/omg:fable`: Fable 5 model access (Opus fallback on refusal/clamp).
-- `adaptive-response`, `no-english`, `extragoal`, and the `example-plugin` template: no external prerequisites. `time-left` requires Linux, Bun >=1.3.14, its exact-lock private SDK runtime, and a live top-level GJC SDK endpoint.
+- `adaptive-response`, `extragoal`, and the `example-plugin` template: no external prerequisites. `time-left` requires Linux, Bun >=1.3.14, its exact-lock private SDK runtime, and a live top-level GJC SDK endpoint.
 
 ## Layout
 
@@ -92,31 +96,35 @@ Content is discovered by **convention directories** above; explicit paths in
   under `.gjc/` is gitignored.
 - **Document the real install paths** (verified): plugin management is the **shell CLI only** — `gjc plugin marketplace add <ref>` then `gjc plugin install <name>@<marketplace> …` (batch-capable), `gjc plugin list`. gjc has **no `/plugin` slash command** (Claude-Code syntax; a `/plugin …` line in a gjc session is just a chat message). Never write `/plugin …` in gjc install docs.
 
+## Fork-specific policy (English fork)
+
+- Retained skill bodies, command templates, and primary user-facing docs are written in English. Code identifiers, commands, paths, API names, exact labels, logs, and quotations are preserved verbatim — not translated or transliterated.
+- The `no-english` Korean-first skill and `/omg:no-english` command are **removed**. They are added to `REMOVED_SKILLS`/`REMOVED_COMMANDS` in `bin/install-skill.sh` so upgrades from the upstream Korean version clean them up. Do not re-add them.
+- Upstream-internal historical verification records under `docs/verification/` and operations tooling under `ops/gjc-bugwatch/` are retained unchanged for provenance; they are not part of the translated public skill and command surface.
+
 ## Per-plugin notes
 
-> **Note (0.8.0 단일 스위트):** marketplace에 노출되는 plugin은 `oh-my-gjc` 하나뿐이다. 아래 절들은
-> 통합 전 plugin 이름을 유지한 **capability 단위 노트**다. 제거된 capability는 `(REMOVED …)` 묘비 절로만 남는다.
-> 파일은 전부 `plugins/oh-my-gjc/` 안에 있다.
+> **Note (0.8.0 single suite):** the only plugin exposed in the marketplace is `oh-my-gjc`. The sections below are **capability-unit notes** retaining pre-consolidation plugin names. Removed capabilities remain as `(REMOVED …)` tombstone sections only. All files live under `plugins/oh-my-gjc/`.
 
 ### `codex-cli-control` (REMOVED in 0.12.0)
-- 관제탑 발주·하코 승인(2026-07-13)으로 제거: skill `codex-cli-ask` + command `/omg:codex-ask` 명시 호출 0회 — 로컬 Codex 트래픽은 전량 제품 파이프라인(patina·flask)의 `codex exec` 직결로 스킬을 경유하지 않음. 업그레이드 시 `install-skill.sh`의 `cleanup_removed`가 네이티브 잔존물(`omg:codex-ask.md`, skill dir)을 청소한다. 과거 상세·보안계약은 git 히스토리(≤0.11.0)의 skills/codex-cli-ask/SKILL.md 참조.
+- Removed by upstream order (2026-07-13): the `codex-cli-ask` skill + `/omg:codex-ask` command had zero explicit invocations — local Codex traffic all goes through the product pipeline (patina/flask) `codex exec` direct connection, not through the skill. On upgrade, `install-skill.sh`'s `cleanup_removed` cleans native remnants (`omg:codex-ask.md`, skill dir). For past details/security contracts, see `skills/codex-cli-ask/SKILL.md` in git history (≤0.11.0).
 
 ### `codex-deepwork` (REMOVED in 0.11.0)
-- 관제탑 발주·하코 승인(2026-07-12)으로 제거: 실사용 0회(자기시험 제외 전 세션 로그 집계) + `lazycodex`와 기능 중복. 파일-쓰기 자율 위임은 당시 `/omg:lazycodex-work` 소관이었으나 lazycodex도 0.12.0에서 제거됨 — 현재는 gjc 네이티브 워크플로(team/ultragoal) 소관. 업그레이드 시 `install-skill.sh`의 `cleanup_removed`가 네이티브 잔존물(`omg:codex-run.md`, skill dir)을 청소한다.
+- Removed by upstream order (2026-07-12): zero real usage (aggregated across all sessions excluding self-tests) + overlap with `lazycodex`. File-write autonomy delegation was then under `/omg:lazycodex-work`, but lazycodex was also removed in 0.12.0 — now under gjc-native workflows (team/ultragoal). On upgrade, `cleanup_removed` cleans native remnants.
 
 ### `lazycodex` (REMOVED in 0.12.0)
-- 관제탑 발주·하코 승인(2026-07-13)으로 제거: `/omg:lazycodex-setup`·`/omg:lazycodex-work` 하니스 발원 세션 7월 0건. 파일-쓰기 자율 위임 수요는 gjc 네이티브 워크플로(team/ultragoal)로 충족. 업그레이드 시 `cleanup_removed`가 네이티브 잔존물(`omg:lazycodex-setup.md`·`omg:lazycodex-work.md`, skill dir)을 청소한다. 과거 상세는 git 히스토리(≤0.11.0)의 skills/lazycodex/SKILL.md 참조.
+- Removed by upstream order (2026-07-13): zero harness-originating sessions in July. File-write autonomy delegation is met by gjc-native workflows (team/ultragoal). On upgrade, `cleanup_removed` cleans native remnants (`omg:lazycodex-setup.md`, `omg:lazycodex-work.md`, skill dir). See git history (≤0.11.0) for past details.
 
 ### `lazycodex-gjc` (retained, read-only)
 - `/omg:lazycodex-gjc` synchronously launches the already installed Codex+LazyCodex/OMO as an external `codex exec --ephemeral` worker. It never installs, updates, migrates, sets up, logs in, or creates a child GJC session.
 - **Permission contract:** `read-only` only. `workspace-write` is fail-closed until concurrent-edit isolation is proven. The worker uses a custom no-network permission profile, blocks GJC/Codex user state, and relays no raw child stderr.
-- **Observation & atomicity (2026-07 lazycodex 개선 패키지):** an optional `--observe-log` (env `LAZYCODEX_OBSERVE_LOG`) makes the launcher — never the child — tee the redacted codex exec event stream to a new leader-owned mode-0600 log for live `gjc monitor` tailing; the first `[observe]` line names the systemd unit for `systemctl --user stop` (RuntimeMaxSec backstop unchanged). Log creation fails closed pre-spawn; runtime log failures stop only the observation. Issue #202: a completed exit-0 worker whose final output exceeds the 1 MiB relay limit yields a fixed bounded summary at exit 0 instead of discarding verified work (read-only means no workspace side effects on any path); the 8 MiB hard limit and runaway streams still abort early and fail closed.
+- **Observation & atomicity (2026-07 lazycodex improvement package):** an optional `--observe-log` (env `LAZYCODEX_OBSERVE_LOG`) makes the launcher — never the child — tee the redacted codex exec event stream to a new leader-owned mode-0600 log for live `gjc monitor` tailing; the first `[observe]` line names the systemd unit for `systemctl --user stop` (RuntimeMaxSec backstop unchanged). Log creation fails closed pre-spawn; runtime log failures stop only the observation. Issue #202: a completed exit-0 worker whose final output exceeds the 1 MiB relay limit yields a fixed bounded summary at exit 0 instead of discarding verified work (read-only means no workspace side effects on any path); the 8 MiB hard limit and runaway streams still abort early and fail closed.
 - **Orchestration standard:** dispatch small independently verifiable pieces (~6 min measured each) instead of monoliths; visual QA belongs to the leader's own browser (static screenshots are insufficient — animation race measured; running-animation counts are not visibility evidence); an interactive worker variant stays on hold.
 - **Runtime trust:** only a canonical user-scope mode-0600 SHA-256 binding may execute. Project scope alone cannot authorize the bridge. Missing Codex/systemd/Codex-home removes stale runtime state and leaves the command safely disabled.
-- **Provenance:** runner, skill, and command template are all mandatory markers in `ops/verify/record_provenance.py`.
+- **Provenance:** runner, skill, and command template are all mandatory markers in `ops/verify/record_provenance.py` (upstream).
 
 ### `codex-app-control` (REMOVED in 0.11.0)
-- 관제탑 발주·하코 승인(2026-07-12)으로 제거: 대상 Codex 데스크톱 앱 빌드 트랙이 07-03 아카이브(codex-wrapper-build)로 폐기됐고, GPT Pro 리뷰 용도는 `insane-review`(자체 엔진, codex-app 의존성 없음)가 전담. 업그레이드 시 `cleanup_removed`가 네이티브 잔존물을 청소한다. 과거 라이브 검증 레시피는 git 히스토리(≤0.10.0)의 skills/codex-app-*/SKILL.md 참조.
+- Removed by upstream order (2026-07-12): the target Codex desktop app build track was archived on 07-03 (codex-wrapper-build), and GPT Pro review duty is handled by `insane-review` (its own engine, no codex-app dependency). On upgrade, `cleanup_removed` cleans native remnants. See git history (≤0.10.0) for past live verification recipes.
 
 ### `insane-review` (CLI pack pipeline verified; CDP path deferred)
 - Command `/omg:insane-review` + a native-installable skill (`skills/insane-review/SKILL.md`). Faithful port of `fivetaku/insane-review`. gjc scopes the complete relevant file set → repomix packs it (full code, line numbers, secretlint, packed-file audit) → drives the **logged-in ChatGPT web session over CDP** → selects+**verifies** GPT-5.6 Sol Pro (fail-closed) → harvests the review to the current project's `.insane-review/response_*.md`. Zero API cost (runs on the user's ChatGPT subscription). Also a web-only `agent-council` member via `--council` (see `references/council-setup.md`).
@@ -125,78 +133,58 @@ Content is discovered by **convention directories** above; explicit paths in
 - **Path resolution:** `${CLAUDE_PLUGIN_ROOT}` is NOT substituted in gjc command/skill bodies. Each native install writes one exact private mode-`0600` suite-root binding: project `<cwd>/.gjc/runtimes/oh-my-gjc/root`, then user `~/.gjc/agent/runtimes/oh-my-gjc/root`. Asset consumers validate its single absolute canonical root and required non-symlink asset, resolve project first then user, and use the direct `plugins/oh-my-gjc/` checkout fallback only when neither binding exists. Missing or malformed binding fails closed; bootstrap, upgrade, and repair rerun hardened root `install.sh`, never a cache selection.
 - **Security contract (do not weaken):** repomix secretlint forced on (a local repomix config disabling it aborts the run); fail-closed on unverified model / unattached pack / truncated prompt / timeout / empty response (no partial save); `--require-model` must accompany `--model`; output files `chmod 600`. Prompting Pro ships relevant code to an external web service — personal subscription use only (not OpenAI-endorsed).
 - **Prerequisites (manual):** Python `playwright`+`pyperclip` (`--check-env --install`), Node/`npx` (repomix auto via `npx -y`), and a Chromium-family browser on CDP `:9222` with a **dedicated profile** logged into chatgpt.com + GPT-5.6 Sol Pro selected. Login can't be automated.
-- **Verified here (2026-07):** engine AST/`--help`/`--list-browsers`/`--check-env` on Linux; `--pack-only` end-to-end via `npx repomix@1.15.0` (packed-file audit + token count). The former cache-glob simulated-install check is historical, non-executable evidence only; current installs bind the exact suite root. CDP→ChatGPT harvest needs a logged-in Pro session and is deferred-environment.
-- Non-Goals: GPT-5.6 Sol Pro API (doesn't exist), auto-login, engine reimplementation on gjc `browser`. (읽기 전용 로컬 CLI Q&A capability는 0.12.0에서 제거됨.)
+- Non-Goals: GPT-5.6 Sol Pro API (doesn't exist), auto-login, engine reimplementation on gjc `browser`. (Read-only local CLI Q&A capability was removed in 0.12.0.)
 
 ### `multivendor-presets` (REMOVED after v0.17.1)
-- 하코 direct order (2026-07-15): 커스텀 프리셋보다 GJC 기본/내장 프리셋을 사용한다. 스킬, `/omg:presets`, `references/presets.yml`, 설치 시 `sol` 자동 병합을 제거했다.
-- 업그레이드 시 `cleanup_removed`가 네이티브 잔존물(`skills/multivendor-presets/`, `omg:presets.md`)만 청소한다. 기존 사용자 `models.yml`과 과거 병합된 `sol` 프로필은 사용자 설정이므로 자동 삭제·수정하지 않는다.
+- Upstream direct order (2026-07-15): use GJC default/built-in presets over custom presets. Removed the skill, `/omg:presets`, `references/presets.yml`, and the install-time `sol` auto-merge.
+- Upgrade `cleanup_removed` cleans only native remnants (`skills/multivendor-presets/`, `omg:presets.md`). Existing user `models.yml` and previously merged `sol` profiles are user settings and are not auto-deleted or modified.
 
 ### `release-gate` (REMOVED after v0.17.1)
-- 하코 direct order (2026-07-15): 공개 플러그인 기능이 아니라 이 저장소의 릴리스 운영 규칙에 가깝고, 검증은 일반 테스트 절차·외부 리뷰는 `extragoal`과 중복되어 제거했다.
-- 스킬과 `/omg:release`는 제거하지만 아래 **Release governance**는 이 저장소의 강제 규칙으로 유지한다. 업그레이드는 네이티브 잔존물만 청소한다.
+- Upstream direct order (2026-07-15): not a public plugin feature but closer to this repo's release operations rules, and verification overlapped with general test procedures and `extragoal` external review, so it was removed.
+- The skill and `/omg:release` are removed, but the **Release governance** section below remains a mandatory rule for upstream. For this English fork, release governance is the standard fork PR pattern.
 
 ### Public capability prune (REMOVED after v0.17.1)
 - `easy-answer`, `plain-layer`, and `branch-flow` were removed as redundant UX/policy layers; use concise direct answers and GJC native deep-interview/ralplan/team plus each repository's own `AGENTS.md`.
 - The public `gjc-bugwatch` skill and `/omg:bugwatch-scan` were removed; the repository-owned collector and `ops/gjc-bugwatch/` automation remain internal operations tooling.
 - Upgrade cleanup removes retired native skills/commands and retired `easy-always` marker blocks after backing up affected user files. It never modifies `models.yml`. `lazycodex-gjc` remains installed.
 
+### `no-english` (REMOVED in this English fork)
+- The `no-english` skill and `/omg:no-english` command are removed from this English fork. They are a Korean-first presentation layer (reduce unnecessary English mixing in Korean responses, prefer natural Korean) and have no meaningful equivalent in an English fork. The skill and command are added to `REMOVED_SKILLS`/`REMOVED_COMMANDS` so upgrades from the upstream Korean version clean them up. Do not re-add them.
+
 ### `oh-my-gjc` (core — absorbed my-workflows v0.3)
-- **The current focused suite has 8 skills and 11 commands.** Skills: `adaptive-response`, `no-english`, SDK-backed `time-left`, `extragoal`, `insane-review`, read-only `lazycodex-gjc`, confirmation-gated `deep-onboarding`, and read-only `session-observer`. Commands: bare `/omg` plus `/omg:setup`, `/omg:gate`, `/omg:gate-always`, `/omg:no-english`, `/omg:time-left`, `/omg:fable`, `/omg:insane-review`, `/omg:lazycodex-gjc`, `/omg:deep-onboarding`, and `/omg:session-observer`. The three presentation/ETA skills never auto-activate from ordinary natural language; only their explicit commands may load them.
-- **Native install is REQUIRED:** canonical command bodies remain in `templates/`; the hardened one-shot installer copies all 8 skills and 11 commands, removes the retired native `gate-briefing` directory, validates the LazyCodex and session-observer runners, emits the suite-root binding, and conditionally binds both trusted runtimes. The time-left runtime is a private serialized copy installed with scripts disabled from its exact lockfile; missing Bun/package access leaves only that command fail-closed.
+- **The current focused suite has 7 skills and 10 commands.** Skills: `adaptive-response`, SDK-backed `time-left`, `extragoal`, `insane-review`, read-only `lazycodex-gjc`, confirmation-gated `deep-onboarding`, and read-only `session-observer`. Commands: bare `/omg` plus `/omg:setup`, `/omg:gate`, `/omg:gate-always`, `/omg:time-left`, `/omg:fable`, `/omg:insane-review`, `/omg:lazycodex-gjc`, `/omg:deep-onboarding`, and `/omg:session-observer`. The two presentation/ETA skills never auto-activate from ordinary natural language; only their explicit commands may load them.
+- **Native install is REQUIRED:** canonical command bodies remain in `templates/`; the hardened one-shot installer copies all 7 skills and 10 commands, removes the retired native `gate-briefing` directory and the `no-english` skill/command, validates the LazyCodex and session-observer runners, emits the suite-root binding, and conditionally binds both trusted runtimes. The time-left runtime is a private serialized copy installed with scripts disabled from its exact lockfile; missing Bun/package access leaves only that command fail-closed.
 - **One-shot install:** root `install.sh` performs marketplace add/update → plugin install → native install. No optional plugin arguments.
 - **GJC 0.11 plugin boundary:** `gajae-plugin.json` now routes a source through GJC's native bundle installer before marketplace/npm classification, but native bundles intentionally forbid top-level `skills`, `commands`, and `agents`; they may only extend the four built-in workflows/role agents with subskills, tools, hooks, MCPs, and appendices. OMG's independent trigger skills and `/omg:*` commands therefore still require `templates/` + `install-skill.sh`. The SDK and native bundle mechanism are separate and neither changes this namespace contract.
 - **SDK adoption lane:** `plugins/oh-my-gjc/tools/sdk-lab` pins canonical GJC v0.11.0 source commit `8132409c3f10754fea5f3b0108a7bee979c43652` and exact `@gajae-code/bridge-client@0.11.0`. `inspect` and `time-left` have observation authority only: descriptor-bound endpoint discovery, bounded hello/session/model/goal/todo/gate/job queries, plus context summary in inspector only, and redacted summaries. Q11 is an available-skill catalog and MUST NOT be treated as active-workflow evidence; the skill always reads both canonical workflow states and selects exactly one before invoking ETA. They MUST NOT send `user_message`, `reply`, control, config, broker, transcript-body, or arbitrary query frames. ETA does not query Q03/system-prompt context. ETA is a low/medium-confidence, non-probabilistic machine-time band extrapolated from the current goal's observed todo rate, never a promised completion timestamp; human gates, paused/failed/unknown/undelivered states fail closed. The executable runtime is user-scope only and readers use a bounded shared lock around its serialized publication. Do not fork/vendor/submodule GJC for inspection; fork only for an actual upstream patch against `dev`.
 - **Deep onboarding boundary:** `/omg:deep-onboarding` first analyzes the target repository read-only, then interviews one material ambiguity at a time. It previews a project map, ADR proposals, and handoff, and writes those three Markdown outputs only after the user explicitly confirms one safe output directory. A command argument is only a proposal, never confirmation; it never silently writes into the analyzed repository or overwrites existing files.
 - **Adaptive response semaphore:** `/omg:gate` explicitly applies `adaptive-response` as a session-local, domain-specific presentation layer plus gate briefing; `/omg:gate-always` persists only that reconstruction procedure in its marker block inside user-global `~/.gjc/agent/SYSTEM.md`. It never auto-activates from ordinary conversation or a pending gate. It MUST NOT persist inferred persona data, scan arbitrary home/other-repo/browser/private-memory sources, infer sensitive identity traits, transfer expertise across domains, or lower correctness/safety/warnings/approval boundaries. The command backs up before mutation and preserves all bytes outside its marker. Legacy gate blocks in `AGENTS.md` migrate on command use. Installer upgrades separately remove only retired `easy-always` blocks after backup. A project `.gjc/SYSTEM.md` overrides the user file for that repository.
 - **Session-observer boundary:** `/omg:session-observer --tmux omg` or `/omg:session-observer --session <id>` launches a detached tmux viewer. It tails only `$HOME/.gjc/agent/sessions/...jsonl` and emits user/assistant text plus optional thinking, never tool-call noise; JSONL is the safe default and it has no SDK dependency. Default output follows the conversation; `--mode user-only` and `--thinking` narrow or extend displayed text, while slash-command `--no-follow` is a snapshot. The observer is strictly read-only: no session injection, control, writes, network, or upstream activity, and observed text MUST NOT flow into GJC tool results. Linux, Bun, and tmux are required for the slash launcher. The direct terminal runner is token-free; the slash invocation consumes one launch turn only, then viewing remains token-free because its detached tmux window never returns observed text to GJC.
-- **No-English presentation:** `/omg:no-english [on|off|status]` explicitly controls `no-english` for the current session only; ordinary Korean conversation and natural-language language requests do not activate it. It reduces unnecessary English mixing only in Korean responses and preserves code identifiers, commands, paths, API/protocol names, exact labels, logs, and quotations. It MUST NOT translate away evidence, uncertainty, warnings, or approval boundaries. `adaptive-response` owns depth/format while `no-english` owns language choice, so neither overrides the other's safety contract.
 - **`extragoal` skill (v0.4, 2026-07-08):** ultragoal + external final review gate. Reviewer lanes are native cross-session gjc, `/omg:fable`, and `insane-review` under an AND-gate. Missing/malformed/timeout verdicts fail closed; secret scanning is mandatory on egress.
 - **⚠ Ephemeral gjc harness runs MUST disable both notifications and SDK hosting.** Every throwaway `gjc -p` verify/audit/test invocation (`/omg:fable`, external review, preset smoke, or a `/tmp` clone) MUST be prefixed with `GJC_NOTIFICATIONS=0 GJC_SDK_DISABLE=1`. In GJC 0.11 the canonical SDK v3 loopback bus publishes `.gjc/state/sdk/<id>.json` independently of managed notifications; disabling notifications alone does not suppress that endpoint. User working sessions keep both surfaces available — this rule applies only to disposable harness runs.
 - Non-Goals: reimplementing gjc-native workflows (team/ultragoal/ralplan/deep-interview), vendor auto-login, or shipping custom model preset copies.
 
 ### `gjc-bugwatch` public surface (REMOVED after v0.17.1)
-- The trigger skill and `/omg:bugwatch-scan` command are retired. `bin/collect.ts`, `bin/follow.ts`, their tests, and `ops/gjc-bugwatch/` remain repository-owned operations tooling, not installed public capability.
-- Internal automation remains drafts-only/read-only with redaction and no automatic issue/PR creation. Human-directed upstream PRs target `Yeachan-Heo/gajae-code` base `dev`.
-
+- The trigger skill and `/omg:bugwatch-scan` command are retired. `bin/collect.ts`, `bin/follow.ts`, their tests, and `ops/gjc-bugwatch/` remain upstream-internal operations tooling retained for provenance.
 
 ### `gajae-app` (REMOVED in 0.14.0)
 - Native upgrade cleanup removes only `~/.gjc/agent/skills/gajae-app/` and `~/.gjc/agent/commands/omg:gajae-app.md`; it does not delete or modify any claudecodeui checkout, build output, data, or user service.
-- Target repository and self-host documentation: [devswha/claudecodeui SELF-HOST](https://github.com/devswha/claudecodeui/blob/feat/gjc-provider/docs/SELF-HOST.md). Historical release evidence: the `feat/gjc-provider` v0.2.0 release passed verification, extragoal cross-review, and 하코 approval.
+- Target repository and self-host documentation: [devswha/claudecodeui SELF-HOST](https://github.com/devswha/claudecodeui/blob/feat/gjc-provider/docs/SELF-HOST.md).
 
 ### `tower` (REMOVED in 0.12.0)
-- 관제탑 발주·하코 승인(2026-07-13)으로 제거: skill `tower` + command `/omg:tower-setup` 미사용 — 실관제탑(horcrux)은 자체 스크립트 구현으로 돌아 이 번들 tower를 경유하지 않음. skill/command와 함께 전용 orphan 파일(`bin/session_watch.py`·`bin/tower-notify.sh`·`bin/queue_store.py`·`bin/tower` CLI·`references/tower.config.example.json`)도 제거. 업그레이드 시 `cleanup_removed`가 네이티브 잔존물(`omg:tower-setup.md`, skill dir)을 청소한다. 과거 상세·검증 레시피는 git 히스토리(≤0.11.0)의 skills/tower/SKILL.md + bin/tower-notify.sh 참조. (gjc-bugwatch가 쓰는 `TOWER_URL` HTTP 큐는 외부 horcrux 관제탑 서버로 본 번들과 무관.)
+- Removed by upstream order (2026-07-13): the `tower` skill + `/omg:tower-setup` command were unused — the real control tower (horcrux) uses its own script implementation and does not go through this bundle's tower. The skill/command and dedicated orphan files were removed. On upgrade, `cleanup_removed` cleans native remnants. See git history (≤0.11.0) for past details.
 
 ### `example-plugin`
 - Reference template: one command + one skill. Copy to bootstrap a new plugin.
 
-## Git autonomy (effective 2026-07-15, 하코 mandate)
+## Release governance (this fork)
 
-- After completion criteria, focused verification, and any required independent review pass, the agent **MUST commit its own completed work to the current work branch and push it to that branch's remote without waiting for per-change approval**.
-- Stage only the intended task diff. Never absorb, revert, stash, or rewrite unrelated user work. Never force-push.
-- A successful branch push is not release approval. Merging to `main`, creating or moving tags, and publishing GitHub/npm releases remain separate approval boundaries governed below.
-- Report the pushed commit and verification evidence to the control tower as `kind=report`.
+This fork follows the standard fork contribution pattern. The upstream's control-tower / asset-goal release governance is not carried over.
 
-## Release governance (effective 2026-07-08, 하코 mandate — survives session restart)
-
-Corrects the 2026-07-08 incident where 4 releases self-merged to `main` + tagged without review. **Every release to `main` (dev→main + tag + GitHub Release) MUST pass all 3 gates before publish. No self-merge releases.**
-
-1. **Verification gate.** Verification checklist done: JSON parse, `bash -n`/`py_compile` where relevant, **new-install reproduction with rc evidence** (isolated HOME, `gjc plugin marketplace add`→`install`→native), plus any relevant unit tests. Record the evidence.
-2. **External cross-review gate (dogfood `extragoal`).** Run the bundled `extragoal` external review on the **release diff** (`git diff <last-tag>..HEAD`): a fresh-context, **cross-family** reviewer (default lane `GJC_NOTIFICATIONS=0 GJC_SDK_DISABLE=1 gjc -p --no-session --model openai-codex/gpt-5.5:xhigh --tools read,search,find …`) issues `VERDICT: APPROVE|REQUEST_CHANGES`. Fail-closed: no verdict / REQUEST_CHANGES ⇒ fix-forward, do not publish. We dogfood our own gate on our own releases.
-3. **Approval gate (control tower → 하코).** After gates 1–2 pass, **request release approval** by enqueuing to the control tower (`horcrux queue add omj "release approval: …"`) with the verdict + evidence. The control tower queues it for 하코; **publish only after 하코 approves.** The agent never self-approves a release.
-4. **Escalation, never a dead end (2026-07-15 amendment, 하코 direct order — "릴리즈를 막지 마라").** Review findings always fix-forward on `dev` and the corrected HEAD is re-verified and re-signed; **release re-sign attempts have no numeric cap and may never block publication merely because a counter was exhausted.** Missing/malformed verdicts and real blockers remain fail-closed until corrected. Frequency-cap overflow may be overridden by 하코's explicit direction and recorded in evidence. When 하코 has explicitly ordered the release in-session, gates 1–2 still run in full and a clean candidate may publish while reporting; after publication the agent MUST enqueue a one-line control-tower `report` containing the released version, final candidate hash, and evidence path. The invariants that never bend are gates 1–2, no self-approval, evidence-backed publication, and the post-publication report receipt.
-
-**Frequency:** docs/patch-level changes are **bundled** — **max 1 release/day**. Exempt: urgent **security** or **install-breakage** fixes, or 하코's explicit direction (recorded in the evidence doc; gates 1–2 still run either way). Between releases, keep merging to `dev`; `main` advances only at an approved release.
-
-**Rollback (명문화 2026-07-12, 하코 승인 릴리스 0.10.0에 동봉):** a bad release is
-rolled back **fix-forward on git**, never by deleting history: (1) `git revert` the
-offending commit(s) on `dev` (or revert the release merge on `main` for a broken-install
-emergency), (2) run gates 1–2 on the revert diff (fast lane: install repro + cross-review),
-(3) publish a new patch release (`vX.Y.Z+1`) through gate 3 as usual. Tags/Releases are
-never deleted or force-moved — a superseded release gets a "superseded by vX.Y.Z+1" note
-in its GitHub Release body. Installed users recover by re-running the one-shot installer.
-
-**In-flight:** work continues on `dev`/branches; a release stops at PR/`dev` state until the 3 gates + 하코 approval. (`v0.7.0` omg rebrand shipped ~minutes before this mandate under the old self-merge pattern; retro-review + approval request filed — no unilateral rollback without explicit instruction.)
+1. Work on a branch.
+2. Run the verification checks below.
+3. Open a PR against `main`. Review, then merge.
+4. Tag a release only after the PR is merged and verified. No self-merge releases without review.
 
 ## Verification expectations
 
@@ -209,7 +197,6 @@ Before considering a plugin change done:
   session and is otherwise deferred-environment.
 - Never fake live evidence. If a surface cannot be exercised in the current
   environment, mark it pending-environment and say so explicitly.
-
 
 ## Schema reference
 
@@ -233,9 +220,3 @@ Before considering a plugin change done:
 | `author` | no | `{ name, email, url }` |
 | `homepage` / `repository` / `license` / `keywords` / `category` | no | metadata |
 | `commands` / `agents` / `skills` / `hooks` / `mcpServers` | no | explicit paths; omit to use convention dirs |
-
-## G1 컨텍스트 (자산 목표 — 작업 우선순위 기준)
-
-> 정본: `~/workspace/horcrux/agent/G1-CONTEXT.md` — **작업 시작 전 한 번 읽을 것.**
-> 목표: 자산 1억 / 2026-12-31. 이 레포의 역할: **도구 — 단기 수익화 대상 아님. G1 직결 작업(patina 출시·magi-stock) 대비 시간 배분 후순위.**
-> 공통 규칙: 비슷한 가치면 매출/수익에 가까운 작업 먼저. 완성도 < 출시/과금 경로.

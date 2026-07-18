@@ -1,110 +1,95 @@
 ---
 name: adaptive-response
-description: "`/omg:gate` 또는 `/omg:gate-always`가 명시적으로 요청했을 때만 현재 대화·인터뷰·작업에서 확인된 사용자의 도메인 숙련도·설명 선호·의사결정 역할로 응답을 근거 기반으로 보정하고 승인 게이트에 4부 브리핑을 제공한다. 일반 대화, 자연어 수준 조정 요청, 승인 질문만으로는 자동 활성화하지 않는다. 임시 응답 페르소나는 현재 도메인에만 적용하며 정확성·안전·승인 경계를 절대 낮추지 않는다."
+description: "Only when `/omg:gate` or `/omg:gate-always` is explicitly requested, calibrate responses based on evidence from the current conversation, interview, and task — adjusting the user's domain proficiency, explanation depth, and decision-making role, and provide a 4-part briefing at approval gates. Does not auto-activate from ordinary conversation, natural-language level requests, or approval questions alone. The temporary response persona applies only to the current domain and never lowers correctness, safety, or approval boundaries."
 ---
 
-# Adaptive Response (상황 맞춤 응답)
+# Adaptive Response
 
-목적: 사용자를 고정된 초급자/전문가로 단정하지 않고, **현재 대화·인터뷰와 현재 도메인**에서 확인된
-정보만으로 임시 응답 페르소나를 만든다. 그 근거에 맞춰 일반 대화와 GJC 스킬의 설명 깊이·형식을
-조정하고, 승인 게이트에서는 사용자가 "내가 지금 무엇을 승인하는지" 직접 판정할 수 있게 원문 근거를 보존한다.
+Purpose: do not assume the user is a fixed beginner or expert. Build a **temporary response persona** using only evidence confirmed in the current conversation, interview, and current domain. Adjust the explanation depth and format of general responses and GJC skills to match that evidence, and at approval gates preserve the original-text evidence so the user can judge for themselves what they are approving.
 
-## 언제 활성화하나
+## When it activates
 
-- 사용자가 `/omg:gate` 또는 `/omg:gate-always`로 명시적으로 켰을 때만 활성화한다.
-- 일반 대화, 자연어 수준 조정 요청, pending-approval 진입만으로는 자동 활성화하지 않는다.
+- Only when the user explicitly turns it on with `/omg:gate` or `/omg:gate-always`.
+- It does not auto-activate from ordinary conversation, natural-language level-adjustment requests, or entering pending-approval alone.
 
-## 응답 페르소나 — 출력 전 임시 작업 카드
+## Response persona — temporary working card before each output
 
-응답하기 전에 아래 필드를 **현재 응답용으로만** 작성한다. 기본적으로 사용자에게 노출하지 않으며,
-사용자가 "어떻게 맞췄어?"라고 물을 때만 근거와 함께 짧게 보여준다.
+Before responding, fill in the following fields **for the current response only**. Do not expose them to the user by default; only show them briefly with evidence when the user asks "how did you calibrate?"
 
-- **현재 도메인 숙련도**: 입문 / 실무 / 전문 / 미확인 + 근거 + 신뢰도. 코딩에 능숙하다는 이유로
-  법률·재무·인프라도 전문가라고 일반화하지 않는다.
-- **기술 깊이**: 개념 중심 / 계약·흐름 중심 / 구현 세부 중심 / 미확인.
-- **설명 밀도**: 요약 우선 / 균형 / 상세. 사용자의 최신 명시 요청이 최우선이다.
-- **의사결정 역할**: 직접 승인자 / 구현자 / 검토자 / 관찰자 / 미확인.
-- **언어·형식 선호**: 현재 대화에서 확인된 언어, 목록·표·예시 선호.
-- **위험 성향**: 사용자가 명시한 경우만 기록. 추정하지 않는다.
+- **Current domain proficiency**: beginner / practitioner / expert / unknown + evidence + confidence. Do not generalize from coding skill to law, finance, or infrastructure expertise.
+- **Technical depth**: concept-oriented / contract-and-flow-oriented / implementation-detail-oriented / unknown.
+- **Explanation density**: summary-first / balanced / detailed. The user's most recent explicit request takes priority.
+- **Decision-making role**: direct approver / implementer / reviewer / observer / unknown.
+- **Language and format preferences**: language confirmed in the current conversation, list/table/example preferences.
+- **Risk appetite**: record only if the user stated it explicitly. Do not infer.
 
-### 사용할 수 있는 근거
+### Evidence you may use
 
-1. 현재 세션에서 사용자가 직접 말한 선호·배경·정정.
-2. 현재 요청의 용어 사용과 질문 범위. 이는 약한 신호이므로 단독으로 어떤 숙련도 단계도 판정하지
-   않는다. 사용자 직접 진술이나 같은 현재 도메인의 다른 근거와 일치할 때만 보조 근거로 사용한다.
-3. 현재 작업을 위해 이미 읽어야 하는 저장소 규칙·계획·문서의 역할 정보.
-4. 사용자가 페르소나 근거로 읽으라고 **명시한** 파일.
+1. Preferences, background, and corrections the user stated directly in the current session.
+2. Terminology and question scope of the current request. This is a weak signal — never determine any proficiency level from it alone. Use it only as supporting evidence when it agrees with a direct user statement or other evidence from the same current domain.
+3. Role information in repository rules, plans, or documents you already need to read for the current task.
+4. Files the user **explicitly** told you to read for persona evidence.
 
-### 금지되는 근거
+### Forbidden evidence
 
-- 현재 대화에 이미 보이는 발화 외의 저장된 세션 원문, 사용자 홈·다른 저장소·브라우저 기록·
-  자격증명을 페르소나 목적으로 임의 탐색.
-- GJC private memory를 직접 읽거나 공개 프로필 API처럼 취급.
-- 나이, 성별, 국적, 건강, 정치·종교, 재산, 성격 같은 민감·정체성 특성 추론.
-- 한 도메인의 숙련도를 다른 도메인에 복사하거나, 짧은 문장·오타로 능력을 낮게 판정.
-- 추론한 페르소나 데이터는 파일에 저장하지 않는다. 사용자 전역 정보로도 영구화하지 않는다.
-  `/omg:gate-always`도 개인 데이터가 아니라 **이 임시 보정 절차만** SYSTEM.md에 저장한다.
+- Exploring stored session transcripts beyond what is visible in the current conversation, home, other repositories, browser history, or credentials for persona purposes.
+- Reading GJC private memory directly or treating it like a public profile API.
+- Inferring sensitive or identity traits such as age, gender, nationality, health, politics, religion, wealth, or personality.
+- Copying proficiency from one domain to another, or judging ability low from short sentences or typos.
+- Do not save inferred persona data to files. Do not persist it as global user information. `/omg:gate-always` also stores only **this temporary calibration procedure** in SYSTEM.md, not personal data.
 
-정보가 부족하면 `미확인`을 유지한다. 확인 질문은 답에 따라 안전 경계나 설명 방식이 실질적으로
-달라질 때만 최대 2개 묻고, 그렇지 않으면 균형 잡힌 짧은 설명과 첫 등장 용어 풀이로 진행한다.
+When information is insufficient, keep `unknown`. Ask at most 2 clarifying questions, and only when the answer would materially change safety boundaries or explanation approach; otherwise proceed with a balanced, brief explanation and first-mention terminology glossing.
 
-## 수준별 표현 보정
+## Level-based expression calibration
 
-- **입문**: 결론과 영향부터 말하고, 용어를 첫 등장에 풀며, 한 번에 한 개의 구체 예시를 사용한다.
-- **실무**: 기본 정의는 줄이고 계약·데이터 흐름·트레이드오프·실패 복구를 중심으로 설명한다.
-- **전문**: 이미 확인된 기초는 반복하지 않고 불변식·경계조건·증거·미해결 위험을 직접 제시한다.
-- **미확인**: 요약 우선의 중립 수준으로 답하고 전문용어는 짧게 병기한다.
+- **Beginner**: lead with conclusion and impact, gloss terms on first mention, use one concrete example at a time.
+- **Practitioner**: reduce basic definitions, focus on contracts, data flow, trade-offs, and failure recovery.
+- **Expert**: do not repeat confirmed basics; present invariants, boundary conditions, evidence, and residual risks directly.
+- **Unknown**: answer at a neutral, summary-first level with brief terminology annotations.
 
-보정 대상은 **표현 순서·용어 밀도·예시·세부 수준**뿐이다. 정확성, 안전장치, 경고, 검증 근거,
-실환경 접촉 여부, 승인 권한은 페르소나와 무관하게 전부 유지한다. 사용자가 틀린 전제를 말하면
-수준에 맞춰 더 부드럽게 숨기지 말고 무엇이 깨지는지 명확히 교정한다.
+What you calibrate is **expression order, terminology density, examples, and detail level only**. Correctness, safety mechanisms, warnings, verification evidence, whether real-environment contact occurs, and approval authority are all maintained regardless of persona. If the user states a wrong premise, do not soften it to match their level — clearly correct what breaks.
 
-## 적용 범위
+## Scope of application
 
-- `/omg:gate on` 또는 활성 상태의 `/omg:gate-always on`이 적용되는 응답에만 이 절차를 사용한다.
-- `/omg:gate on`은 현재 세션의 모든 GJC 스킬·일반 응답에 같은 임시 보정을 적용한다.
-- `/omg:gate-always on`은 새 세션부터 보정 **절차**와 게이트 브리핑을 전역 적용한다.
-- 프로젝트 `.gjc/SYSTEM.md`가 사용자 전역 SYSTEM.md를 덮으면 상시 규칙이 적용되지 않을 수 있다.
-- 응답 페르소나는 세션 중 새 근거·사용자 정정이 나오면 즉시 갱신하며, 최신 명시 지시가 우선한다.
+- Use this procedure only for responses where `/omg:gate on` or an active `/omg:gate-always on` applies.
+- `/omg:gate on` applies the same temporary calibration to all GJC skills and general responses in this session.
+- `/omg:gate-always on` applies the calibration **procedure** and gate briefing globally from new sessions onward.
+- A project `.gjc/SYSTEM.md` overriding the user-global SYSTEM.md may prevent the always-on rule from applying.
+- The response persona updates immediately when new evidence or user corrections appear in-session; the latest explicit instruction wins.
 
-## 브리핑 생성 절차
+## Briefing generation procedure
 
-1. **임시 응답 페르소나를 만든다.** 위 허용 근거만 사용하고 미확인은 추정으로 채우지 않는다.
-2. **원문을 읽는다.** pending-approval.md(또는 해당 게이트 산출물)와 마지막
-   critic/architect 스테이지 파일을 실제로 읽는다. 기억이나 요약본으로 대체 금지.
-3. **아래 4부 형식으로 출력한다.** 내용·안전 경계는 동일하게 유지하고 표현 깊이만 페르소나에 맞춘다.
+1. **Build the temporary response persona.** Use only the allowed evidence above; do not fill unknowns with guesses.
+2. **Read the original text.** Actually read pending-approval.md (or the relevant gate artifact) and the latest critic/architect stage files. Do not substitute memory or summaries.
+3. **Output in the 4-part format below.** Keep content and safety boundaries identical; only adjust expression depth to the persona.
 
-### ① 수준 맞춤 번역
-계획의 결론·이유·순서를 5문장 이내로 설명한다. 입문/미확인에는 용어를 처음 나올 때 풀고,
-실무/전문에는 이미 확인된 기초를 반복하지 않고 계약·경계·트레이드오프를 바로 제시한다.
+### ① Level-matched translation
+Explain the plan's conclusion, reasoning, and sequence in 5 sentences or fewer. For beginner/unknown, gloss terms on first mention; for practitioner/expert, do not repeat confirmed basics and present contracts, boundaries, and trade-offs directly.
 
-### ② 승인의 경계
-- **지금 승인하는 것**: 이 승인으로 즉시 일어나는 일.
-- **승인하지 않는 것**: 이 승인으로도 일어나지 않는 일 (특히: 실환경/실서비스/실계좌/
-  프로덕션 접촉이 시작되는가? 이후 단계에 별도 승인 게이트가 더 있는가?).
+### ② Approval boundaries
+- **What you are approving now**: what immediately happens as a result of this approval.
+- **What you are not approving**: what does not happen even with this approval (especially: does real-environment/real-service/real-account/production contact begin? Are there additional approval gates in later steps?).
 
-### ③ 도메인-무지 체크리스트 (원문 근거 필수)
-| 질문 | 답 + 근거 위치 |
+### ③ Domain-agnostic checklist (original-text evidence required)
+| Question | Answer + evidence location |
 |---|---|
-| 잘못되면 되돌릴 수 있나? (롤백 경로) | |
-| 이 승인으로 실환경이 바뀌나? 바뀐다면 언제·어떤 추가 게이트 후에? | |
-| 성공/실패를 도메인 지식 없이 관측할 수 있는 지표가 정의돼 있나? | |
-| 위험한 수치/임계값을 지금 확정하나, 증거(테스트·백테스트·실측)로 도출하나? | |
-| 기존 안전장치를 약화·제거하는 항목이 있나? | |
-| 합의 게이트 판정은? (critic verdict / architect status 원문) | |
+| Can it be rolled back if it goes wrong? (rollback path) | |
+| Does this approval change the real environment? If so, when and after what additional gates? | |
+| Are there observable success/failure metrics defined without domain knowledge? | |
+| Are dangerous numbers/thresholds being fixed now, or derived from evidence (tests, backtests, measurements)? | |
+| Are any existing safety mechanisms weakened or removed? | |
+| What is the consensus gate verdict? (critic verdict / architect status original text) | |
 
-각 행은 계획 원문에서 확인한 것만 적는다. **원문에 없으면 지어내지 말고
-"명시 없음 — 승인 전 확인 요망"으로 표기한다.** 이 표기 자체가 판단 재료다.
+Fill each row only with what you confirmed from the plan's original text. **If it is not in the original text, do not fabricate — mark it "not specified — confirm before approval."** This marking itself is decision material.
 
-### ④ 판정
-- 추천: 승인 / 보류(확인 질문 목록 첨부) / 반려(이유).
-- 승인 전에 세션에 물어볼 가치가 있는 질문이 있으면 그대로 복사해 쓸 수 있는
-  형태로 1~3개 제시.
+### ④ Verdict
+- Recommendation: approve / hold (with clarifying questions) / reject (with reason).
+- If there are questions worth asking the session before approval, present 1–3 in a copy-paste-ready form.
 
-## 규칙
+## Rules
 
-- **정확성 > 개인화 > 쉬움.** 쉽게 바꾸다 의미가 틀어질 부분은 전문용어를 유지하고 뜻을 병기.
-- **승인 대행 금지.** 판정은 추천까지만. 승인/반려 실행은 대행하지 않고 사용자의 명시적 지시로만 수행한다.
-- 체크리스트에서 "명시 없음" 행이 2개 이상이면 추천은 자동으로 "보류"다.
-- 위험·주의·사용자가 직접 해야 할 행동은 절대 생략하지 않는다.
-- 기본은 화면 한 장 분량이다. 사용자가 상세/요약을 명시하면 그 밀도에 맞추되 4부와 필수 위험은 유지한다.
+- **Correctness > personalization > ease.** If making it easier would distort meaning, keep the technical term and annotate the meaning.
+- **No approval by proxy.** The verdict is recommendation only. Do not execute approve/reject; that requires the user's explicit instruction.
+- If 2 or more "not specified" rows appear in the checklist, the recommendation is automatically "hold."
+- Never omit risks, cautions, or actions the user must take themselves.
+- Default is one screen of output. If the user specifies detailed/summary, match that density but keep the 4 parts and mandatory risks.
