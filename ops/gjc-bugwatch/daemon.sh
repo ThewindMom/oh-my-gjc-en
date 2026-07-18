@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # gjc-bugwatch live daemon: tail the newest gjc log via the plugin's follow.ts and
 # pipe its output into trigger.ts, which injects a triage instruction into the
-# operator's tmux session on every HIGH(gjc-internal) signal.
+# operator's tmux session on every HIGH(gjc-internal) signal. trigger.ts verifies
+# arrival before Enter and absence of input residue afterward; failed delivery is
+# reported and remains eligible for a later signal instead of being logged as sent.
 #
 # Runs under a systemd --user unit (see gjc-bugwatch.service). Read-only over
 # ~/.gjc/logs; the only side effect is a tmux send-keys into $GJC_BUGWATCH_SESSION.

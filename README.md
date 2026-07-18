@@ -28,7 +28,7 @@ git clone --depth 1 https://github.com/devswha/oh-my-gjc.git
 bash oh-my-gjc/install.sh
 ```
 
-한 번 설치로 스킬 6개 + 커맨드 9개(`/omg` + `/omg:*` 8개)가 전부 들어온다(추가 설치 없음). 업그레이드 땐 원샷 한 줄 다시.
+한 번 설치로 스킬 8개 + 커맨드 11개(`/omg` + `/omg:*` 10개)가 전부 들어온다(추가 설치 없음). 업그레이드 땐 원샷 한 줄 다시.
 원리·글롭 규칙 등 기여자용 상세는 AGENTS.md 참조.
 
 </details>
@@ -42,8 +42,10 @@ bash oh-my-gjc/install.sh
 - `/omg:fable` — 안전-크리티컬 코드 적대적 감사(돈·데이터·보안 코드) · **Fable 5 모델 필요**
 - `insane-review` — GPT-5.6 Sol Pro 웹 코드 리뷰 · **ChatGPT 구독 + 크로미움 로그인 필요**
 - `lazycodex-gjc` — 설치된 Codex+LazyCodex/OMO를 격리 읽기 전용 외부 작업자로 실행(`/omg:lazycodex-gjc`)
+- `deep-onboarding` — 문서가 부족한 저장소를 읽기 전용 분석하고 인터뷰한 뒤, 확인된 경로에 프로젝트 맵·ADR 제안·인수인계를 생성(`/omg:deep-onboarding`)
+- `session-observer` — 다른 GJC 세션의 JSONL 대화를 읽기 전용으로 실시간 관찰(`/omg:session-observer`)
 
-커맨드 전체: `/omg`, `/omg:setup`, `/omg:gate`, `/omg:gate-always`, `/omg:no-english`, `/omg:time-left`, `/omg:fable`, `/omg:insane-review`, `/omg:lazycodex-gjc`.
+커맨드 전체: `/omg`, `/omg:setup`, `/omg:gate`, `/omg:gate-always`, `/omg:no-english`, `/omg:time-left`, `/omg:fable`, `/omg:insane-review`, `/omg:lazycodex-gjc`, `/omg:deep-onboarding`, `/omg:session-observer`.
 
 모델 구성은 GJC 기본값과 내장 프리셋을 그대로 쓴다. omj는 커스텀 모델 프리셋을 설치하거나 `models.yml`을 수정하지 않는다.
 
@@ -94,6 +96,17 @@ bash oh-my-gjc/install.sh
 - user-scope native install의 private SHA-256 runtime binding과 runner가 일치해야 실행한다.
 - 쓰기: `/omg:lazycodex-gjc "읽기 전용 조사·리뷰 작업"`
 - 원문: [`plugins/oh-my-gjc/skills/lazycodex-gjc/SKILL.md`](./plugins/oh-my-gjc/skills/lazycodex-gjc/SKILL.md)
+
+### `deep-onboarding` — 문서 없는 저장소 온보딩
+
+대상 저장소를 먼저 읽기 전용으로 분석하고, 관찰만으로 확정할 수 없는 의도와 운영 맥락을 한 번에
+한 질문씩 인터뷰한다. 프로젝트 맵·ADR 제안·인수인계 초안을 미리 보여준 뒤 사용자가 출력 디렉터리를
+명시적으로 확인해야만 세 Markdown 파일을 쓴다. 대상 저장소에 조용히 문서를 만들거나 기존 파일을
+덮어쓰지 않는다.
+
+- 쓰기: `/omg:deep-onboarding [출력 경로 제안]`
+- 원문: [`plugins/oh-my-gjc/skills/deep-onboarding/SKILL.md`](./plugins/oh-my-gjc/skills/deep-onboarding/SKILL.md)
+
 ### `/omg:fable` — 안전-크리티컬 코드 적대적 감사
 
 돈·데이터·보안 걸린 코드를 Fable 5 모델로 적대적 감사한다. 설계 리뷰가 아니라
@@ -125,10 +138,29 @@ SDK v3 bus에서 todo·goal·job·gate 상태를 읽고,
 일시정지, 실패·차단, 근거 부족 상태에서는 숫자 대신 재산정 조건을 보여준다.
 일반 자연어 ETA 질문에는 자동 발동하지 않으며 `/omg:time-left`를 명시적으로 실행해야 한다.
 
+실행 중인 ralplan 또는 ultragoal을 조회하려면 그 workflow를 돌리는 **같은 세션**에서 `/omg:time-left`를
+실행한다. skill은 session identity 일치를 강제한다. 세션이 mid-turn이어도 명령을 입력하고 Enter를 누르면
+GJC 기본 `promptWhileBusy`가 다음 turn boundary에 실행하도록 대기열에 넣으므로 steering은 필요 없다.
+steering은 활성 turn을 중단하므로 정말 긴급할 때만 쓴다. `/btw`는 tools를 금지하는 contract라 skill을
+실행할 수 없고 모델이 추측하게 되므로 이 용도에 적합하지 않다.
+
 - 읽기 전용 query만 사용하며 prompt/reply/control/config를 보내지 않는다.
 - transcript나 다른 세션을 읽지 않고 실행 기록을 사용자 속도 프로필로 저장하지 않는다.
 - 전제: Linux, Bun 1.3.14+, GJC SDK hosting이 켜진 현재 top-level 세션.
 - 원문: [`plugins/oh-my-gjc/skills/time-left/SKILL.md`](./plugins/oh-my-gjc/skills/time-left/SKILL.md)
+### `session-observer` — 다른 세션 대화 읽기 전용 관찰
+
+`/omg:session-observer --tmux omg` 또는 `/omg:session-observer --session <id>`로 연다. 기본은 conversation 보기와 follow이며, `--mode user-only`는 사용자 발화만, `--thinking`은 선택한 thinking도 보인다. `--no-follow`는 detached viewer를 snapshot으로 끝낸다.
+
+runner는 `$HOME/.gjc/agent/sessions/...jsonl`을 tail해 user/assistant 텍스트와 선택한 thinking만 출력하고 tool-call noise는 출력하지 않는다. JSONL이 안전한 기본 경로이며 SDK 의존성이 없다. slash launcher에는 Linux, Bun, tmux가 필요하다.
+
+관찰자는 읽기 전용이다. 세션에 주입·제어·쓰기하지 않고, 네트워크·upstream 활동도 하지 않으며, 관찰한 텍스트를 GJC tool result로 되돌려 보내지 않는다. 터미널에서 runner를 직접 실행하면 완전히 token-free다. slash command의 `--no-follow`와 터미널 runner의 `--follow` 생략은 snapshot으로 끝난다. slash command는 viewer를 detached tmux window에 넣는 한 번의 launch turn만 쓰며, 그 뒤의 관찰은 token-free이고 관찰 텍스트가 GJC로 돌아오지 않는다.
+
+저장소 checkout에서 완전히 token-free로 직접 실행할 때는 다음처럼 쓴다.
+
+```sh
+bun plugins/oh-my-gjc/bin/session-observer.ts --tmux omg --follow
+```
 
 ### GJC 0.11 SDK lab
 

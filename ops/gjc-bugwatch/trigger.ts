@@ -79,26 +79,233 @@ export function dailyDigestPrompt(candidates: Array<Record<string, unknown>>): s
 	].join(" ");
 }
 
-type Runner = (cmd: string[]) => number;
+export interface CommandResult {
+	status: number;
+	stdout: string;
+}
+type Runner = (cmd: string[]) => CommandResult;
+type Waiter = (milliseconds: number) => void;
 
-function defaultRunner(cmd: string[]): number {
+const TUI_BOX = new Set([..."│╭╰╮╯─"]);
+const TAIL_LENGTH = 12;
+const FOLD =
+	/\[?\s*paste\s*#?\s*(\d+)(?:\s+(\d+))?\s*(chars?|lines?)\s*\]?/gi;
+const FOLD_LEGACY = /#(\d+)\s+(\d+)\s+(lines?)/gi;
+const FOLD_NORMALIZED = /\[?paste#?\d+(chars?|lines?)\]?/i;
+
+export function normalizePane(text: string): string {
+	return [...text]
+		.filter((character) => !/\s/u.test(character) && !TUI_BOX.has(character))
+		.join("");
+}
+
+export function tailToken(message: string, length = TAIL_LENGTH): string {
+	return [...normalizePane(message)].slice(-length).join("");
+}
+
+interface Fold {
+	count?: number;
+	unit: "char" | "line" | "?";
+}
+
+function folds(pane: string): Fold[] {
+	const found: Fold[] = [];
+	for (const match of pane.matchAll(FOLD)) {
+		const first = Number(match[1]);
+		const second = match[2] === undefined ? undefined : Number(match[2]);
+		found.push({
+			count: second ?? (first >= 10 ? first : undefined),
+			unit: match[3]!.toLowerCase().startsWith("char") ? "char" : "line",
+		});
+	}
+	if (!found.length)
+		for (const match of pane.matchAll(FOLD_LEGACY))
+			found.push({
+				count: Number(match[2]),
+				unit: "line",
+			});
+	if (!found.length && FOLD_NORMALIZED.test(normalizePane(pane)))
+		found.push({ unit: "?" });
+	return found;
+}
+
+function foldVerdict(
+	fold: Fold,
+	message: string,
+): "strong" | "weak" | "truncated" {
+	if (fold.count === undefined || fold.unit === "?") return "weak";
+	if (fold.unit === "line") {
+		const expected = message.split("\n").length;
+		if (
+			Math.abs(fold.count - expected) <=
+			Math.max(2, Math.round(expected * 0.2))
+		)
+			return "strong";
+		return expected > 4 && fold.count < expected * 0.5
+			? "truncated"
+			: "weak";
+	}
+	const normalizedCharacters = [...normalizePane(message)].length;
+	const rawCharacters = [...message].length;
+	const bytes = Buffer.byteLength(message, "utf8");
+	const low = Math.min(normalizedCharacters, rawCharacters);
+	if (low * 0.8 <= fold.count && fold.count <= bytes * 1.1) return "strong";
+	return fold.count < low * 0.5 ? "truncated" : "weak";
+}
+
+/** Enter 전 입력창 도착: 꼬리 토큰 또는 검증된/해석 불가 paste 접힘 표식. */
+export function arrived(pane: string, message: string): boolean {
+	const token = tailToken(message);
+	if (token && normalizePane(pane).includes(token)) return true;
+	const verdicts = new Set(folds(pane).map((fold) => foldVerdict(fold, message)));
+	if (!verdicts.size) return false;
+	if (verdicts.has("strong")) return true;
+	if (verdicts.has("truncated")) return false;
+	// Exact port of the proven 0.11.1 policy: uncountable placeholders are accepted
+	// to avoid destructive clear/re-paste overlap; materially short counts fail.
+	return true;
+}
+
+/** Enter/클리어 후 입력창 잔류: 꼬리 토큰 또는 paste 접힘 표식. */
+export function residue(pane: string, message: string): boolean {
+	const token = tailToken(message);
+	return Boolean(
+		(token && normalizePane(pane).includes(token)) || folds(pane).length,
+	);
+}
+
+function inputArea(pane: string): string | undefined {
+	const lines = pane.split("\n");
+	for (let bottom = lines.length - 1; bottom >= 0; bottom -= 1) {
+		if (!lines[bottom]!.trimStart().startsWith("╰")) continue;
+		for (let top = bottom - 1; top >= 0; top -= 1) {
+			if (!lines[top]!.trimStart().startsWith("╭")) continue;
+			const frame = lines.slice(top, bottom + 1);
+			return frame.some((line) => /^\s*│\s*>\s?/u.test(line))
+				? frame.join("\n")
+				: undefined;
+		}
+	}
+	return undefined;
+}
+
+function inputIsBlank(frame: string): boolean {
+	const lines = frame.split("\n").slice(1, -1);
+	const content = lines
+		.map((line) =>
+			line
+				.replace(/^\s*│\s?/u, "")
+				.replace(/\s*│\s*$/u, ""),
+		)
+		.map((line, index) => (index === 0 ? line.replace(/^>\s?/u, "") : line))
+		.join("\n")
+		.trim();
+	return (
+		content === "" ||
+		content.startsWith("Type your message...") ||
+		content.startsWith("Type your message…")
+	);
+}
+
+function defaultRunner(cmd: string[]): CommandResult {
 	if (DRYRUN) {
 		process.stdout.write(`[dryrun] ${cmd.join(" ")}\n`);
-		return 0;
+		return { status: 0, stdout: "" };
 	}
-	const r = spawnSync(cmd[0], cmd.slice(1), { stdio: "ignore" });
-	return r.status ?? 1;
+	const result = spawnSync(cmd[0], cmd.slice(1), {
+		encoding: "utf8",
+		stdio: ["ignore", "pipe", "ignore"],
+	});
+	return { status: result.status ?? 1, stdout: result.stdout ?? "" };
+}
+
+function defaultWait(milliseconds: number): void {
+	Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+function commandOk(run: Runner, cmd: string[]): boolean {
+	return run(cmd).status === 0;
+}
+
+function captureInput(session: string, run: Runner): string | undefined {
+	const result = run(["tmux", "capture-pane", "-p", "-t", session]);
+	return result.status === 0 ? inputArea(result.stdout) : undefined;
+}
+
+function sendDryRun(text: string, session: string): void {
+	defaultRunner(["tmux", "send-keys", "-t", session, "-l", "--", text]);
+	defaultRunner(["tmux", "send-keys", "-t", session, "Enter"]);
 }
 
 /**
- * Inject `text` into the tmux session as a literal line followed by Enter.
- * `-l` sends the bytes literally and `--` ends option parsing, so leading `-` is safe.
- * NEVER pass a `~`; callers build absolute paths.
+ * Inject a literal prompt, verify it arrived before Enter, then verify no prompt
+ * residue remains after Enter. A retry is allowed only after verified clearing.
  */
-export function injectTmux(text: string, session = SESSION, run: Runner = defaultRunner): boolean {
-	if (text.includes("~")) throw new Error("refusing to inject a tilde into tmux send-keys");
-	if (run(["tmux", "send-keys", "-t", session, "-l", "--", text]) !== 0) return false;
-	return run(["tmux", "send-keys", "-t", session, "Enter"]) === 0;
+export function injectTmux(
+	text: string,
+	session = SESSION,
+	run: Runner = defaultRunner,
+	wait: Waiter = defaultWait,
+): boolean {
+	if (text.includes("~")) return false;
+	if (DRYRUN && run === defaultRunner) {
+		sendDryRun(text, session);
+		return false;
+	}
+	const sendLiteral = () =>
+		commandOk(run, ["tmux", "send-keys", "-t", session, "-l", "--", text]);
+	const clearAndVerify = (): boolean => {
+		if (!commandOk(run, ["tmux", "send-keys", "-t", session, "Escape"]))
+			return false;
+		if (!commandOk(run, ["tmux", "send-keys", "-t", session, "C-c"]))
+			return false;
+		wait(500);
+		let pane = captureInput(session, run);
+		if (pane === undefined) return false;
+		if (inputIsBlank(pane)) return true;
+		if (!commandOk(run, ["tmux", "send-keys", "-t", session, "C-u"]))
+			return false;
+		wait(500);
+		pane = captureInput(session, run);
+		return pane !== undefined && inputIsBlank(pane);
+	};
+
+	let delivered = false;
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		if (!sendLiteral()) return false;
+		wait(text.length > 1500 ? 1500 : 700);
+		const pane = captureInput(session, run);
+		if (pane !== undefined && arrived(pane, text)) {
+			delivered = true;
+			break;
+		}
+		if (attempt === 1 || !clearAndVerify()) return false;
+	}
+	if (!delivered) return false;
+	if (!commandOk(run, ["tmux", "send-keys", "-t", session, "Enter"]))
+		return false;
+
+	for (let attempt = 0; attempt < 3; attempt += 1) {
+		wait(1000);
+		const pane = captureInput(session, run);
+		if (pane === undefined) continue;
+		if (inputIsBlank(pane)) return true;
+		if (!residue(pane, text)) return false;
+		if (!commandOk(run, ["tmux", "send-keys", "-t", session, "Escape"]))
+			return false;
+		wait(200);
+		if (!commandOk(run, ["tmux", "send-keys", "-t", session, "Enter"]))
+			return false;
+	}
+	return false;
+}
+
+function attemptInjection(prompt: string): boolean {
+	try {
+		return injectTmux(prompt);
+	} catch {
+		return false;
+	}
 }
 
 async function readStdin(): Promise<string> {
@@ -118,11 +325,21 @@ async function main(): Promise<void> {
 		}
 		const prompt = dailyDigestPrompt(Array.isArray(arr) ? (arr as Array<Record<string, unknown>>) : []);
 		if (prompt) {
-			injectTmux(prompt);
-			process.stdout.write(`[daily] injected (${prompt.length} chars) -> ${SESSION}\n`);
-		} else {
+			const injected = attemptInjection(prompt);
+			if (DRYRUN)
+				process.stdout.write(
+					`[daily] simulated (${prompt.length} chars) -> ${SESSION}\n`,
+				);
+			else if (injected)
+				process.stdout.write(
+					`[daily] injected (${prompt.length} chars) -> ${SESSION}\n`,
+				);
+			else {
+				process.stderr.write(`[daily] injection verification failed -> ${SESSION}\n`);
+				process.exitCode = 1;
+			}
+		} else
 			process.stdout.write("[daily] no fresh candidates — no injection\n");
-		}
 		return;
 	}
 
@@ -133,8 +350,17 @@ async function main(): Promise<void> {
 		if (!isHighTrigger(line)) return;
 		const sig = triggerSignature(line);
 		if (!shouldFire(sig, Date.now(), seen)) return;
-		injectTmux(liveTriagePrompt(line));
-		process.stdout.write(`[live] injected -> ${SESSION}: ${sig}\n`);
+		const injected = attemptInjection(liveTriagePrompt(line));
+		if (DRYRUN)
+			process.stdout.write(`[live] simulated -> ${SESSION}: ${sig}\n`);
+		else if (injected)
+			process.stdout.write(`[live] injected -> ${SESSION}: ${sig}\n`);
+		else {
+			seen.delete(sig);
+			process.stderr.write(
+				`[live] injection verification failed -> ${SESSION}: ${sig}\n`,
+			);
+		}
 	});
 }
 

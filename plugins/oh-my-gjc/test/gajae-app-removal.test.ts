@@ -64,8 +64,8 @@ describe("removed capability manifests", () => {
     const expectedCommands = parseManifest("EXPECTED_COMMANDS");
     const removedSkills = parseManifest("REMOVED_SKILLS");
     const removedCommands = parseManifest("REMOVED_COMMANDS");
-    expect(expectedSkills).toHaveLength(6);
-    expect(expectedCommands).toHaveLength(9);
+    expect(expectedSkills).toHaveLength(8);
+    expect(expectedCommands).toHaveLength(11);
     expect(expectedSkills).not.toContain("gajae-app");
     expect(expectedCommands).not.toContain("gajae-app");
 
@@ -76,6 +76,8 @@ describe("removed capability manifests", () => {
       "extragoal",
       "insane-review",
       "lazycodex-gjc",
+      "deep-onboarding",
+      "session-observer",
     ]);
     expect(expectedCommands).toEqual([
       "omg",
@@ -87,6 +89,8 @@ describe("removed capability manifests", () => {
       "fable",
       "insane-review",
       "lazycodex-gjc",
+      "deep-onboarding",
+      "session-observer",
     ]);
     for (const skill of retiredSkills) expect(removedSkills).toContain(skill);
     for (const command of retiredCommands) expect(removedCommands).toContain(command);
@@ -108,6 +112,9 @@ describe("removed capability manifests", () => {
     expect(existsSync(join(pluginRoot, "bin/lazycodex-gjc.mjs"))).toBe(true);
     expect(existsSync(join(pluginRoot, "skills/lazycodex-gjc/SKILL.md"))).toBe(true);
     expect(existsSync(join(pluginRoot, "templates/lazycodex-gjc.md"))).toBe(true);
+    expect(existsSync(join(pluginRoot, "bin/session-observer.ts"))).toBe(true);
+    expect(existsSync(join(pluginRoot, "skills/session-observer/SKILL.md"))).toBe(true);
+    expect(existsSync(join(pluginRoot, "templates/session-observer.md"))).toBe(true);
     expect(readFileSync(join(pluginRoot, "skills/extragoal/SKILL.md"), "utf8")).not.toContain("--mpreset reviewer");
   });
 });
