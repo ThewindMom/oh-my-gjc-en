@@ -61,7 +61,7 @@ First gjc runs directly (do not make the user do it):
 ```bash
 python3 "$IR" --ensure-env
 ```
-`--ensure-env` **silently auto-launches once if a saved browser exists and CDP is down**, then reports status (saved-value-only, no first-detection fallback; if `browser=wrong`, no auto-launch). **So after the first onboarding, it no longer asks about the browser and launches it automatically.**
+`--ensure-env` **silently auto-launches the saved browser headless once if CDP is down**, then reports status (saved-value-only, no first-detection fallback; if `browser=wrong`, no auto-launch). **So after the first onboarding, it no longer asks about the browser and launches it headless automatically.**
 Parse the last line `STATUS node=… deps=… browser=… login=… saved_browser=…`. **If not all ok**, ask the first blocked step via the gjc `ask` tool → gjc executes per the choice → re-run `--ensure-env` to recheck (repeat up to 3–4 times).
 Write questions and choices in **the user's current conversation language**.
 
@@ -74,17 +74,18 @@ Write questions and choices in **the user's current conversation language**.
     ["Retry"(→ re-call `--ensure-env`) / "Switch to another browser"(→ detection branch below) / "Cancel"]. **Only ask here.**
   - **`saved_browser=none`** (first time) → ask once via the detection branch below and launch with `python3 "$IR" --launch-browser "<name>"` (choice **auto-saved → no-question auto-launch from next run**).
 
-  To launch a browser, use `python3 "$IR" --launch-browser "<name>"` (cross-platform, dedicated profile, choice auto-saved), not `open -a`.
-  **It always runs with a dedicated profile, so the user's main browser session is untouched.** Branch on the `BROWSERS` list of `python3 "$IR" --list-browsers`:
+  To launch a browser, use `python3 "$IR" --launch-browser "<name>"` (cross-platform, headless, dedicated profile, choice auto-saved), not `open -a`.
+  **It normally runs headless with a dedicated profile, so the user's main browser session is untouched.** Branch on the `BROWSERS` list of `python3 "$IR" --list-browsers`:
   - **2 or more detected** → `ask` (header `Browser`): each browser as a choice. Annotate the estimated main browser with "likely main — prefer another if possible." Select → `--launch-browser "<name>"` → re-check.
   - **exactly 1 detected** → `ask` (header `Browser`):
     - "Install one dedicated browser (recommended)" → guide installing a light Chromium (Chrome/Brave, etc.) for automation only → `--launch-browser`.
-    - "Proceed with an isolated profile of this browser now" → `--launch-browser "<that name>"`. Dedicated profile isolates from main, but note: "same app 2 windows — do not accidentally touch the automation window."
+    - "Proceed with an isolated profile of this browser now" → `--launch-browser "<that name>"`. The dedicated headless profile is isolated from the main browser.
     - "Cancel"
   - **0 detected** → `ask` (header `Browser`): "No Chromium-family browser found — install one?" → ["Guide Chrome install"/"Cancel"]
 - **`browser=wrong`** (port occupied) → `ask` (header `Port conflict`): "Another process is using 9222. Stop it and relaunch the dedicated browser?" → ["Relaunch"(guide killing the occupying process, then `--launch-browser`)/"Cancel"]
-- **`login=no`** → `ask` (header `Login`): "In the **dedicated browser window** just launched, finish **chatgpt.com login + select GPT-5.6 Sol Pro**. (Dedicated profile, so this login persists.)"
-  → ["Login complete — continue"(→ `--ensure-env` recheck) / "Cancel"]
+- **`login=no`** → if `saved_browser=none`, complete the normal browser-selection branch first. Otherwise immediately run `python3 "$IR" --launch-browser-visible ""`; the empty argument reuses the exact persisted browser name or executable path and replaces headless mode with a visible login session using the same profile. Tell the user: "I opened the dedicated ChatGPT login session. Sign in and select GPT-5.6 Sol Pro, then reply login complete." Do not ask them to locate a hidden headless window, and never ask for credentials or cookie export.
+  → ["Login complete — continue" / "Cancel"]. On "Login complete," run `python3 "$IR" --launch-browser ""` to gracefully flush and restart headless, then `python3 "$IR" --ensure-env`; continue only when `login=ok`. If it remains `login=no`, offer one explicit reopen/retry/cancel choice rather than cycling automatically. On "Cancel," run `python3 "$IR" --launch-browser ""` before stopping so a visible CDP session is not left open. If the visible window cannot be reached from the user's graphical session, give them the visible command to run there and wait for confirmation.
+- **`login=unknown`** → retry `--ensure-env` once. If it remains unknown, offer ["Show diagnostics" / "Restart headless browser" (→ `--launch-browser ""`, then one recheck) / "Cancel"] instead of entering the visible-login flow or looping.
 - **`node=missing`** → `ask` (header `Node`): "Node.js is required (used for repomix auto-install). Help you install it?" → ["Install with package manager"/"I'll install it myself"/"Cancel"]
 
 When `STATUS … login=ok`, go to Step 1. If the user picks "Cancel", stop and tell them in one line what remains.

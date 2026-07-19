@@ -1,6 +1,6 @@
 {
   "name": "oh-my-gjc",
-  "version": "0.20.0-en.1",
+  "version": "0.20.1-en.1",
   "description": "oh-my-gajaecode (English fork of devswha/oh-my-gjc) — focused Gajae Code suite with 7 skills and 10 commands. The no-english Korean-first skill and /omg:no-english command are removed. Skills: adaptive-response, time-left, extragoal, insane-review, lazycodex-gjc, deep-onboarding, session-observer. Commands: /omg, /omg:setup, /omg:gate, /omg:gate-always, /omg:time-left, /omg:fable, /omg:insane-review, /omg:lazycodex-gjc, /omg:deep-onboarding, /omg:session-observer. The session-observer runner is explicit-only, token-free, JSONL-based, and read-only; its slash launcher spends one launch turn and returns no observed text. Deep onboarding analyzes first, interviews for missing context, and writes project-map/ADR/handoff documents only to an explicitly confirmed output path. models.yml remains untouched.",
   "author": {
     "name": "devswha",

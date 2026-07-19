@@ -399,29 +399,80 @@ def resolve_browser(name_or_path: str | None) -> tuple[str, str] | None:
     return bs[0] if bs else None
 
 
+def _wait_for_port_closed(seconds: int = 10) -> bool:
+    for _ in range(seconds * 2):
+        if not is_port_open(CDP_PORT):
+            return True
+        time.sleep(0.5)
+    return not is_port_open(CDP_PORT)
+
+
 def _kill_profile_browsers() -> None:
     """전용 프로필을 점유 중인 브라우저 프로세스를 정리(크로스플랫폼 best-effort).
     전용 프로필이라 종료해도 로그인 쿠키는 디스크에 보존된다 — 스테일 인스턴스가
     새 런치를 흡수해(같은 user-data-dir 싱글톤) 디버그 포트가 안 열리는 교착을 푼다."""
-    target = str(BROWSER_PROFILE_DIR)
+    target = f"--user-data-dir={BROWSER_PROFILE_DIR}"
     try:
         if host_os() == "win":
-            ps = ("Get-CimInstance Win32_Process | "
-                  f"Where-Object {{ $_.CommandLine -like '*{target}*' }} | "
+            ps = ("$needle = $env:INSANE_REVIEW_PROFILE_ARG; "
+                  "Get-CimInstance Win32_Process | "
+                  "Where-Object { $_.CommandLine -and $_.CommandLine.Contains($needle) } | "
                   "ForEach-Object { Stop-Process -Id $_.ProcessId -Force "
                   "-ErrorAction SilentlyContinue }")
+            env = dict(os.environ)
+            env["INSANE_REVIEW_PROFILE_ARG"] = target
             subprocess.run(["powershell", "-NoProfile", "-Command", ps],
-                           capture_output=True, timeout=15)
+                           capture_output=True, timeout=15, env=env)
         else:
-            subprocess.run(["pkill", "-f", target], capture_output=True, timeout=10)
+            subprocess.run(["pkill", "-f", "--", re.escape(target)],
+                           capture_output=True, timeout=10)
     except Exception:
         pass
 
 
-def launch_browser_exe(path: str) -> bool:
-    """전용 프로필 + 디버그 포트로 크로미움 직접 실행(크로스플랫폼) 후 CDP가 뜰 때까지 대기.
+def _close_profile_browser() -> bool:
+    """CDP로 정상 종료해 쿠키를 flush하고, 실패할 때만 전용 프로필 프로세스를 종료한다."""
+    if is_port_open(CDP_PORT):
+        if not cdp_browser_ok():
+            return False
+        if sync_playwright is not None:
+            try:
+                with sync_playwright() as pw:
+                    browser = pw.chromium.connect_over_cdp(CDP_URL)
+                    session = browser.new_browser_cdp_session()
+                    session.send("Browser.close")
+            except Exception:
+                pass
+        if _wait_for_port_closed():
+            return True
+    _kill_profile_browsers()
+    return _wait_for_port_closed()
+
+
+def _regular_chrome_user_agent(path: str) -> str | None:
+    """HeadlessChrome UA를 일반 Chrome UA로 맞춰 로그인된 ChatGPT의 CF 벽 오탐을 피한다."""
+    try:
+        result = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=5)
+        match = re.search(r"(\d+\.\d+\.\d+\.\d+)", result.stdout or result.stderr)
+        if match:
+            major = match.group(1).split(".", 1)[0]
+            platform_token = {
+                "mac": "Macintosh; Intel Mac OS X 10_15_7",
+                "win": "Windows NT 10.0; Win64; x64",
+                "linux": "X11; Linux x86_64",
+            }[host_os()]
+            return (f"Mozilla/5.0 ({platform_token}) AppleWebKit/537.36 "
+                    f"(KHTML, like Gecko) Chrome/{major}.0.0.0 Safari/537.36")
+    except Exception:
+        pass
+    return None
+
+
+def launch_browser_exe(path: str, *, visible: bool = False, restart: bool = False) -> bool:
+    """전용 프로필 + 디버그 포트로 크로미움 직접 실행(기본 headless) 후 CDP가 뜰 때까지 대기.
     전용 프로필에 스테일 인스턴스가 떠 있어 새 런치가 포트를 못 여는 경우(같은 user-data-dir
-    싱글톤 교착)를 감지해 그 프로세스를 정리하고 1회 재시도한다."""
+    싱글톤 교착)를 감지해 그 프로세스를 정리하고 1회 재시도한다. 로그인 온보딩만
+    visible=True + restart=True로 같은 프로필을 보이는 창에서 다시 연다."""
     try:
         BROWSER_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
     except OSError:
@@ -429,6 +480,19 @@ def launch_browser_exe(path: str) -> bool:
     cmd = [path, f"--remote-debugging-port={CDP_PORT}",
            f"--user-data-dir={BROWSER_PROFILE_DIR}",
            "--no-first-run", "--no-default-browser-check"]
+    user_agent = _regular_chrome_user_agent(path)
+    if not user_agent:
+        print("  ❌ 브라우저 버전 확인 실패 — 안전한 headless/visible UA를 만들 수 없음")
+        return False
+    cmd.append(f"--user-agent={user_agent}")
+    if not visible:
+        cmd.append("--headless=new")
+    cmd.append(CHATGPT_URL)
+
+    if restart:
+        if not _close_profile_browser():
+            print(f"  ❌ 기존 브라우저 종료 실패 — port {CDP_PORT}가 아직 사용 중")
+            return False
 
     def _spawn_and_wait(secs: int) -> bool:
         try:
@@ -444,14 +508,17 @@ def launch_browser_exe(path: str) -> bool:
             time.sleep(1)
         return False
 
-    print(f"  브라우저 시작: {Path(path).name} (CDP {CDP_PORT}, 전용 프로필)")
+    mode = "visible login" if visible else "headless"
+    print(f"  브라우저 시작: {Path(path).name} (CDP {CDP_PORT}, 전용 프로필, {mode})")
     if _spawn_and_wait(15):
         return True
     # 포트 미개방 = 전용 프로필에 떠 있던 스테일 인스턴스가 런치를 흡수했을 가능성.
     # 그 프로세스를 정리(로그인 보존)하고 싱글톤 락이 풀리길 기다린 뒤 1회 재시도.
     print("  ⚠️  디버그 포트 미개방 — 전용 프로필 스테일 인스턴스 정리 후 재시도")
     _kill_profile_browsers()
-    time.sleep(3)
+    if not _wait_for_port_closed():
+        print(f"  ❌ 전용 브라우저 종료 실패 — port {CDP_PORT}가 아직 사용 중")
+        return False
     if _spawn_and_wait(20):
         return True
     print("  ❌ 브라우저 시작 타임아웃 (전용 프로필 정리 후에도 실패)")
@@ -1303,7 +1370,9 @@ def main():
     ap.add_argument("--list-browsers", action="store_true",
                     help="이 OS에 설치된 크로미움 계열 브라우저 목록 출력(BROWSERS 라인)")
     ap.add_argument("--launch-browser", default=None, metavar="NAME|PATH",
-                    help="지정 브라우저를 전용 프로필+디버그포트로 실행(빈 문자열이면 자동 선택). 성공 시 config에 저장")
+                    help="지정 브라우저를 headless+전용 프로필+디버그포트로 실행(빈 문자열이면 자동 선택). 성공 시 config에 저장")
+    ap.add_argument("--launch-browser-visible", default=None, metavar="NAME|PATH",
+                    help="로그인 전용: 같은 전용 프로필을 보이는 창으로 재시작. 로그인 후 --launch-browser로 headless 복귀")
     ap.add_argument("--project", default=None,
                     help="채팅을 묶을 ChatGPT 프로젝트 이름(기본: 현재 폴더명). 폴더별로 채팅이 프로젝트 안에 정리됨")
     ap.add_argument("--no-project", action="store_true",
@@ -1323,6 +1392,17 @@ def main():
     ap.add_argument("--retries", type=int, default=1)
     ap.add_argument("prompt_args", nargs="*", help="프롬프트(위치인자 — council 호환)")
     args = ap.parse_args()
+
+    action_count = sum((
+        bool(args.check_env),
+        bool(args.ensure_env),
+        bool(args.list_browsers),
+        args.launch_browser is not None,
+        args.launch_browser_visible is not None,
+    ))
+    if action_count > 1:
+        ap.error("--check-env, --ensure-env, --list-browsers, --launch-browser, "
+                 "--launch-browser-visible 중 하나만 선택할 수 있습니다")
 
     if args.check_env:
         sys.exit(check_env(do_install=args.install))
@@ -1348,15 +1428,19 @@ def main():
             print("  (설치된 크로미움 계열 브라우저를 찾지 못함)")
         sys.exit(0)
 
-    if args.launch_browser is not None:
-        resolved = resolve_browser(args.launch_browser or None)
+    if args.launch_browser is not None or args.launch_browser_visible is not None:
+        visible = args.launch_browser_visible is not None
+        browser_arg = args.launch_browser_visible if visible else args.launch_browser
+        resolved = resolve_browser(browser_arg or None)
         if not resolved:
             avail = ", ".join(n for n, _ in detect_browsers()) or "없음"
-            sys.exit(f"❌ 브라우저를 찾지 못함 (지정='{args.launch_browser}', 감지=[{avail}])")
+            sys.exit(f"❌ 브라우저를 찾지 못함 (지정='{browser_arg}', 감지=[{avail}])")
         name, path = resolved
-        if launch_browser_exe(path):
-            save_browser_choice(name)
-            print(f"STATUS_LAUNCH ok browser={name}")
+        if launch_browser_exe(path, visible=visible, restart=True):
+            current_saved = _load_config().get("browser")
+            save_browser_choice(browser_arg or current_saved or name)
+            mode = "visible" if visible else "headless"
+            print(f"STATUS_LAUNCH ok browser={name} mode={mode}")
             sys.exit(0)
         sys.exit("❌ 브라우저 실행/CDP 확인 실패")
 
@@ -1438,7 +1522,7 @@ def main():
         sys.exit(1)
     # 명시적 지정(--browser)일 때만 영속화 — 자동감지 폴백을 사용자 선택처럼 굳히지 않는다.
     if args.browser and resolved_browser:
-        save_browser_choice(resolved_browser[0])
+        save_browser_choice(args.browser)
 
     print("\n[3/3] ChatGPT 투입 & 응답 회수")
     response = ""
