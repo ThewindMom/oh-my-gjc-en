@@ -9,7 +9,7 @@ description: Uses GPT-5.6 Sol Pro (web-only, no API) inside gjc (Gajae Code). Wh
 
 The core value is not "pack everything" but **"identify intent → precisely select only the relevant targets → pack only those."** gjc (you) performing this selection is this tool's differentiator.
 
-> **The engine is kept byte-for-byte.** The actual packing, CDP driving, model verification, turn judgment, and retrieval are performed by the bundled `bin/pack_and_ask.py` (the original insane-review engine, Playwright-based). Do not reimplement the logic to preserve performance and fail-closed guarantees. Do not mimic this flow with gjc's `browser` tool — the engine is more robust.
+> **Use the bundled engine as the single implementation.** The actual packing, headless/visible-login browser lifecycle, CDP driving, model verification, turn judgment, and retrieval are performed by `bin/pack_and_ask.py` (derived from the original insane-review Playwright engine). Do not reimplement or mimic this flow with gjc's `browser` tool; preserving one hardened path keeps its fail-closed guarantees.
 
 ## Engine path resolution (`$IR`) — once before each run
 `${CLAUDE_PLUGIN_ROOT}` substitution does not work in gjc command/skill bodies. Use only the exact suite root binding (`root`, mode `0600`) recorded by the native install per scope. Read the current project binding (`$PWD/.gjc/runtimes/oh-my-gjc/root`) first, then the user binding (`$HOME/.gjc/agent/runtimes/oh-my-gjc/root`) only if absent, and fall back to the exact asset in this marketplace checkout only when neither exists:
@@ -52,13 +52,13 @@ echo "IR=$IR"
 ```
 A malformed, symlinked, non-canonical, multiline, control-character-containing, or asset-missing binding fails closed. Do not select a plugin cache; bootstrap, upgrade, or repair by rerunning the hardened root `install.sh`.
 
-## Prerequisites — choice-based onboarding (never make the user type CLI)
+## Prerequisites — headless by default, visible only for login
 
 **Command Step 0 automates this.** gjc runs `--check-env`/`--ensure-env` directly, parses the last `STATUS node=… deps=… browser=… login=… saved_browser=…`, and for each blocked step asks via the gjc **`ask` tool choices**, then gjc executes on the user's behalf (`--install`, browser launch, re-check). Beginners follow by clicking.
 
 - **deps** (`playwright`, `pyperclip`): if missing, "auto-install now" → `--check-env --install`. (`npx`/repomix is fully automatic via `npx -y`.)
-- **browser**: a Chromium-family browser must be running on debug port 9222 with a **dedicated profile** (isolated from the main browser; Chrome 136+ won't open CDP without a dedicated profile). If missing, let the user pick from the `BROWSERS …` list of `--check-env`/`--list-browsers`, then gjc runs `python3 "$IR" --launch-browser "<name>"` (cross-platform mac/win/linux, dedicated profile, choice auto-saved). (Cookies persist in the dedicated profile → login persists.)
-- **login**: if the login probe is `login=no`, after "log in to chatgpt.com and select GPT-5.6 Sol Pro in the browser just opened," choose "login complete" → re-check. **Login cannot be automated → must request the user** (do not end with an error).
+- **browser**: a Chromium-family browser runs on debug port 9222 with a **dedicated persistent profile** (isolated from the main browser; Chrome 136+ won't open CDP without one). Normal `--ensure-env`, `--launch-browser`, and review runs launch it **headless**. If no browser is saved, let the user pick from `BROWSERS …`, then run `python3 "$IR" --launch-browser "<name>"`; the choice and login cookies persist.
+- **login**: if the headless login probe returns `login=no`, do not stop with an error and do not ask the user to find a hidden window. If no browser is saved, complete browser selection first; otherwise run `python3 "$IR" --launch-browser-visible ""` (the empty argument reuses the exact saved name or executable path). Tell the user that a dedicated visible ChatGPT login session is open and ask them to sign in/select GPT-5.6 Sol Pro, then wait for their "login complete" reply. After that reply, run `python3 "$IR" --launch-browser ""` to flush and restart the same profile headless, then run `--ensure-env` to verify `login=ok`. If it still reports `login=no`, offer one reopen/retry/cancel choice instead of looping. On cancel, restart headless before stopping. **Login cannot be automated.** If the visible window is not accessible from the user's graphical session, give them the same visible command to run there; never request credentials or export cookies. If `login=unknown`, retry once; if it remains unknown, offer diagnostics, headless relaunch, or cancel rather than treating it as logged out.
 - **model 5.6 Sol Pro**: the script `--model pro` auto-selects and verifies (`--require-model "GPT-5.6"`). If it fails, the user sets it once manually and new chats inherit it.
 
 ## Core procedure (when you receive a review/fix/opinion request)
@@ -116,7 +116,7 @@ So each run does not pile up in the general chat list, chats are organized insid
 - To rename, use `--project "<name>"`; to disable, `--no-project`.
 
 ## Main flags
-`--target` (omit = prompt only) · `--include` (precise glob) · `--ignore` · `--compress` · `--model pro` · `--require-model "GPT-5.6"` · `--force-answer-after N` · `--max-wait N` · `--retries N` · `--style xml|markdown|plain` · `--browser <name|path>` · `--launch-browser <name>` · `--list-browsers` · `--project "<name>"` · `--no-project` · `--pack-only` · `--delete-pack` · `--council`
+`--target` (omit = prompt only) · `--include` (precise glob) · `--ignore` · `--compress` · `--model pro` · `--require-model "GPT-5.6"` · `--force-answer-after N` · `--max-wait N` · `--retries N` · `--style xml|markdown|plain` · `--browser <name|path>` · `--launch-browser <name>` (headless) · `--launch-browser-visible <name>` (login only) · `--list-browsers` · `--project "<name>"` · `--no-project` · `--pack-only` · `--delete-pack` · `--council`
 
 ## Using as an agent-council member
 See `references/council-setup.md`. `--council` mode takes the prompt as a positional argument and **emits only the response to stdout** (progress logs go to stderr) so a council worker can capture it directly. Registering Pro as a web-only council member lets it participate in discussions with other models.
